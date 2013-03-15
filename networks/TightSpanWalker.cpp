@@ -7,6 +7,7 @@
 
 #include "TightSpanWalker.h"
 #include "NetworkError.h"
+#include <QTime>
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +29,46 @@ TightSpanWalker::~TightSpanWalker()
 }
 
 void TightSpanWalker::computeGraph()
+{
+  computeDT();
+  
+  double progperseq = 200./(nseqs() * (nseqs() - 1));
+  double progress = 0;
+  
+  for (unsigned i = 0; i < nseqs(); i++)
+  {
+    newVertex(seqName(i), &seqSeq(i));
+    _K->newVertex(seqName(i));
+    vector<float> dTvect;
+    for (unsigned j = 0; j < nseqs(); j++)
+      dTvect.push_back(dT(i,j));
+    
+    _vertexMap[dTvect] = vertex(i);
+  }
+  QTime executionTimer;  
+  executionTimer.start();
+  for (unsigned i = 0; i < nseqs(); i++)
+  {
+    for (unsigned j = 0; j < i; j++)
+    {
+      geodesic(vertex(i), vertex(j));
+      progress += progperseq;
+      updateProgress(progress);
+    }
+  }
+  
+
+ /* ofstream kf("Mel.cytoscape");
+  for (unsigned i = 0; i < edgeCount(); i++)
+  {
+    kf <<  edge(i)->to()->index() << '\t' << edge(i)->weight() << '\t'  << edge(i)->from()->index() << endl;    
+  }
+  kf.close();*/
+  
+  updateProgress(100);
+}
+
+/*void TightSpanWalker::computeGraph()
 {
   
   computeDT();
@@ -382,7 +423,7 @@ void TightSpanWalker::fixPath(Vertex *u, Vertex *v, const list<Vertex *> &compon
     fixPath(v, toJoin.second, component, otherVerts);
   
   geodesic(toJoin.first, toJoin.second);
-}
+}*/
 
 
 unsigned TightSpanWalker::geodesic(Vertex *f, Vertex *g)//, int compF, int compG, Vertex *lastF)
@@ -567,111 +608,11 @@ unsigned TightSpanWalker::geodesic(Vertex *f, Vertex *g)//, int compF, int compG
     //cerr << "negative delta error" << endl;
     throw NetworkError("Something is wrong, delta should be positive.");
   }
-  // distance between g and soon-to-be created vertex h
-  // dT(f, h) should be delta; dT(g, h) should be dT(f, g) - delta
-  /*list<Vertex *> *compListF;
-  list<Vertex *> *compListG;
-  
-  list<list<Vertex *> >::iterator compListIt = _components.begin();
-  
-  if (compF < compG) // This should always be true
-  {
-    for (int i = 0; i < compF; i++)  ++compListIt;  
-    compListF = &(*compListIt);
-    
-    for (int i = compF; i < compG; i++)  ++compListIt;
-    compListG = &(*compListIt);
-  }
-  
-  else
-  {
-    for (int i = 0; i < compG; i++)  ++compListIt;  
-    compListG = &(*compListIt);
-    
-    for (int i = compF; i < compF; i++)  ++compListIt;
-    compListF = &(*compListIt);
-  }
-  
-  
-  list<Vertex *>::iterator compIt = compListF->begin();
-  
-  while (compIt != compListF->end())
-  {
-    if ((*compIt)->index() < K->vertexCount())
-      if (K->vertex((*compIt)->index())->colour() == Vertex::Green)
-        cout << (*compIt)->label() << " should bypass F." << endl;
-    ++compIt;
-  }
-  
-  compIt = compListG->begin();
-   while (compIt != compListG->end())
-  {
-    if ((*compIt)->index() < K->vertexCount())
-      if (K->vertex((*compIt)->index())->colour() == Vertex::Red)
-        cout << (*compIt)->label() << " should bypass G." << endl;
-    ++compIt;
-  }
-  */
 
-  // only worth checking for additional paths to compG if f is in NML
-  //if (_componentIDs.size() <= f->index() || _componentIDs.at(f->index() < 0)
-  /*if (lastF != 0)
-  {
-    
-    //if (lastF == 0)  throw NetworkError("lastF is null, but this isn't the first recursive call to geodesic.");
-      
-    vector<bool> connectedToF(vertexCount(), false);
-    connectedToF.resize(vertexCount(), false);
-      
-    list<Vertex *>::iterator compIt = compListG->begin(); 
-
-    
-    while (compIt != compListG->end())
-    {
-      Vertex *v = *compIt;
-      if (v->index() < _K->vertexCount() && _K->vertex(v->index())->colour() == Vertex::Red)
-      {
-        // if vertex must pass through f to get to lastF, f is point of attachment
-        float dTfv = dT(f->index(), v->index());
-        if (aboutEqual(dTfv + dT(f->index(), lastF->index()), dT(v->index(), lastF->index())))
-        {
-        
-          list<Vertex *>::iterator compIt2 = compListG->begin();
-          float minDT = dTfv;
-          Vertex *closest = v;
-          
-          // find closest vertex in compF along path from v to f
-          while (compIt2 != compListG->end())
-          {
-            if (compIt2 != compIt)
-            {
-              float newDT = dT((*compIt2)->index(), f->index());
-              if (newDT < minDT && aboutEqual(dTfv, dT(v->index(), (*compIt2)->index()) + newDT))
-              {
-                closest = *compIt2;
-                minDT = newDT;
-              }
-            }
-            ++compIt2;
-          }
-          
-          if (! connectedToF.at(closest->index()))
-          {
-            connectedToF.at(closest->index()) = true;
-            geodesic(f, closest, compF, compG);
-          }     
-        }
-      }
-      
-      ++compIt;
-    }
-  }*/
-  
-  
-  // if dT(f, g) is about about delta, there's no vertex between them
   if (aboutEqual(dT(f->index(), g->index()), delta))
   {
-    e = newEdge(f, g, delta);
+    if (! f->isAdjacent(g))
+      e = newEdge(f, g, delta);
     return 0;
   }
   
@@ -679,131 +620,80 @@ unsigned TightSpanWalker::geodesic(Vertex *f, Vertex *g)//, int compF, int compG
   // need to create h and call geodesic recursively
   else if (dT(f->index(), g->index()) > delta)
   {
+    vector<float> newDTVect; 
     
+    // compute dT vector to potential new vertex and see if it already exists
+    // if not, create it
+    // if so, just create a new edge from f to existing vertex
     
-    
-    Vertex *h = newVertex("");
-    e = newEdge(f, h, delta);
-    _dT.push_back(vector<float>());//0, vertexCount()));
-    _dT.at(h->index()).resize(vertexCount(), 0);
-    
-    //for (unsigned i = 0; i < (vertexCount() - 1); i++)
     for (unsigned i = 0; i < _K->vertexCount(); i++)
     {
       float fi = dT(f->index(), i);
-      _dT.at(i).push_back(0);
-    
       // If distance to vertex decreases between f and h, dT(v, h) is less than dT(v, f)
       if (_K->vertex(i)->colour() == Vertex::Green)
-        setDT(fi - delta, i, h->index());
+        newDTVect.push_back(fi - delta);
       
       // If distance to vertex increases between f and h, dT(v, h) is greater than dT(v, f)
       else  if (_K->vertex(i)->colour() == Vertex::Red)
-        setDT(fi + delta, i, h->index());
+        newDTVect.push_back(fi + delta);
       
       else
-      {
-        /*for (unsigned j = 0; j < _K->vertexCount(); j++)
-        {
-          cout << "vertex " << j << ": degree = " << _K->vertex(j)->degree() << " colour = ";
-          switch (_K->vertex(j)->colour())
-          {
-            case Vertex::Red:
-              cout << "red" << endl;
-              break;
-            case Vertex::Green:
-              cout << "green" << endl;
-              break;
-            default:
-              cout << "uncoloured" << endl;
-              break;
-          }
-        }
-        */
-        //cerr << "uncoloured vertex error." << endl;
         throw NetworkError("Uncoloured vertex!");
-        //writeExceptionGraph();
-      }
-
+      
     }
     
-    // calculating dT(i, h) for i not in X
-    for (unsigned i = _K->vertexCount(); i < vertexCount(); i++)
+    Vertex *h;
+    unsigned newverts = 0;
+    
+    map<vector<float>, const Vertex *>::iterator vertit = _vertexMap.find(newDTVect);
+    
+    if (vertit == _vertexMap.end())
     {
-      float dTih = numeric_limits<float>::min();
-      _dT.at(i).push_back(0);
+      newverts++;
+      h = newVertex("");
+      _vertexMap[newDTVect] = h;
+      newDTVect.push_back(0);
+      _dT.push_back(newDTVect);
       
-      for (unsigned j = 0; j < _K->vertexCount(); j++)
-      {
-        for (unsigned k = 0; k < _K->vertexCount(); k++)
-        {
+      for (unsigned i = 0; i < _K->vertexCount(); i++)
+        _dT.at(i).push_back(newDTVect.at(i));
 
-          // consider both orders, (j, k) and (k, j)
-          float dd = distance(j, k) - dT(h->index(), j) - dT(i, k);
-          dTih = max(dTih, dd);
-          dd = distance(j, k) - dT(h->index(), k) - dT(i, j);
-          dTih = max(dTih, dd);
+      // calculating dT(i, h) for i not in X
+      _dT.at(h->index()).resize(vertexCount(), 0);
+      for (unsigned i = _K->vertexCount(); i < vertexCount(); i++)
+      {
+        float dTih = numeric_limits<float>::min();
+        _dT.at(i).push_back(0);
+        
+        for (unsigned j = 0; j < _K->vertexCount(); j++)
+        {
+          for (unsigned k = 0; k < _K->vertexCount(); k++)
+          {
+
+            // consider both orders, (j, k) and (k, j)
+            float dd = distance(j, k) - dT(h->index(), j) - dT(i, k);
+            dTih = max(dTih, dd);
+            dd = distance(j, k) - dT(h->index(), k) - dT(i, j);
+            dTih = max(dTih, dd);
+          }
         }
+        
+        setDT(dTih, h->index(), i);
       }
+     e = newEdge(f, h, delta);
       
-      setDT(dTih, h->index(), i);
     }
     
-    // check for other paths from compF to h
-    /*list<Vertex *>::iterator compIt = compListF->begin();
-    vector<bool> connectedToH(vertexCount(), false);
-    connectedToH.resize(vertexCount(), false);
-    
-    while (compIt != compListF->end())
+    else // already a vertex with this dT vector
     {
-      Vertex *v = *compIt;
+      h = vertex(vertit->second->index());
+      if (! f->isAdjacent(h))
+        e = newEdge(f, h, delta);
+    }
+    //Vertex *h = newVertex("");
       
-      
-      if (v->index() < _K->vertexCount() && _K->vertex(v->index())->colour() == Vertex::Green)
-      {
-        cout << v->label() << " (" << v->index() << ") needs to bypass f" << endl;
-        
-        cout << *(dynamic_cast<Graph *>(this));
-        for (unsigned i = 0; i < _K->vertexCount(); i++)
-          cout << i << ": " <<  _K->vertex(i)->label()  << (_K->vertex(i)->colour() == Vertex::Red ? " red" : " green") << endl;
-        // is h the connection point for v?
-        float dThv = dT(h->index(), v->index());
-        if (aboutEqual(dThv + dT(h->index(), g->index()), dT(v->index(), g->index())))
-        {
-          cout << "\th is the connection point." << endl;
-          list<Vertex *>::iterator compIt2 = compListF->begin();
-          float minDT = dThv;
-          Vertex *closest = v;
-          
-          while (compIt2 != compListF->end())
-          {
-            float newDT = dT((*compIt2)->index(), h->index());
-            
-            if (newDT < minDT && aboutEqual(dThv, dT(v->index(), (*compIt2)->index()) + newDT))
-            {
-              closest = *compIt2;
-              minDT = newDT;
-            }             
-            ++compIt2;
-          }
-          
-          if (! connectedToH.at(closest->index()))
-          {
-            cout << "\tusing vertex " << closest->index() << " to form geodesic to h" << endl;
-            connectedToH.at(closest->index()) = true;
-            geodesic(closest, h, compF, compG);
-          }
-          else  cout << "\tvertex " << closest->index() << " has already been connected to h." << endl;
-        }
-        
-        else cout << endl;
-      }
-      
-      ++compIt;
-    }*/
 
-
-    return 1 + geodesic(h, g);
+    return newverts + geodesic(h, g);
   }
   
   else  

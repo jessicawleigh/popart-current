@@ -81,6 +81,8 @@ private:
   std::list<std::list<Vertex *> > _components;
   std::vector<int> _componentIDs;
   
+  std::map<vector<float> , const Vertex *> _vertexMap;
+  
 };
 
 #endif /* TIGHTSPANWALKER_H_ */
