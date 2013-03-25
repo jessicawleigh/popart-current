@@ -18,6 +18,7 @@ ParsimonyNet::ParsimonyNet(const vector <Sequence *> &seqvect, const vector<bool
   _nOrigSeqs = seqvect.size();
   //setupAncestors();
   //setupGraph();
+  _treeUsed.resize(_trees.size(), false);
 }
 
 ParsimonyNet::~ParsimonyNet()
@@ -32,7 +33,7 @@ void ParsimonyNet::computeAncestralSeqs(double alpha)
   
   for (unsigned i = 0; i < _nOrigSeqs; i++) 
   {
-    // use origintal sequence indices so leaf count matches seq count
+    // use original sequence indices so leaf count matches seq count
     const Sequence *s = new Sequence(seqName(i, true), condensedSeqSeq(i));
     seqvect.push_back(s);  
     leafSeqs.insert(string(s->seq()));
@@ -97,7 +98,7 @@ void ParsimonyNet::computeAncestralSeqs(double alpha)
       }
       
       ++edgeIt;
-      updateProgress(msnProgress());
+      //updateProgress(msnProgress());
     } //end while edgeIt...
   } // end for unsigned i...
   
@@ -117,6 +118,81 @@ void ParsimonyNet::computeAncestralSeqs(double alpha)
     delete seqvect.at(i);
 }
 
+const list<pair<const string, const string> > ParsimonyNet::sampleEdge()
+{
+  vector<const Sequence *> seqvect;
+  set<string> leafSeqs;
+
+  for (unsigned i = 0; i < _nOrigSeqs; i++)
+  {
+    // use original sequence indices so leaf count matches seq count
+    const Sequence *s = new Sequence(seqName(i, true), condensedSeqSeq(i));
+    seqvect.push_back(s);
+  }
+
+  unsigned treeIdx = rand() % _trees.size();
+  //cout << "sampling tree " << treeIdx << endl;
+  ParsimonyTree *t = _trees.at(treeIdx);
+
+  if (! _treeUsed.at(treeIdx))
+
+  {
+    _treeUsed.at(treeIdx) = true;
+    t->setLeafSequences(seqvect, weights());
+    t->computeScore();
+  }
+  // Compute new ancestors, even if we've already used this tree
+  t->computeAncestors();
+
+
+  ParsimonyTree::EdgeIterator edgeIt = t->edgeBegin();
+
+  list<pair<const string, const string> > edgelist;
+
+
+  // Fix this loop: return edge, regardless of whether it's a leaf edge
+  while (edgeIt != t->edgeEnd())
+  {
+    const string firstSeq = edgeIt.first->sequence()->seq();
+    const string secondSeq = edgeIt.second->sequence()->seq();
+
+    edgelist.push_back(pair<const string, const string>(firstSeq, secondSeq));
+
+    /*set<string>::iterator leafIt = leafSeqs.find(firstSeq);
+    map<string, unsigned> ::iterator seqCountIt;
+
+    if (leafIt == leafSeqs.end())
+    {
+      seqCountIt = seqCount.find(firstSeq);
+
+      if (seqCountIt == seqCount.end())
+        seqCount[firstSeq] = 1;
+
+      else
+        seqCount[firstSeq] ++;
+    }
+
+    leafIt = leafSeqs.find(secondSeq);
+
+    if (leafIt == leafSeqs.end())
+    {
+      if (firstSeq != secondSeq)
+      {
+          seqCountIt = seqCount.find(secondSeq);
+          if (seqCountIt == seqCount.end())
+            seqCount[secondSeq] = 1;
+
+        else
+          seqCount[secondSeq] ++;
+        }
+      }*/
+
+    ++edgeIt;
+  }
+
+  return edgelist;
+}
+
 const string & ParsimonyNet::ancestralSeq(unsigned index) const
 {
   if (index > ancestorCount())  
@@ -124,4 +200,9 @@ const string & ParsimonyNet::ancestralSeq(unsigned index) const
   
   return _ancestors.at(index);
 }
+
+/*void ParsimonyNet::computeGraph()
+{
+
+}*/
 
