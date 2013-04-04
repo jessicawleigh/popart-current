@@ -311,6 +311,48 @@ void Graph::updateFloydWarshall()
   _FloydWarshallUpdated = true;
 }
 
+bool Graph::areConnected(Vertex *start, Vertex *end)
+{
+
+  if (start == end)  return true;
+  vector<Vertex*>::iterator vertIt = _vertices->begin();
+  while (vertIt != _vertices->end())
+  {
+    (*vertIt)->unmark();
+    vertIt++;
+  }
+
+  queue<Vertex*> vertQueue;
+  vertQueue.push(start);
+  Vertex *u, *v;
+
+
+  while (! vertQueue.empty())
+  {
+    u = vertQueue.front();
+    if (! u->marked())
+    {
+      //if (u == end)  return true;
+
+      Vertex::EdgeIterator edgeIt = u->begin();
+      while (edgeIt != u->end())
+      {
+        v = opposite(u, (*edgeIt));
+        if (v == end)  return true;
+
+        if (! v->marked())   vertQueue.push(v);
+        ++edgeIt;
+      }
+
+      u->mark();
+    }
+
+    vertQueue.pop();
+  }
+
+  return false;
+}
+
 Graph::DFSIterator Graph::beginDFS()
 {
   return DFSIterator(this);
