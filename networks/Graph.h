@@ -116,6 +116,7 @@ public:
   void unmarkVertices();
   
   double pathLength(const Vertex*, const Vertex*);
+  bool areConnected(Vertex*, Vertex*);
 
   DFSIterator beginDFS();
   DFSIterator endDFS();

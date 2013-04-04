@@ -24,6 +24,7 @@ protected:
   //void setupAncestors();
   void setProgress(double prog) { _progress = prog; };
   double progress() const { return _progress; };
+  virtual unsigned niter() const = 0;
   //virtual int msnProgress() { return progress(); };
 
 private:
@@ -31,7 +32,7 @@ private:
   virtual void computeGraph();
   //virtual void computeDistances();
   
-  virtual void computeAncestralSeqs(double alpha) = 0;
+  //virtual void computeAncestralSeqs(double alpha) = 0;
   virtual const std::list<std::pair<const std::string, const std::string> > sampleEdge() = 0;
   virtual unsigned ancestorCount() const = 0;
   virtual const std::string & ancestralSeq(unsigned index) const = 0;

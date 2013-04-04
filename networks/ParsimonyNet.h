@@ -20,20 +20,24 @@ public:
   virtual ~ParsimonyNet();
   
   //void addTree(ParsimonyTree *);
+protected:
+  virtual unsigned niter() const { return _niter; };
   
 private:
   //virtual void computeGraph();
-  virtual void computeAncestralSeqs(double = 0.05);
+  //virtual void computeAncestralSeqs(double = 0.05);
   virtual const std::list<std::pair<const std::string, const std::string> > sampleEdge();
   virtual unsigned ancestorCount() const { return _ancestors.size(); };
   virtual const std::string & ancestralSeq(unsigned) const;
   
 
   unsigned _nOrigSeqs;
+  vector<const Sequence *> _seqvect;
   const std::vector<ParsimonyTree *> _trees;
   std::vector<string> _ancestors;
   //const std::vector<Sequence *> * _seqVectPtr;
   vector<bool> _treeUsed;
+  unsigned _niter;
 };
 
 #endif
