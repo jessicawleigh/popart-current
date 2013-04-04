@@ -15,6 +15,7 @@
 #include <QPainter>
 #include <QPointF>
 #include <QPrinter>
+#include <QPushButton>
 #include <QRegExp>
 #include <QSvgGenerator>
 #include <QThread>
@@ -43,6 +44,9 @@ NetworkView::NetworkView(QWidget * parent)
   _layoutThread = new QThread(this);
   connect(_layoutThread, SIGNAL(finished()), this, SLOT(adjustAndDraw()));
   _progress = new QProgressDialog(this);
+  QPushButton *cancelButton = new QPushButton("Can't Cancel", _progress);
+  cancelButton->setEnabled(false);
+  _progress->setCancelButton(cancelButton);
   _progress->setLabelText("Drawing network...");
   _progress->setMinimum(0);
   _progress->setMaximum(100);

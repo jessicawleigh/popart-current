@@ -433,10 +433,6 @@ void HapnetWindow::setupTools()
 
 void HapnetWindow::openAlignment()
 {
-  if (! _alignment.empty())
-
-     closeAlignment();
-  
   QString oldname(_filename);
 
   //_filename = QFileDialog::getOpenFileName(this, "Open alignment file", ".", "Fasta Files (*.fas *.fa *.fasta);;Phylip Files (*.seq *.phy *.phylip);;Nexus files (*.nex *.mac);;All Files(*)").toStdString();
@@ -444,6 +440,10 @@ void HapnetWindow::openAlignment()
   
   if (_filename != "")
   {  
+    if (! _alignment.empty())
+
+       closeAlignment();
+
     // TODO check whether these functions can produce traits exceptions that aren't caught
     bool success = loadAlignmentFromFile();
     bool traitsuccess = loadTraitsFromParser();
