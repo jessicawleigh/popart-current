@@ -33,6 +33,7 @@ public:
   QPointF edgeEnd(unsigned) const;
   unsigned edgeStartIdx(unsigned edgeId) const { return _edgeList.at(edgeId).start; };
   unsigned edgeEndIdx(unsigned edgeId) const { return _edgeList.at(edgeId).end; };
+  double edgeWeight(unsigned edgeId) const { return _edgeList.at(edgeId).prefLength / NetworkItem::EDGELENGTH; };
   unsigned vertexCount() const;
   const QPointF & vertexCoords(unsigned vertId) const;
   const QPointF & northWest() const { return _northWest; };
@@ -140,7 +141,7 @@ private:
     QStack<QuadTreeNode *> _spareNodes;
   };
 
-  typedef struct {unsigned start; unsigned end; unsigned prefLength; } EdgeData;
+  typedef struct {unsigned start; unsigned end; double prefLength; } EdgeData;
 
 
   // These are different constants because Jiggle uses different values

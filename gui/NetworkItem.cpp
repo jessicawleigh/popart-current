@@ -50,7 +50,7 @@ NetworkItem::NetworkItem(const Edge *e, NetworkItem *parent)
   
   //cout << "edge type constructor" << endl;
   _e = e;
-  _size = e->weight();
+  _dsize = e->weight();
   _type = EdgeType;
   _v = 0;
   
@@ -115,7 +115,7 @@ QVariant NetworkItem::data(int role) const
   {
     //cout << "returning from/to data for edge: " << _e << endl;
     if (role == Qt::DisplayRole || role == SizeRole)
-      return _size;
+      return _dsize;
     else if (role == EdgeStartRole)
       return _e->from()->index();
     else if (role == EdgeEndRole)

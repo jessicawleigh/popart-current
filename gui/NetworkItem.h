@@ -54,7 +54,8 @@ private:
 
   ItemType _type;
   QString _label;
-  unsigned _size; // serves as both edge weight and vertex frequency
+  unsigned _size;
+  double _dsize;
   
   QList<QVariant> _traits;
   QList<QVariant> _taxa;

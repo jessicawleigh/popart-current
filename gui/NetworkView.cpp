@@ -387,7 +387,7 @@ void NetworkView::drawLayout()
   
   for (unsigned i = 0; i < _layout->edgeCount(); i++)
   {
-    eItem = new EdgeItem(_vertexItems.at(_layout->edgeStartIdx(i)), _vertexItems.at(_layout->edgeEndIdx(i)));
+    eItem = new EdgeItem(_vertexItems.at(_layout->edgeStartIdx(i)), _vertexItems.at(_layout->edgeEndIdx(i)), _layout->edgeWeight(i));
 
     eItem->setPen(edgePen());
     eItem->setZValue(-1);

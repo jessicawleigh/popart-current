@@ -49,7 +49,7 @@ void NetworkLayout::mapEdges()
       EdgeData ed;
       ed.start = i;
       ed.end = child.data(NetworkItem::EdgeEndRole).toInt();
-      ed.prefLength = NetworkItem::EDGELENGTH * child.data(NetworkItem::SizeRole).toInt();//SCALEFACTOR * _model->data(child, NetworkItem::SizeRole).toInt();
+      ed.prefLength = NetworkItem::EDGELENGTH * child.data(NetworkItem::SizeRole).toDouble();//SCALEFACTOR * _model->data(child, NetworkItem::SizeRole).toInt();
       _edgeList.push_back(ed);
             
     }
