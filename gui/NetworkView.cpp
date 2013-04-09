@@ -38,6 +38,7 @@ NetworkView::NetworkView(QWidget * parent)
   _sceneClear = true;
   _showBarcharts = false;
   _showTaxBox = false;
+  _vertRadUnit = NetworkItem::VERTRAD;
   setupDefaultPens();
   setColourTheme(defaultColourTheme());
   _currentTheme = defaultColourTheme();
@@ -223,12 +224,12 @@ void NetworkView::adjustScene()
   // If network takes too much space, make scene bigger
   QPointF newSize = _layout->southEast();
        
-  double maxDiam = NetworkItem::VERTRAD * 2;
+  double maxDiam = _vertRadUnit * 2;
   
   // account for vertex diametres
   for (unsigned i = 0; i < _layout->vertexCount(); i++)
   {  
-    double diametre = NetworkItem::VERTRAD * sqrt(model()->index(i, 0).data(NetworkItem::SizeRole).toUInt());
+    double diametre = _vertRadUnit * sqrt(model()->index(i, 0).data(NetworkItem::SizeRole).toUInt());
     if (diametre > maxDiam)  maxDiam = diametre;
   }
   
@@ -270,7 +271,7 @@ void NetworkView::drawLayout()
   
   bool addLegend = false;
   
-  double minVertDiam = NetworkItem::VERTRAD * 2 / 3;
+  double minVertDiam = _vertRadUnit * 2 / 3;
   
   _vertexSections.resize(_layout->vertexCount());
   for (unsigned i = 0; i < _layout->vertexCount(); i++)
@@ -278,7 +279,7 @@ void NetworkView::drawLayout()
     QList<QVariant> traits = model()->index(i,0).data(NetworkItem::TraitRole).toList();
     
     
-    double diametre = NetworkItem::VERTRAD * sqrt(model()->index(i, 0).data(NetworkItem::SizeRole).toUInt());
+    double diametre = _vertRadUnit * sqrt(model()->index(i, 0).data(NetworkItem::SizeRole).toUInt());
     if (diametre < minVertDiam)  
       diametre = minVertDiam;
 
@@ -420,13 +421,15 @@ void NetworkView::drawLegend()
     if (width > maxwidth)  maxwidth = width;
   }
   
-  double minHeight = NetworkItem::VERTRAD + 5;
+  double minHeight = _vertRadUnit + 5;
   double entryHeight = metric.height();
   if (minHeight > entryHeight)
     entryHeight = minHeight;
   
-  double legendWidth = maxwidth + NetworkItem::VERTRAD + 3 * MARGIN;
-  double legendHeight = entryHeight * model()->columnCount() + smallMetric.height() + sqrt(5) * NetworkItem::VERTRAD + 3 * MARGIN;
+  double legendWidth = maxwidth + _vertRadUnit + 3 * MARGIN;
+  legendWidth = max(legendWidth,  _vertRadUnit * sqrt(10) + 2 * MARGIN);
+
+  double legendHeight = entryHeight * model()->columnCount() + smallMetric.height() + sqrt(10) * _vertRadUnit + 3 * MARGIN;
   
   QPointF legendStart(_graphRect.width(), _graphRect.height() - legendHeight);    
   
@@ -443,17 +446,17 @@ void NetworkView::drawLegend()
   
   //_theScene.setSceneRect(_graphRect.x(), _graphRect.y(), _graphRect.width() + legendWidth, _graphRect.height())
   
-  
-  
+
+
   _theScene.setSceneRect(computeSceneRect());
   _theScene.addItem(_legend);
   
   
   QGraphicsEllipseItem *key;
   double currentY = MARGIN; 
-  double keyX = legendWidth/2 - sqrt(10)/2 * NetworkItem::VERTRAD;
+  double keyX = legendWidth/2 - sqrt(10)/2 * _vertRadUnit;
   
-  key = new QGraphicsEllipseItem(0, 0, sqrt(10) * NetworkItem::VERTRAD, sqrt(10) * NetworkItem::VERTRAD, _legend);
+  key = new QGraphicsEllipseItem(0, 0, sqrt(10) * _vertRadUnit, sqrt(10) * _vertRadUnit, _legend);
   key->setPos(keyX, currentY);
   key->setBrush(Qt::transparent);
   key->setData(0, -1);
@@ -468,10 +471,11 @@ void NetworkView::drawLegend()
   legendLabel->setPos(QPointF(textX, currentY));
   _sizeLabels.first = legendLabel;
   
-  currentY = key->boundingRect().bottom();
-  keyX = legendWidth/2 - 0.5 * NetworkItem::VERTRAD;
+  //currentY = key->boundingRect().bottom();
+  currentY = MARGIN + key->boundingRect().height() - _vertRadUnit;
+  keyX = legendWidth/2 - 0.5 * _vertRadUnit;
   
-  key = new QGraphicsEllipseItem(0, 0, NetworkItem::VERTRAD, NetworkItem::VERTRAD, _legend);
+  key = new QGraphicsEllipseItem(0, 0, _vertRadUnit, _vertRadUnit, _legend);
   key->setPos(keyX, currentY);
   key->setBrush(Qt::transparent);
   key->setData(0, -1);
@@ -486,14 +490,14 @@ void NetworkView::drawLegend()
   legendLabel->setPos(QPointF(textX, currentY));
   _sizeLabels.second = legendLabel;
   
-  currentY =  2 * MARGIN + sqrt(10) * NetworkItem::VERTRAD + smallMetric.height();
+  currentY =  2 * MARGIN + sqrt(10) * _vertRadUnit + smallMetric.height();
 
-  textX = NetworkItem::VERTRAD + 2 * MARGIN;
+  textX = _vertRadUnit + 2 * MARGIN;
   keyX = MARGIN;
   
   for (unsigned i = 0; i < model()->columnCount(); i++)
   {
-    LegendItem *legkey = new LegendItem(0, 0, NetworkItem::VERTRAD, NetworkItem::VERTRAD, _legend);
+    LegendItem *legkey = new LegendItem(0, 0, _vertRadUnit, _vertRadUnit, _legend);
     legkey->setPos(keyX, currentY);
     legkey->setBrush(vertBrush(i));
     legkey->setData(0, -1);
@@ -535,6 +539,16 @@ void NetworkView::changeLegendFont(const QFont &font)
   smaller.setPointSize(smallerPointSize);
   setSmallFont(smaller);
   
+  _legendKeys.clear();
+  _legendLabels.clear();
+  _theScene.removeItem(_legend);
+  delete _legend;
+  _legend = 0;
+
+  drawLegend();
+  _border->updateRect();
+  return;
+
   QFontMetricsF metric(legendFont());
   QFontMetricsF smallMetric(smallFont());
 
@@ -545,13 +559,15 @@ void NetworkView::changeLegendFont(const QFont &font)
     if (width > maxwidth)  maxwidth = width;
   }
   
-  double minHeight = NetworkItem::VERTRAD + 5;
+  double minHeight = _vertRadUnit + 5;
   double entryHeight = metric.height();
   if (minHeight > entryHeight)
     entryHeight = minHeight;
 
-  double legendWidth = maxwidth + NetworkItem::VERTRAD + 3 * MARGIN;
-  double legendHeight = entryHeight * (1 + model()->columnCount()) + 5 * NetworkItem::VERTRAD + 3 * MARGIN;
+  double legendWidth = maxwidth + _vertRadUnit + 3 * MARGIN;
+  legendWidth = max(legendWidth,  _vertRadUnit * sqrt(10) + 2 * MARGIN);
+
+  double legendHeight = entryHeight * model()->columnCount() + smallMetric.height() + sqrt(10) * _vertRadUnit + 3 * MARGIN;
  
   QPointF legendStart(_graphRect.width(), _graphRect.height() - legendHeight);    
 
@@ -565,7 +581,7 @@ void NetworkView::changeLegendFont(const QFont &font)
   QGraphicsSimpleTextItem *label = _sizeLabels.first;
   
   double currentY = MARGIN; 
-  double keyX = legendWidth/2 - 2.5 * NetworkItem::VERTRAD;  
+  double keyX = legendWidth/2 - 2.5 * _vertRadUnit;
   key->setPos(keyX, currentY);
 
   label->setFont(smallFont());
@@ -574,11 +590,11 @@ void NetworkView::changeLegendFont(const QFont &font)
   currentY = key->boundingRect().center().y() - smallMetric.height()/2;
   label->setPos(textX, currentY);
 
-  currentY = key->boundingRect().bottom();
+  currentY = MARGIN + key->boundingRect().height() - _vertRadUnit;
   key = _sizeKeys.second;
   label = _sizeLabels.second;
 
-  keyX = legendWidth/2 - 0.5 * NetworkItem::VERTRAD;
+  keyX = legendWidth/2 - 0.5 * _vertRadUnit;
   key->setPos(keyX, currentY);
   
   label->setFont(smallFont());
@@ -587,9 +603,9 @@ void NetworkView::changeLegendFont(const QFont &font)
   textX = key->boundingRect().center().x() - smallMetric.width(label->text())/2;
   label->setPos(textX, currentY);
   
-  currentY =  2 * MARGIN + 5 * NetworkItem::VERTRAD + smallMetric.height();
+  currentY =  2 * MARGIN + 5 * _vertRadUnit + smallMetric.height();
 
-  textX = NetworkItem::VERTRAD + 2 * MARGIN;
+  textX = _vertRadUnit + 2 * MARGIN;
   keyX = MARGIN;
   
   for (unsigned i = 0; i < model()->columnCount(); i++)
@@ -651,6 +667,7 @@ void NetworkView::setupDefaultPens()
   _defaultFont.setPointSize(10);
   _legendFont = _defaultFont;
   _labelFont = _defaultFont;
+  EdgeItem::setFont(_labelFont);
   
   _smallFont = QFont(_defaultFont);
   _smallFont.setPointSize(6);
@@ -893,6 +910,17 @@ void NetworkView::setEdgeColour(const QColor &colour)
   }
 }
 
+void NetworkView::setEdgeMutationView(EdgeItem::MutationView view)
+{
+  EdgeItem::setMutationView(view);
+
+  for (unsigned i = 0; i < _edgeItems.size(); i++)
+  {
+    _edgeItems.at(i)->update(_edgeItems.at(i)->boundingRect());
+  }
+
+}
+
 void NetworkView::setVertexColour(const QColor &colour)
 {
   _defaultVertBrush.setColor(colour);
@@ -909,6 +937,24 @@ void NetworkView::setVertexColour(const QColor &colour)
     }
   }
 }
+
+void NetworkView::setVertexSize(double rad)
+{
+  _vertRadUnit = rad;
+  EdgeItem::setVertexSize(rad);
+  clearScene();
+  adjustAndDraw();
+}
+
+void NetworkView::setLabelFont(const QFont & font)
+{
+  _labelFont = font;
+  EdgeItem::setFont(_labelFont);
+  clearScene();
+  adjustAndDraw();
+
+}
+
 
 void NetworkView::saveSVGFile(const QString &filename)
 {

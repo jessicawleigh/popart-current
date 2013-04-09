@@ -70,15 +70,20 @@ public:
   void setBackgroundColour(const QColor &);
   const QColor & edgeColour() const { return _edgePen.brush().color(); };
   void setEdgeColour(const QColor &);
+
+  EdgeItem::MutationView edgeMutationView() const { return EdgeItem::mutationView(); };
+  void setEdgeMutationView(EdgeItem::MutationView);// { EdgeItem::setMutationView(view); };
   const QColor & vertexColour() const { return _defaultVertBrush.color(); };
   void setVertexColour(const QColor &);
+  double vertexSize() const { return _vertRadUnit; };
+  void setVertexSize(double);
   
   const QFont & defaultFont() const { return _defaultFont; };
   void setDefaultFont(const QFont & font) { _defaultFont = font; };
   const QFont & smallFont() const { return _smallFont; }
   void setSmallFont(const QFont & font) { _smallFont = font; };
   const QFont & labelFont() const { return _labelFont; }
-  void setLabelFont(const QFont & font) { _labelFont = font; };
+  void setLabelFont(const QFont &);// { _labelFont = font; };
   void changeLabelFont(const QFont & font);
   const QFont & legendFont() const { return _legendFont; }
   void setLegendFont(const QFont & font) { _legendFont = font; };
@@ -173,6 +178,7 @@ private:
   //QVector<QPersistentModelIndex *> _modelIndices;
   bool _showBarcharts;
   bool _showTaxBox;
+  double _vertRadUnit;
   BarchartItem *_barchart;
   TaxBoxItem *_taxbox;
   QGraphicsRectItem *_legend;

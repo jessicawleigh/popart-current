@@ -492,6 +492,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           else
           {
             eqpos = (*worditer).find('=');
+            if (eqpos == (*worditer).size() - 1)
+              throw SeqParseError("Nexus keyword found without a required value!");
 
             if (eqpos == string::npos)
             {
@@ -507,10 +509,11 @@ void NexusParser::parseLine(string line, Sequence &sequence)
               {
                 quotechar = (*worditer).at(eqpos + 1);
                 size_t lastidx = (*worditer).length() - 1;
-                if ((*worditer).at(lastidx) == '=')
+                if ((*worditer).at(lastidx) == quotechar)
                   val = (*worditer).substr(eqpos + 2, lastidx);
                 else
                 {
+                  cout << "last character is not a quote. last char: " << (*worditer).at(lastidx) << endl;
                   val = (*worditer).substr(eqpos + 2);
                   inquotedval = true;
                   ++worditer;
@@ -560,7 +563,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           else if (key == "equate")
             warn("Ignoring equate directive.");
 
-          else if (key == "matchchar")
+          else if (key == "matchchar" || key == "match")
             iss >> _match;
 
           else if (key == "labels") 

@@ -50,6 +50,7 @@ using namespace std;
 
 #include "XPM.h"
 #include "Edge.h"
+#include "EdgeItem.h"
 #include "HapNet.h"
 #include "MinSpanNet.h"
 #include "MedJoinNet.h"
@@ -211,6 +212,11 @@ void HapnetWindow::setupActions()
   _vertexColourAct->setEnabled(false);
   connect(_vertexColourAct, SIGNAL(triggered()), this, SLOT(changeVertexColour()));
 
+  _vertexSizeAct = new QAction(tr("Set default vertex &size"), this);
+  _vertexSizeAct->setStatusTip(tr("Change the default vertex size"));
+  _vertexSizeAct->setEnabled(false);
+  connect(_vertexSizeAct, SIGNAL(triggered()), this, SLOT(changeVertexSize()));
+
   _edgeColourAct = new QAction(tr("Set edge &colour"), this);
   _edgeColourAct->setStatusTip(tr("Change edge colour"));
   _edgeColourAct->setEnabled(false);
@@ -264,6 +270,18 @@ void HapnetWindow::setupActions()
   _umpAct->setShortcut(tr("Ctrl+U"));
   _umpAct->setStatusTip(tr("Build UMP network"));
   connect(_umpAct, SIGNAL(triggered()), this, SLOT(buildUMP()));*/
+  QActionGroup *viewActions = new QActionGroup(this);
+  _dashViewAct = new QAction(tr("Show &hatch marks"), viewActions);
+  _dashViewAct->setStatusTip(tr("Show mutations as hatch marks along edges"));
+  _dashViewAct->setCheckable(true);
+  _dashViewAct->setChecked(true);
+  _nodeViewAct = new QAction(tr("Show &1-step edges"), viewActions);
+  _nodeViewAct->setStatusTip(tr("Show single-mutation edges with intermediate vertices"));
+  _nodeViewAct->setCheckable(true);
+  _numViewAct = new QAction(tr("Show mutation &count"), viewActions);
+  _numViewAct->setStatusTip(tr("Show numbers of mutations along edges"));
+  _numViewAct->setCheckable(true);
+  connect(viewActions, SIGNAL(triggered(QAction*)), this, SLOT(changeEdgeMutationView(QAction*)));
   
   _identicalAct = new QAction(tr("&Identical sequences"), this);
   _identicalAct->setStatusTip(tr("Show identical sequences"));
@@ -352,6 +370,7 @@ void HapnetWindow::setupMenus()
   editMenu->addSeparator();
   editMenu->addAction(_traitColourAct);
   editMenu->addAction(_vertexColourAct);
+  editMenu->addAction(_vertexSizeAct);
   editMenu->addAction(_edgeColourAct);
   editMenu->addAction(_backgroundColourAct);
   editMenu->addSeparator();
@@ -371,6 +390,16 @@ void HapnetWindow::setupMenus()
   //_networkMenu->addAction(_umpAct);
   //_networkMenu->setEnabled(false);
   
+  _viewMenu = menuBar()->addMenu(tr("&View"));
+  //_viewMenu->addSeparator()->setText(tr("Network"));
+  // Add maps: make a group for network vs. map view, and a setSeparator(true) for both, maybe
+  // Disable mutation view options when map view selected
+  _viewMenu->addAction(_dashViewAct);
+  _viewMenu->addAction(_nodeViewAct);
+  _viewMenu->addAction(_numViewAct);
+
+
+
   _statsMenu =  menuBar()->addMenu(tr("&Statistics"));
   _statsMenu->addAction(_identicalAct);
   _statsMenu->addSeparator();
@@ -1101,7 +1130,7 @@ void HapnetWindow::buildAPN()
     QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
     QHBoxLayout *hlayout = new QHBoxLayout;
     
-    QLabel *label = new QLabel("Minimum ancestor frequency:", &dlg);
+    QLabel *label = new QLabel("Minimum edge frequency:", &dlg);
     hlayout->addWidget(label);
     
     QDoubleSpinBox *spinBox = new QDoubleSpinBox(&dlg);
@@ -1408,6 +1437,44 @@ void HapnetWindow::changeVertexColour()
   _netView->setVertexColour(newColour);
 }
 
+void HapnetWindow::changeVertexSize()
+{
+  QDialog dlg(this);
+  QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
+  QHBoxLayout *hlayout = new QHBoxLayout;
+
+  QLabel *label = new QLabel("Choose a new vertex size", &dlg);
+  hlayout->addWidget(label);
+
+  QDoubleSpinBox *spinBox = new QDoubleSpinBox(&dlg);
+  spinBox->setRange(1, 100);
+  spinBox->setSingleStep(1);
+  spinBox->setDecimals(2);
+  spinBox->setValue(_netView->vertexSize());
+  hlayout->addWidget(spinBox);
+
+  vlayout->addLayout(hlayout);
+
+  hlayout = new QHBoxLayout;
+
+  hlayout->addStretch(1);
+  QPushButton *okButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogOkButton), "OK", &dlg);
+  connect(okButton, SIGNAL(clicked()), &dlg, SLOT(accept()));
+  hlayout->addWidget(okButton, 0, Qt::AlignRight);
+  QPushButton *cancelButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogCancelButton), "Cancel", &dlg);
+  connect(cancelButton, SIGNAL(clicked()), &dlg, SLOT(reject()));
+  hlayout->addWidget(cancelButton, 0, Qt::AlignRight);
+
+  vlayout->addLayout(hlayout);
+
+  int result = dlg.exec();
+
+  if (result == QDialog::Rejected)
+    return;
+
+  _netView->setVertexSize(spinBox->value());
+}
+
 void HapnetWindow::changeEdgeColour()
 {
   const QColor & oldColour = _netView->edgeColour();
@@ -1417,9 +1484,21 @@ void HapnetWindow::changeEdgeColour()
   _netView->setEdgeColour(newColour);
 }
 
+void HapnetWindow::changeEdgeMutationView(QAction *viewAction)
+{
+  if (viewAction == _dashViewAct)
+    _netView->setEdgeMutationView(EdgeItem::ShowDashes);
+
+  else if (viewAction == _nodeViewAct)
+    _netView->setEdgeMutationView(EdgeItem::ShowEllipses);
+
+  else if (viewAction == _numViewAct)
+    _netView->setEdgeMutationView(EdgeItem::ShowNums);
+}
+
 void HapnetWindow::changeBackgroundColour()
 {
-  const QColor & oldColour = _netView->vertexColour();
+  const QColor & oldColour = _netView->backgroundColour();
   
   QColor newColour = QColorDialog::getColor(oldColour, this, tr("Choose a new background colour"));
   
@@ -1883,11 +1962,16 @@ void HapnetWindow::toggleNetActions(bool enable)
   _barchartAct->setEnabled(enable);
   _traitColourAct->setEnabled(enable);
   _vertexColourAct->setEnabled(enable);
+  _vertexSizeAct->setEnabled(enable);
   _edgeColourAct->setEnabled(enable);
   _backgroundColourAct->setEnabled(enable);
   _labelFontAct->setEnabled(enable);
   _legendFontAct->setEnabled(enable);
   _redrawAct->setEnabled(enable);
+  _viewMenu->setEnabled(enable); // Change this when adding map view. Just disable network view, not whole menu
+  _dashViewAct->setEnabled(enable);
+  _nodeViewAct->setEnabled(enable);
+  _numViewAct->setEnabled(enable);
 }
 
 void HapnetWindow::fixBarchartButton(bool taxBoxChecked)

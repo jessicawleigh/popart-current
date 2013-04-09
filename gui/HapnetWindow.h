@@ -71,6 +71,7 @@ private:
   TraitModel *_tModel;
   TraitView *_tView;
   QMenu *_networkMenu;
+  QMenu *_viewMenu;
   QMenu *_statsMenu;
   
   std::vector<Sequence*> _alignment;//*_alignment;
@@ -91,6 +92,7 @@ private:
   QAction *_redoAct;
   QAction *_traitColourAct;
   QAction *_vertexColourAct;
+  QAction *_vertexSizeAct;
   QAction *_edgeColourAct;
   QAction *_backgroundColourAct;
   QAction *_labelFontAct;
@@ -105,6 +107,10 @@ private:
   QAction *_tcsAct;
   QAction *_umpAct;
   
+  QAction *_dashViewAct;
+  QAction *_nodeViewAct;
+  QAction *_numViewAct;
+
   QAction *_identicalAct;
   QAction *_ntDiversityAct;
   QAction *_nSegSitesAct;
@@ -154,7 +160,9 @@ private slots:
   void changeColour(int);
   void setTraitColour();
   void changeVertexColour();
+  void changeVertexSize();
   void changeEdgeColour();
+  void changeEdgeMutationView(QAction*);
   void changeBackgroundColour();
   void changeLabelFont();
   void changeLegendFont();
