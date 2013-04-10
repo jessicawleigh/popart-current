@@ -163,6 +163,41 @@ void TCS::computeGraph()
 
     updateProgress(100.0 * paircount / npairs + 0.5);
   }  
+
+  unsigned vertidx = nseqs();
+
+  while (vertidx < vertexCount())
+  {
+    Vertex *v = vertex(vertidx);
+    if (v->degree() > 2)
+      vertidx++;
+
+    else
+    {
+      if (v->degree() != 2)  throw NetworkError("Intermediate vertex has degree less than 2.");
+      vector<const Edge *> oldEdges;
+
+      Vertex::EdgeIterator eit = v->begin();
+
+      while (eit != v->end())
+      {
+        oldEdges.push_back(*eit);//opposite(v, *eit));
+        ++eit;
+      }
+
+      if (oldEdges.size() != 2)  throw NetworkError("Vertex with degree 2 does not have 2 neighbours.");
+
+      Vertex *u = opposite(v, oldEdges.at(0));
+      Vertex *w = opposite(v, oldEdges.at(1));
+
+      if (u == w || v == u || v == w)
+        throw NetworkError("Unexpected multiple edges or self edge.");
+
+      double newweight = oldEdges.at(0)->weight() + oldEdges.at(1)->weight();
+      removeVertex(v->index());
+      newEdge(u, w, newweight);
+    }
+  }
 }
 
 unsigned TCS::findIntermediates(pair<Vertex *, Vertex *> & intPair, const Vertex *u, const Vertex *v, unsigned dist)
