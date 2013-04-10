@@ -1135,7 +1135,7 @@ void HapnetWindow::buildAPN()
     
     QDoubleSpinBox *spinBox = new QDoubleSpinBox(&dlg);
     spinBox->setRange(0, 1);
-    spinBox->setValue(0.5);
+    spinBox->setValue(0.05);
     spinBox->setSingleStep(0.1);
     hlayout->addWidget(spinBox);
     
