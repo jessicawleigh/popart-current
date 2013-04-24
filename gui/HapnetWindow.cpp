@@ -94,14 +94,16 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
 
   int seed = QDateTime::currentDateTime().toTime_t();
   qsrand(seed);
-  statusBar();
+  QStatusBar *sbar = statusBar();
   
   resize(800, 600);
   
   _netModel = 0;
   _netView = new NetworkView(this);
   _netView->resize(width(), height() * 2/3);
-  setCentralWidget(_netView);
+  _mapView = new MapView(this);
+  setCentralWidget(_mapView);//_netView);
+  connect(_mapView, SIGNAL(positionChanged(const QString &)), sbar, SLOT(showMessage(const QString &)));
   connect(_netView, SIGNAL(itemsMoved(QList<QPair<QGraphicsItem *, QPointF> >)), this, SLOT(graphicsMove(QList<QPair<QGraphicsItem *, QPointF> > )));
   connect(_netView, SIGNAL(legendItemClicked(int)), this, SLOT(changeColour(int)));
   connect(_netView, SIGNAL(networkDrawn()), this, SLOT(finaliseDisplay()));

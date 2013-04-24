@@ -19,6 +19,7 @@
 
 #include "AlignmentView.h"
 #include "AlignmentModel.h"
+#include "MapView.h"
 #include "NetworkView.h"
 #include "NetworkModel.h"
 #include "Statistics.h"
@@ -65,6 +66,7 @@ private:
   QThread *_statThread;
   QProgressDialog *_progress;
   NetworkView *_netView;
+  MapView *_mapView;
   NetworkModel *_netModel;
   AlignmentModel *_alModel;
   AlignmentView *_alView;
