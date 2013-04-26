@@ -11,11 +11,13 @@
 #include <QLabel>
 #include <QSlider>
 #include <QString>
+#include <QVector>
 #include <QWidget>
 
 
 #include <marble/MarbleWidget.h>
-using namespace Marble;
+
+#include "HapDataPlacemark.h"
 
 class MapView : public QWidget
 {
@@ -27,11 +29,13 @@ public:
 private:
   void setupWidget();
 
-  MarbleWidget *_mapWidget;
+  Marble::MarbleWidget *_mapWidget;
 
   QSlider *_zoomSlider;
   //QLabel *_posLabel;
   QString _geoPos;
+
+  QVector<HapDataPlacemark*> _placemarks;
 
 private slots:
   void updateGeoPosition(QString);

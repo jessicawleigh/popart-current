@@ -5,11 +5,11 @@
  *      Author: jleigh
  */
 
+#include <QDebug>
 #include <QLayout>
 
 #include <marble/GeoDataDocument.h>
 #include <marble/GeoDataCoordinates.h>
-#include <marble/GeoDataPlacemark.h>
 #include <marble/GeoDataLineString.h>
 #include <marble/GeoDataLinearRing.h>
 #include <marble/GeoDataTreeModel.h>
@@ -18,9 +18,13 @@
 #include <marble/GeoDataLineStyle.h>
 #include <marble/GeoDataPolyStyle.h>
 #include <marble/MarbleModel.h>
-
+#include <marble/MarbleRunnerManager.h>
+using namespace Marble;
 
 #include "MapView.h"
+
+#include <iostream>
+using namespace std;
 
 MapView::MapView(QWidget *parent)
   : QWidget(parent)
@@ -29,10 +33,22 @@ MapView::MapView(QWidget *parent)
   setupWidget();
 }
 
+MapView::~MapView()
+{
+  /*cout << "Size of placemarks QVector: " << _placemarks.size() << endl;
+  foreach (HapDataPlacemark *p, _placemarks)
+  {
+    cout << "deleting p" << endl;
+    delete p;
+  }*/
+  _placemarks.clear();
+}
+
+
 void MapView::setupWidget()
 {
   _mapWidget->setProjection(Mercator);
-  _mapWidget->setMapThemeId("earth/srtm/srtm.dgml");
+  _mapWidget->setMapThemeId("earth/plain/plain.dgml");
   _mapWidget->setShowOverviewMap(false);
   _mapWidget->setShowScaleBar(false);
   _mapWidget->setShowCompass(false);
@@ -49,7 +65,6 @@ void MapView::setupWidget()
   GeoDataCoordinates home(-60.0, -10.0, 0.0, GeoDataCoordinates::Degree);
   _mapWidget->centerOn(home);
 
-  // Connect the map widget to the position label.
   QObject::connect(_mapWidget, SIGNAL(mouseMoveGeoPosition(QString)),
                     this, SLOT(updateGeoPosition(QString)));
 
@@ -60,12 +75,12 @@ void MapView::setupWidget()
 
   layout->addWidget(_mapWidget);
   layout->addWidget(_zoomSlider);
-  //layout->addWidget(_posLabel);
 
 
   // Subclass GeoDataPlacemark to add haplotype data instead
   // Also change geometry to pie charts
-  GeoDataPlacemark *place = new GeoDataPlacemark("Bucharest");
+  //GeoDataPlacemark *place = new GeoDataPlacemark("Bucharest");
+  HapDataPlacemark *place = new HapDataPlacemark("Bucharest");
   place->setCoordinate(25.97, 44.43, 0.0, GeoDataCoordinates::Degree);
   place->setPopulation(1877155);
   place->setCountryCode ("Romania");
@@ -74,21 +89,34 @@ void MapView::setupWidget()
   GeoDataDocument *document = new GeoDataDocument;
   document->append(place);
 
+  _placemarks.push_back(place);
+
     // Add the document to MarbleWidget's tree model
   _mapWidget->model()->treeModel()->addDocument(document);
+  MarbleRunnerManager* manager = new MarbleRunnerManager(_mapWidget->model()->pluginManager(), this );
+  manager->setModel( _mapWidget->model() );
+
+  QVector<GeoDataPlacemark*> searchResult = manager->searchPlacemarks( "Karlsruhe" );
+
+  cout << "Found " << searchResult.size() << " places." << endl;
+  foreach( GeoDataPlacemark* placemark, searchResult ) {
+      qDebug() << "Found " << placemark->name() << "at" << placemark->coordinate().toString();
+  }
 
 }
 
-MapView::~MapView()
-{
-  // TODO Auto-generated destructor stub
-}
 
 // TODO Add an setHaplotypeData method with sequences and traits
 // Compute sequence frequency vector for each trait
 // Find location for each trait
 // subclass GeoDataPlacemark as HapDataPlacemark with new paint method
 // subclass GeoDataDocument as HapDataDocument to store relevant data
+
+// Notes: Drawing doesn't happen in GeoDataPlacemark, but you can specify geometry there (GeoDataGeometry subclasses will do it)
+// But it's not clear that those know what sort of GeoGraphicsItem to draw themselves with. Maybe subclass GeoGraphicsItem as HapGraphicsItem
+// and GeoDataGeometry as HapDataGeometry, and then GeometryLayerPrivate as HapGeometryLayerPrivate, making the
+// createGraphicsItemFromGeometry function virtual (take a look at the code, should be able to just check whether
+// the geometry is HapDataGeometry and return HapGraphicsItem, or call the parent class otherwise)
 
 void MapView::updateGeoPosition(QString pos)
 {
