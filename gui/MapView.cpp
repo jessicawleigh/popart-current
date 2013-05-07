@@ -5,8 +5,13 @@
  *      Author: jleigh
  */
 
+#include "MapView.h"
+#include "HapLayer.h"
+#include "HapLocation.h"
+
 #include <QDebug>
 #include <QLayout>
+#include <QVector>
 
 #include <marble/GeoDataDocument.h>
 #include <marble/GeoDataCoordinates.h>
@@ -20,8 +25,6 @@
 #include <marble/MarbleModel.h>
 #include <marble/MarbleRunnerManager.h>
 using namespace Marble;
-
-#include "MapView.h"
 
 #include <iostream>
 using namespace std;
@@ -75,6 +78,23 @@ void MapView::setupWidget()
 
   layout->addWidget(_mapWidget);
   layout->addWidget(_zoomSlider);
+
+  QVector<HapLocation*> locations;
+
+  // Don't do this here, never freed
+  HapLocation *location = new HapLocation("Zimbabwe");
+  location->addSeq("First", 5);
+  location->addSeq("second", 10);
+
+  locations.push_back(location);
+
+
+  HapLayer* layer = new HapLayer(locations);
+  // Uncomment for older versions of Marble:
+  // mapWidget->map()->model()->addLayer(layer);
+  _mapWidget->addLayer(layer);
+
+
 
 
   // Subclass GeoDataPlacemark to add haplotype data instead
