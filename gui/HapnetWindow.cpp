@@ -98,12 +98,15 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   
   resize(800, 600);
   
+  _centralContainer = new QStackedWidget(this);
+  setCentralWidget(_centralContainer);
+
   _netModel = 0;
   _netView = new NetworkView(this);
   _netView->resize(width(), height() * 2/3);
-  _mapView = new MapView(this);
-  setCentralWidget(_mapView);//_netView);
-  connect(_mapView, SIGNAL(positionChanged(const QString &)), sbar, SLOT(showMessage(const QString &)));
+  _view = Net;
+  //setCentralWidget(_netView);
+  _centralContainer->addWidget(_netView);
   connect(_netView, SIGNAL(itemsMoved(QList<QPair<QGraphicsItem *, QPointF> >)), this, SLOT(graphicsMove(QList<QPair<QGraphicsItem *, QPointF> > )));
   connect(_netView, SIGNAL(legendItemClicked(int)), this, SLOT(changeColour(int)));
   connect(_netView, SIGNAL(networkDrawn()), this, SLOT(finaliseDisplay()));
@@ -114,6 +117,12 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _messageConsole->setTextInteractionFlags(Qt::TextSelectableByMouse);
   _messageConsole->resize(400, 200);
   _messageConsole->setMinimumHeight(0);*/
+
+   _mapView = new MapView(this);
+   //_mapView->setVisible(false);
+   _centralContainer->addWidget(_mapView);
+   _mapTraitsSet = false;
+   connect(_mapView, SIGNAL(positionChanged(const QString &)), sbar, SLOT(showMessage(const QString &)));
 
   _stats = 0;
   _alModel = 0;
@@ -272,6 +281,11 @@ void HapnetWindow::setupActions()
   _umpAct->setShortcut(tr("Ctrl+U"));
   _umpAct->setStatusTip(tr("Build UMP network"));
   connect(_umpAct, SIGNAL(triggered()), this, SLOT(buildUMP()));*/
+
+  _toggleViewAct = new QAction(tr("Switch to map &view"), this);
+  _toggleViewAct->setStatusTip(tr("Toggle between network and map view"));
+  connect(_toggleViewAct, SIGNAL(triggered()), this, SLOT(toggleView()));
+
   QActionGroup *viewActions = new QActionGroup(this);
   _dashViewAct = new QAction(tr("Show &hatch marks"), viewActions);
   _dashViewAct->setStatusTip(tr("Show mutations as hatch marks along edges"));
@@ -393,7 +407,9 @@ void HapnetWindow::setupMenus()
   //_networkMenu->setEnabled(false);
   
   _viewMenu = menuBar()->addMenu(tr("&View"));
-  //_viewMenu->addSeparator()->setText(tr("Network"));
+  _viewMenu->addAction(_toggleViewAct);
+
+  _viewMenu->addSeparator();//->setText(tr("Network"));
   // Add maps: make a group for network vs. map view, and a setSeparator(true) for both, maybe
   // Disable mutation view options when map view selected
   _viewMenu->addAction(_dashViewAct);
@@ -515,6 +531,15 @@ void HapnetWindow::openAlignment()
         {
           _tModel = new TraitModel(_traitVect);
           _tView->setModel(_tModel);
+
+          if (_view == Map)
+          {
+            _mapView->addHapLocations(_traitVect);
+            _mapTraitsSet = true;
+          }
+
+          else
+            _mapTraitsSet = false;
         }
       }
 
@@ -528,7 +553,16 @@ void HapnetWindow::openAlignment()
         if (traitsuccess)
         {
           _tModel = new TraitModel(_traitVect);
+          // Do this differently: only on switch to map view
           _tView->setModel(_tModel);
+          if (_view == Map)
+          {
+            _mapView->addHapLocations(_traitVect);
+            _mapTraitsSet = true;
+          }
+
+          else
+            _mapTraitsSet = false;
         }
         delete tmpModel;
 
@@ -1498,6 +1532,37 @@ void HapnetWindow::changeEdgeMutationView(QAction *viewAction)
     _netView->setEdgeMutationView(EdgeItem::ShowNums);
 }
 
+
+void HapnetWindow::toggleView()
+{
+  if (_view == Net)
+  {
+    //_mapView->show();//setVisible(true);
+    //setCentralWidget(_mapView);
+    //_netView->hide();//setVisible(false);
+    _centralContainer->setCurrentIndex(1);
+
+    if (! _mapTraitsSet && _traitVect.size() > 0)
+    {
+      _mapView->addHapLocations(_traitVect);
+      _mapTraitsSet = true;
+    }
+    _toggleViewAct->setText(tr("Switch to network view"));
+    _view = Map;
+  }
+
+  else
+  {
+    //_netView->show();//setVisible(true);
+    //setCentralWidget(_netView);
+    //_mapView->hide(); //setVisible(false);
+    _centralContainer->setCurrentIndex(0);
+
+    _toggleViewAct->setText(tr("Switch to map view"));
+    _view = Net;
+  }
+}
+
 void HapnetWindow::changeBackgroundColour()
 {
   const QColor & oldColour = _netView->backgroundColour();
@@ -1970,7 +2035,7 @@ void HapnetWindow::toggleNetActions(bool enable)
   _labelFontAct->setEnabled(enable);
   _legendFontAct->setEnabled(enable);
   _redrawAct->setEnabled(enable);
-  _viewMenu->setEnabled(enable); // Change this when adding map view. Just disable network view, not whole menu
+  //_viewMenu->setEnabled(enable);
   _dashViewAct->setEnabled(enable);
   _nodeViewAct->setEnabled(enable);
   _numViewAct->setEnabled(enable);

@@ -10,6 +10,7 @@
 #include <QMenu>
 #include <QPair>
 #include <QProgressDialog>
+#include <QStackedWidget>
 #include <QUndoStack>
 #include <QThread>
 #include <QVariant>
@@ -42,6 +43,7 @@ protected:
 private:
   
   typedef enum {Msn, Mjn, Tcs, Tsw, Inj, Apn} HapnetType;
+  typedef enum {Net, Map} ViewType;
   void setupActions();
   void setupMenus();
   void setupTools();
@@ -57,6 +59,8 @@ private:
   QString _msgDetail;
   bool _success;
   bool _hapnetRunning;
+  ViewType _view;
+  bool _mapTraitsSet;
   HapNet * _g;
   Sequence::CharType _datatype;
   QClipboard *_clipboard;
@@ -65,6 +69,7 @@ private:
   //QThread *_drawThread;
   QThread *_statThread;
   QProgressDialog *_progress;
+  QStackedWidget *_centralContainer;
   NetworkView *_netView;
   MapView *_mapView;
   NetworkModel *_netModel;
@@ -109,6 +114,8 @@ private:
   QAction *_tcsAct;
   QAction *_umpAct;
   
+  QAction *_toggleViewAct;
+
   QAction *_dashViewAct;
   QAction *_nodeViewAct;
   QAction *_numViewAct;
@@ -165,6 +172,7 @@ private slots:
   void changeVertexSize();
   void changeEdgeColour();
   void changeEdgeMutationView(QAction*);
+  void toggleView();
   void changeBackgroundColour();
   void changeLabelFont();
   void changeLegendFont();

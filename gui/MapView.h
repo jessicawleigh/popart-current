@@ -8,16 +8,21 @@
 #ifndef MAPVIEW_H_
 #define MAPVIEW_H_
 
+#include "HapDataPlacemark.h"
+#include "HapLayer.h"
+#include "HapLocation.h"
+#include "Trait.h"
+
+#include <marble/GeoDataCoordinates.h>
+#include <marble/MarbleWidget.h>
+
 #include <QLabel>
 #include <QSlider>
 #include <QString>
 #include <QVector>
 #include <QWidget>
 
-
-#include <marble/MarbleWidget.h>
-
-#include "HapDataPlacemark.h"
+#include <vector>
 
 class MapView : public QWidget
 {
@@ -26,8 +31,12 @@ public:
   MapView(QWidget * = 0);
   virtual ~MapView();
 
+  void addHapLocations(const std::vector<Trait *> &);
+
 private:
   void setupWidget();
+  void clearHapLocations();
+  Marble::GeoDataCoordinates lookupLocation(HapLocation*);
 
   Marble::MarbleWidget *_mapWidget;
 
@@ -35,7 +44,8 @@ private:
   //QLabel *_posLabel;
   QString _geoPos;
 
-  QVector<HapDataPlacemark*> _placemarks;
+  QVector<HapLocation *> _locations;
+  HapLayer *_hapLayer;
 
 private slots:
   void updateGeoPosition(QString);

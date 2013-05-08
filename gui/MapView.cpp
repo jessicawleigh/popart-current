@@ -6,12 +6,13 @@
  */
 
 #include "MapView.h"
-#include "HapLayer.h"
-#include "HapLocation.h"
 
+#include <QComboBox>
 #include <QDebug>
+#include <QDialog>
 #include <QLayout>
-#include <QVector>
+#include <QMessageBox>
+#include <QPushButton>
 
 #include <marble/GeoDataDocument.h>
 #include <marble/GeoDataCoordinates.h>
@@ -33,6 +34,7 @@ MapView::MapView(QWidget *parent)
   : QWidget(parent)
 {
   _mapWidget = new MarbleWidget(this);
+  _hapLayer = 0;
   setupWidget();
 }
 
@@ -44,7 +46,9 @@ MapView::~MapView()
     cout << "deleting p" << endl;
     delete p;
   }*/
-  _placemarks.clear();
+  //_placemarks.clear();
+
+  if (! _locations.empty())  clearHapLocations();
 }
 
 
@@ -79,34 +83,51 @@ void MapView::setupWidget()
   layout->addWidget(_mapWidget);
   layout->addWidget(_zoomSlider);
 
-  QVector<HapLocation*> locations;
+  /*QVector<HapLocation*> locations;
 
-  // Don't do this here, never freed
   HapLocation *location = new HapLocation("Zimbabwe");
   location->addSeq("First", 5);
   location->addSeq("second", 10);
 
-  locations.push_back(location);
+  _locations.push_back(location);*/
+}
+
+// TODO call clearHapLocations, delete _layer
+
+void MapView::addHapLocations(const vector<Trait*> &traits)
+{
+
+  if (_hapLayer)
+  {
+    _mapWidget->removeLayer(_hapLayer);
+    // delete _hapLayer;
+    _hapLayer = 0;
+  }
+
+  if (! _locations.empty())  clearHapLocations();
+
+  for (unsigned i = 0; i < traits.size(); i++)
+  {
+    // TODO save coordinates somewhere so that lookup doesn't happen every time
+    // Maybe add a coordinates field to trait? Send a signal when a location is found, allow coordinate lookup at some point
+
+    HapLocation *loc = new HapLocation(*(traits.at(i)));
+
+    lookupLocation(loc);
+
+    _locations.push_back(loc);
+  }
+
+  _hapLayer = new HapLayer(_locations);
+  _mapWidget->addLayer(_hapLayer);
+  _mapWidget->update();
 
 
-  HapLayer* layer = new HapLayer(locations);
-  // Uncomment for older versions of Marble:
-  // mapWidget->map()->model()->addLayer(layer);
-  _mapWidget->addLayer(layer);
 
 
 
 
-  // Subclass GeoDataPlacemark to add haplotype data instead
-  // Also change geometry to pie charts
-  //GeoDataPlacemark *place = new GeoDataPlacemark("Bucharest");
-  HapDataPlacemark *place = new HapDataPlacemark("Bucharest");
-  place->setCoordinate(25.97, 44.43, 0.0, GeoDataCoordinates::Degree);
-  place->setPopulation(1877155);
-  place->setCountryCode ("Romania");
-
-
-  GeoDataDocument *document = new GeoDataDocument;
+  /*GeoDataDocument *document = new GeoDataDocument;
   document->append(place);
 
   _placemarks.push_back(place);
@@ -121,7 +142,87 @@ void MapView::setupWidget()
   cout << "Found " << searchResult.size() << " places." << endl;
   foreach( GeoDataPlacemark* placemark, searchResult ) {
       qDebug() << "Found " << placemark->name() << "at" << placemark->coordinate().toString();
+  }*/
+
+}
+
+void MapView::clearHapLocations()
+{
+  for (unsigned i = 0; i < _locations.size(); i++)
+    delete _locations.at(i);
+
+  _locations.clear();
+}
+
+GeoDataCoordinates MapView::lookupLocation(HapLocation *location)
+{
+  MarbleRunnerManager* manager = new MarbleRunnerManager(_mapWidget->model()->pluginManager(), this);
+  manager->setModel( _mapWidget->model() );
+
+  QVector<GeoDataPlacemark *> searchResult = manager->searchPlacemarks(location->name());
+
+  if (searchResult.size() == 1)
+    location->setLocation(searchResult.at(0)->coordinate());
+
+  else if (searchResult.size() > 1)
+  {
+
+    QDialog dlg(this);
+    QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
+    QHBoxLayout *hlayout = new QHBoxLayout;
+
+    QLabel *label = new QLabel("Choose a location", &dlg);
+    hlayout->addWidget(label);
+
+    QComboBox *comboBox = new QComboBox(&dlg);
+    hlayout->addWidget(comboBox);
+    vlayout->addLayout(hlayout);
+
+    hlayout = new QHBoxLayout;
+
+    hlayout->addStretch(1);
+    QPushButton *okButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogOkButton), "OK", &dlg);
+    connect(okButton, SIGNAL(clicked()), &dlg, SLOT(accept()));
+    hlayout->addWidget(okButton, 0, Qt::AlignRight);
+    QPushButton *cancelButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogCancelButton), "Cancel", &dlg);
+    connect(cancelButton, SIGNAL(clicked()), &dlg, SLOT(reject()));
+    hlayout->addWidget(cancelButton, 0, Qt::AlignRight);
+
+    vlayout->addLayout(hlayout);
+
+
+    foreach (GeoDataPlacemark *placemark, searchResult)
+      comboBox->addItem(placemark->name() + ": " + placemark->coordinate().toString());
+
+
+
+    int result = dlg.exec();
+
+    if (result != QDialog::Rejected)
+      location->setLocation(searchResult.at(comboBox->currentIndex())->coordinate());
   }
+
+  else
+  {
+    QMessageBox message;
+    message.setIcon(QMessageBox::Warning);
+    message.setText(tr("<b>No Location Found!</b>"));
+    message.setInformativeText(QString("Perhaps %1 is not a location?").arg(location->name()));
+    message.setStandardButtons(QMessageBox::Ok);
+    message.setDefaultButton(QMessageBox::Ok);
+
+    message.exec();
+
+  }
+
+
+
+
+  /*
+  foreach (GeoDataPlacemark *placemark, searchResult)
+  {
+    delete placemark;
+  } */
 
 }
 

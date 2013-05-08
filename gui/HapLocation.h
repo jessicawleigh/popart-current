@@ -19,6 +19,7 @@ public:
   HapLocation(const Trait &, QObject * = 0);
   ~HapLocation();
 
+  const QString & name() const { return _name; };
   const Marble::GeoDataCoordinates & location() const { return _location; };
   void addSeq(const QString &, unsigned);
 

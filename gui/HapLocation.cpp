@@ -17,7 +17,7 @@ HapLocation::HapLocation(const QString &name, QObject *parent)
 }
 
 HapLocation::HapLocation(const Trait &trait, QObject *parent)
-  : QObject(parent), _location(0, 0, 0)
+  : QObject(parent), _location(0, 0, 0), _totalCount(0)
 {
   _name = QString::fromStdString(trait.name());
   emit nameSet(_name);
@@ -41,6 +41,7 @@ void HapLocation::addSeq(const QString &seqname, unsigned seqcount)
 {
   _seqCounts[seqname] = seqcount;
   _totalCount += seqcount;
+
 
   emit seqAdded(seqname, seqcount);
 }
