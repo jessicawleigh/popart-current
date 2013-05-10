@@ -11,6 +11,7 @@
 #include "HapDataPlacemark.h"
 #include "HapLayer.h"
 #include "HapLocation.h"
+#include "NetworkView.h"
 #include "Trait.h"
 
 #include <marble/GeoDataCoordinates.h>
@@ -32,6 +33,11 @@ public:
   virtual ~MapView();
 
   void addHapLocations(const std::vector<Trait *> &);
+  ColourTheme::Theme colourTheme() const { return _currentTheme; };
+  static ColourTheme::Theme defaultColourTheme() { return _defaultTheme; };
+
+public slots:
+  void setColourTheme(ColourTheme::Theme = _defaultTheme);
 
 private:
   void setupWidget();
@@ -39,9 +45,11 @@ private:
   Marble::GeoDataCoordinates lookupLocation(HapLocation*);
 
   Marble::MarbleWidget *_mapWidget;
+  QVector<QColor> _colourTheme;
+  ColourTheme::Theme _currentTheme;
+  static const ColourTheme::Theme _defaultTheme;
 
   QSlider *_zoomSlider;
-  //QLabel *_posLabel;
   QString _geoPos;
 
   QVector<HapLocation *> _locations;

@@ -23,7 +23,7 @@
 
 #include <cmath>
 
-NetworkView::ColourTheme NetworkView::_defaultTheme = NetworkView::Greyscale;
+ColourTheme::Theme NetworkView::_defaultTheme = ColourTheme::Greyscale;
 
 NetworkView::NetworkView(QWidget * parent)
   : QAbstractItemView(parent), 
@@ -686,135 +686,135 @@ void NetworkView::setupDefaultPens()
   _defaultOutlinePen.setBrush(_foregroundBrush);
   _defaultOutlinePen.setWidth(1);
   
-  _greyscale.push_back(Qt::white);
-  _greyscale.push_back(QColor(204, 204, 204));
-  _greyscale.push_back(Qt::black);
-  _greyscale.push_back(QColor(249, 249, 249));
-  _greyscale.push_back(QColor(26, 26, 26));
-  _greyscale.push_back(QColor(242, 242, 242));
-  _greyscale.push_back(QColor(179, 179, 179));
-  _greyscale.push_back(QColor(51, 51, 51));
-  _greyscale.push_back(QColor(230, 230, 230));
-  _greyscale.push_back(QColor(102, 102, 102));
-   
-  
-  _camo.push_back(QColor(80, 45, 22));
-  _camo.push_back(QColor(51, 128, 0));
-  _camo.push_back(QColor(77, 77, 77));
-  _camo.push_back(QColor(188, 211, 95));
-  _camo.push_back(QColor(22, 80, 22));
-  _camo.push_back(QColor(200, 190, 183));
-  _camo.push_back(QColor(31, 36, 28));
-  _camo.push_back(QColor(136, 170, 0));
-  _camo.push_back(QColor(172, 147, 147));
-  _camo.push_back(QColor(83, 108, 83));
-  
-  _pastelle.push_back(QColor(175, 198, 233));
-  _pastelle.push_back(QColor(170, 255, 170));
-  _pastelle.push_back(QColor(229, 128, 255));
-  _pastelle.push_back(QColor(255, 238, 170));
-  _pastelle.push_back(QColor(255, 128, 229));
-  _pastelle.push_back(QColor(255, 170, 170));
-  _pastelle.push_back(QColor(198, 175, 233));
-  _pastelle.push_back(QColor(233, 175, 198));
-  _pastelle.push_back(QColor(230, 255, 180));
-  _pastelle.push_back(QColor(100, 255, 255));
-  
-  _vibrant.push_back(QColor(255, 0, 0));
-  _vibrant.push_back(QColor(55, 200, 55));
-  _vibrant.push_back(QColor(102, 0, 128));
-  _vibrant.push_back(QColor(255, 204, 0));
-  _vibrant.push_back(QColor(255, 0, 204));
-  _vibrant.push_back(QColor(170, 0, 0));
-  _vibrant.push_back(QColor(85, 0, 212));
-  _vibrant.push_back(QColor(255, 0, 102));
-  _vibrant.push_back(QColor(215, 255, 42));
-  _vibrant.push_back(QColor(0, 204, 255));
-  
-  _spring.push_back(QColor(255, 85, 85));
-  _spring.push_back(QColor(221, 255, 85));
-  _spring.push_back(QColor(229, 128, 255));
-  _spring.push_back(QColor(128, 179, 255));
-  _spring.push_back(QColor(255, 0, 204));
-  _spring.push_back(QColor(0, 255, 102));
-  _spring.push_back(QColor(198, 175, 233));
-  _spring.push_back(QColor(255, 85, 153));
-  _spring.push_back(QColor(55, 200, 171));
-  _spring.push_back(QColor(102, 255, 255));
-  
-  _summer.push_back(QColor(0, 212, 0));
-  _summer.push_back(QColor(255, 42, 127));
-  _summer.push_back(QColor(0, 128, 102));
-  _summer.push_back(QColor(255, 102, 0));
-  _summer.push_back(QColor(0, 102, 255));
-  _summer.push_back(QColor(212, 0, 170));
-  _summer.push_back(QColor(255, 85, 85));
-  _summer.push_back(QColor(255, 204, 0));
-  _summer.push_back(QColor(171, 55, 200));
-  _summer.push_back(QColor(192, 0, 0));
-
-  _autumn.push_back(QColor(51, 51, 51));
-  _autumn.push_back(QColor(128, 0, 0));
-  _autumn.push_back(QColor(255, 104, 0));
-  _autumn.push_back(Qt::red);
-  _autumn.push_back(QColor(255, 102, 0));
-  _autumn.push_back(QColor(160, 190, 44));
-  _autumn.push_back(QColor(80, 45, 22));
-  _autumn.push_back(QColor(22, 80, 22));
-  _autumn.push_back(QColor(200, 55, 55));
-  _autumn.push_back(QColor(200, 171, 55));
-
-  _winter.push_back(QColor(128, 0, 0));
-  _winter.push_back(QColor(0, 85, 68));
-  _winter.push_back(QColor(51, 51, 51));
-  _winter.push_back(QColor(198, 175, 233));
-  _winter.push_back(QColor(22, 80, 22));
-  _winter.push_back(Qt::black);
-  _winter.push_back(QColor(102, 0, 128));
-  _winter.push_back(Qt::white);
-  _winter.push_back(QColor(51, 0, 128));
-  _winter.push_back(QColor(100, 255, 255));
+//  _greyscale.push_back(Qt::white);
+//  _greyscale.push_back(QColor(204, 204, 204));
+//  _greyscale.push_back(Qt::black);
+//  _greyscale.push_back(QColor(249, 249, 249));
+//  _greyscale.push_back(QColor(26, 26, 26));
+//  _greyscale.push_back(QColor(242, 242, 242));
+//  _greyscale.push_back(QColor(179, 179, 179));
+//  _greyscale.push_back(QColor(51, 51, 51));
+//  _greyscale.push_back(QColor(230, 230, 230));
+//  _greyscale.push_back(QColor(102, 102, 102));
+//
+//
+//  _camo.push_back(QColor(80, 45, 22));
+//  _camo.push_back(QColor(51, 128, 0));
+//  _camo.push_back(QColor(77, 77, 77));
+//  _camo.push_back(QColor(188, 211, 95));
+//  _camo.push_back(QColor(22, 80, 22));
+//  _camo.push_back(QColor(200, 190, 183));
+//  _camo.push_back(QColor(31, 36, 28));
+//  _camo.push_back(QColor(136, 170, 0));
+//  _camo.push_back(QColor(172, 147, 147));
+//  _camo.push_back(QColor(83, 108, 83));
+//
+//  _pastelle.push_back(QColor(175, 198, 233));
+//  _pastelle.push_back(QColor(170, 255, 170));
+//  _pastelle.push_back(QColor(229, 128, 255));
+//  _pastelle.push_back(QColor(255, 238, 170));
+//  _pastelle.push_back(QColor(255, 128, 229));
+//  _pastelle.push_back(QColor(255, 170, 170));
+//  _pastelle.push_back(QColor(198, 175, 233));
+//  _pastelle.push_back(QColor(233, 175, 198));
+//  _pastelle.push_back(QColor(230, 255, 180));
+//  _pastelle.push_back(QColor(100, 255, 255));
+//
+//  _vibrant.push_back(QColor(255, 0, 0));
+//  _vibrant.push_back(QColor(55, 200, 55));
+//  _vibrant.push_back(QColor(102, 0, 128));
+//  _vibrant.push_back(QColor(255, 204, 0));
+//  _vibrant.push_back(QColor(255, 0, 204));
+//  _vibrant.push_back(QColor(170, 0, 0));
+//  _vibrant.push_back(QColor(85, 0, 212));
+//  _vibrant.push_back(QColor(255, 0, 102));
+//  _vibrant.push_back(QColor(215, 255, 42));
+//  _vibrant.push_back(QColor(0, 204, 255));
+//
+//  _spring.push_back(QColor(255, 85, 85));
+//  _spring.push_back(QColor(221, 255, 85));
+//  _spring.push_back(QColor(229, 128, 255));
+//  _spring.push_back(QColor(128, 179, 255));
+//  _spring.push_back(QColor(255, 0, 204));
+//  _spring.push_back(QColor(0, 255, 102));
+//  _spring.push_back(QColor(198, 175, 233));
+//  _spring.push_back(QColor(255, 85, 153));
+//  _spring.push_back(QColor(55, 200, 171));
+//  _spring.push_back(QColor(102, 255, 255));
+//
+//  _summer.push_back(QColor(0, 212, 0));
+//  _summer.push_back(QColor(255, 42, 127));
+//  _summer.push_back(QColor(0, 128, 102));
+//  _summer.push_back(QColor(255, 102, 0));
+//  _summer.push_back(QColor(0, 102, 255));
+//  _summer.push_back(QColor(212, 0, 170));
+//  _summer.push_back(QColor(255, 85, 85));
+//  _summer.push_back(QColor(255, 204, 0));
+//  _summer.push_back(QColor(171, 55, 200));
+//  _summer.push_back(QColor(192, 0, 0));
+//
+//  _autumn.push_back(QColor(51, 51, 51));
+//  _autumn.push_back(QColor(128, 0, 0));
+//  _autumn.push_back(QColor(255, 104, 0));
+//  _autumn.push_back(Qt::red);
+//  _autumn.push_back(QColor(255, 102, 0));
+//  _autumn.push_back(QColor(160, 190, 44));
+//  _autumn.push_back(QColor(80, 45, 22));
+//  _autumn.push_back(QColor(22, 80, 22));
+//  _autumn.push_back(QColor(200, 55, 55));
+//  _autumn.push_back(QColor(200, 171, 55));
+//
+//  _winter.push_back(QColor(128, 0, 0));
+//  _winter.push_back(QColor(0, 85, 68));
+//  _winter.push_back(QColor(51, 51, 51));
+//  _winter.push_back(QColor(198, 175, 233));
+//  _winter.push_back(QColor(22, 80, 22));
+//  _winter.push_back(Qt::black);
+//  _winter.push_back(QColor(102, 0, 128));
+//  _winter.push_back(Qt::white);
+//  _winter.push_back(QColor(51, 0, 128));
+//  _winter.push_back(QColor(100, 255, 255));
   
 }
 
-void  NetworkView::setColourTheme(ColourTheme theme)
+void  NetworkView::setColourTheme(ColourTheme::Theme theme)
 {
-  QVector<QColor> *colours;
+  const QVector<QColor> *colours;
   _currentTheme = theme;
   
   switch (theme)
   {
-    case Camo:
-      colours = &_camo;
+    case ColourTheme::Camo:
+      colours = &ColourTheme::camo();//_camo;
       break;
       
-    case Pastelle:
-      colours = &_pastelle;
+    case ColourTheme::Pastelle:
+      colours = &ColourTheme::pastelle();//&_pastelle;
       break;
     
-    case Vibrant:
-      colours = &_vibrant;
+    case ColourTheme::Vibrant:
+      colours = &ColourTheme::vibrant();//&_vibrant;
       break;
     
-    case Spring:
-      colours = &_spring;
+    case ColourTheme::Spring:
+      colours = &ColourTheme::spring();//&_spring;
       break;
       
-    case Summer:
-      colours = &_summer;
+    case ColourTheme::Summer:
+      colours = &ColourTheme::summer();//&_summer;
       break;
       
-    case Autumn:
-      colours = &_autumn;
+    case ColourTheme::Autumn:
+      colours = &ColourTheme::autumn();//&_autumn;
       break;
       
-    case Winter:
-      colours = &_winter;
+    case ColourTheme::Winter:
+      colours = &ColourTheme::winter();//&_winter;
       break;
       
-    case Greyscale:
+    case ColourTheme::Greyscale:
     default:
-      colours = &_greyscale;
+      colours = &ColourTheme::greyscale();//&_greyscale;
       break;
   }
   

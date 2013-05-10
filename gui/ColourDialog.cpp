@@ -3,6 +3,7 @@
 #include "XPM.h"
 #include "NetworkView.h"
 
+#include <QCheckBox>
 #include <QIcon>
 #include <QLayout>
 #include <QPixmap>
@@ -15,12 +16,12 @@
 using namespace std;
 
 
-//NetworkView::ColourTheme ColourDialog::_theme = NetworkView::defaultColourTheme();
-
-ColourDialog::ColourDialog(QWidget *parent, NetworkView::ColourTheme currentTheme, Qt::WindowFlags flags)
+ColourDialog::ColourDialog(QWidget *parent, ColourTheme::Theme currentTheme, Qt::WindowFlags flags)
  : QDialog(parent, flags), _iconSize(64, 64)
 {
   _theme = currentTheme;
+  _changeMapTheme = true;
+  _changeNetTheme = true;
 
   QVBoxLayout *layout = new QVBoxLayout(this);
   
@@ -109,9 +110,26 @@ ColourDialog::ColourDialog(QWidget *parent, NetworkView::ColourTheme currentThem
   
   
   QHBoxLayout *hlayout = new QHBoxLayout();
+  hlayout->setDirection(QBoxLayout::RightToLeft);
   //hlayout->addWidget(buttons);
   layout->addLayout(hlayout);
   
+  QCheckBox *mapCheckBox = new QCheckBox("Apply to map", this);
+  mapCheckBox->setCheckState(Qt::Checked);
+  connect(mapCheckBox, SIGNAL(stateChanged(int)), this, SLOT(toggleChangeMapTheme(int)));
+  hlayout->addWidget(mapCheckBox, 0, Qt::AlignRight);
+
+  QCheckBox *netCheckBox = new QCheckBox("Apply to network", this);
+  netCheckBox->setCheckState(Qt::Checked);
+  connect(netCheckBox, SIGNAL(stateChanged(int)), this, SLOT(toggleChangeNetTheme(int)));
+  hlayout->addWidget(netCheckBox, 0, Qt::AlignRight);
+
+  hlayout->addStretch(1);
+
+  hlayout = new QHBoxLayout();
+  hlayout->setDirection(QBoxLayout::RightToLeft);
+  layout->addLayout(hlayout);
+
   QPushButton *okbutton = new QPushButton(style()->standardIcon(QStyle::SP_DialogApplyButton), "Apply", this);
   connect(okbutton, SIGNAL(clicked()), this, SLOT(accept()));
   hlayout->addWidget(okbutton, 0, Qt::AlignRight);
@@ -131,34 +149,34 @@ void ColourDialog::changeColour(int ID)
   switch (ID)
   {
     case 1:
-      _theme = NetworkView::Camo;
+      _theme = ColourTheme::Camo;
       break;
     case 2:
-      _theme = NetworkView::Vibrant;
+      _theme = ColourTheme::Vibrant;
       break;
     case 3:
-      _theme = NetworkView::Pastelle;
+      _theme = ColourTheme::Pastelle;
       break;
     case 4:
-      _theme = NetworkView::Spring;
+      _theme = ColourTheme::Spring;
       break;
     case 5:
-      _theme = NetworkView::Summer;
+      _theme = ColourTheme::Summer;
       break;
     case 6:
-      _theme = NetworkView::Autumn;
+      _theme = ColourTheme::Autumn;
       break;
     case 7:
-      _theme = NetworkView::Winter;
+      _theme = ColourTheme::Winter;
       break;
     case 0:
     default:
-      _theme = NetworkView::Greyscale;
+      _theme = ColourTheme::Greyscale;
       break;
   }
 }
 
-NetworkView::ColourTheme ColourDialog::getColour(QWidget *parent, NetworkView::ColourTheme currentTheme, Qt::WindowFlags flags)
+ColourTheme::Theme ColourDialog::getColour(QWidget *parent, ColourTheme::Theme currentTheme, Qt::WindowFlags flags, bool *changeNetTheme, bool *changeMapTheme)
 {
   
   ColourDialog *colDlg = new ColourDialog(parent, currentTheme, flags);
@@ -168,10 +186,18 @@ NetworkView::ColourTheme ColourDialog::getColour(QWidget *parent, NetworkView::C
   //ColourTheme oldTheme = _theme;
   
   int returnval = colDlg->exec();
-  
+
+  *changeNetTheme = false;
+  *changeMapTheme = false;
+
   if (returnval != Accepted)  return currentTheme;
     //_theme = oldTheme;
-  
+  if (changeNetTheme)
+    *changeNetTheme = colDlg->changeNetTheme();
+
+  if (changeMapTheme)
+    *changeMapTheme = colDlg->changeMapTheme();
+
   //return (returnval == Accepted);
 
   return colDlg->theme();

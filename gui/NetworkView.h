@@ -10,6 +10,7 @@
 
 #include "NetworkLayout.h"
 #include "NetworkScene.h"
+#include "ColourTheme.h"
 #include "Graph.h"
 #include "BarchartItem.h"
 #include "BorderRectItem.h"
@@ -51,7 +52,7 @@ public:
   NetworkView(QWidget * = 0 );
   virtual ~NetworkView();
   
-  typedef enum {Greyscale, Camo, Pastelle, Vibrant, Spring, Summer, Autumn, Winter}  ColourTheme;
+  //typedef enum {Greyscale, Camo, Pastelle, Vibrant, Spring, Summer, Autumn, Winter}  ColourTheme;
   virtual QModelIndex indexAt(const QPoint &) const;
   virtual void scrollTo(const QModelIndex &, ScrollHint = EnsureVisible);
   virtual void setModel(QAbstractItemModel *);
@@ -60,10 +61,10 @@ public:
   unsigned defaultIterations() const { return _defaultIterations; };
   void setDefaultIterations(unsigned iterations) { _defaultIterations = iterations; };
   virtual QRect visualRect(const QModelIndex &) const;
-  static ColourTheme defaultColourTheme() { return _defaultTheme; };
+  static ColourTheme::Theme defaultColourTheme() { return _defaultTheme; };
   
-  void setColourTheme(ColourTheme = _defaultTheme);
-  ColourTheme colourTheme() const { return _currentTheme; };
+  void setColourTheme(ColourTheme::Theme = _defaultTheme);
+  ColourTheme::Theme colourTheme() const { return _currentTheme; };
   const QColor & colour(unsigned) const;
   void setColour(unsigned, const QColor &);
   const QColor & backgroundColour() const {return _backgroundBrush.color(); };
@@ -151,14 +152,14 @@ private:
   QVector<LabelItem *> _labelItems;
   QVector<QBrush> _colourTheme;
   
-  QVector<QColor> _greyscale;
+  /*QVector<QColor> _greyscale;
   QVector<QColor> _camo;
   QVector<QColor> _pastelle;
   QVector<QColor> _vibrant;
   QVector<QColor> _spring;
   QVector<QColor> _summer;
   QVector<QColor> _autumn;
-  QVector<QColor> _winter;
+  QVector<QColor> _winter;*/
   
   
   QPen _textPen;
@@ -173,8 +174,8 @@ private:
   QFont _smallFont;
   QFont _labelFont;
   QFont _legendFont;
-  ColourTheme _currentTheme;
-  static ColourTheme _defaultTheme;// = Greyscale;
+  ColourTheme::Theme _currentTheme;
+  static ColourTheme::Theme _defaultTheme;// = Greyscale;
   //QVector<QPersistentModelIndex *> _modelIndices;
   bool _showBarcharts;
   bool _showTaxBox;

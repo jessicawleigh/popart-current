@@ -7,6 +7,7 @@
 
 #include "MapView.h"
 
+#include <QtAlgorithms>
 #include <QComboBox>
 #include <QDebug>
 #include <QDialog>
@@ -30,9 +31,12 @@ using namespace Marble;
 #include <iostream>
 using namespace std;
 
+const ColourTheme::Theme MapView::_defaultTheme = ColourTheme::Greyscale;
+
 MapView::MapView(QWidget *parent)
   : QWidget(parent)
 {
+  _currentTheme = _defaultTheme;
   _mapWidget = new MarbleWidget(this);
   _hapLayer = 0;
   setupWidget();
@@ -226,18 +230,55 @@ GeoDataCoordinates MapView::lookupLocation(HapLocation *location)
 
 }
 
+void  MapView::setColourTheme(ColourTheme::Theme theme)
+{
+  _currentTheme = theme;
 
-// TODO Add an setHaplotypeData method with sequences and traits
-// Compute sequence frequency vector for each trait
-// Find location for each trait
-// subclass GeoDataPlacemark as HapDataPlacemark with new paint method
-// subclass GeoDataDocument as HapDataDocument to store relevant data
+  _colourTheme.clear();
 
-// Notes: Drawing doesn't happen in GeoDataPlacemark, but you can specify geometry there (GeoDataGeometry subclasses will do it)
-// But it's not clear that those know what sort of GeoGraphicsItem to draw themselves with. Maybe subclass GeoGraphicsItem as HapGraphicsItem
-// and GeoDataGeometry as HapDataGeometry, and then GeometryLayerPrivate as HapGeometryLayerPrivate, making the
-// createGraphicsItemFromGeometry function virtual (take a look at the code, should be able to just check whether
-// the geometry is HapDataGeometry and return HapGraphicsItem, or call the parent class otherwise)
+  switch (theme)
+  {
+    case ColourTheme::Camo:
+      qCopy(ColourTheme::camo().begin(), ColourTheme::camo().end(), _colourTheme.begin());// = &ColourTheme::camo();//_camo;
+      break;
+
+    case ColourTheme::Pastelle:
+      qCopy(ColourTheme::pastelle().begin(), ColourTheme::pastelle().end(), _colourTheme.begin());
+      //colours = &ColourTheme::pastelle();//&_pastelle;
+      break;
+
+    case ColourTheme::Vibrant:
+      qCopy(ColourTheme::vibrant().begin(), ColourTheme::vibrant().end(), _colourTheme.begin());
+      //colours = &ColourTheme::vibrant();//&_vibrant;
+      break;
+
+    case ColourTheme::Spring:
+      qCopy(ColourTheme::spring().begin(), ColourTheme::spring().end(), _colourTheme.begin());
+      //colours = &ColourTheme::spring();//&_spring;
+      break;
+
+    case ColourTheme::Summer:
+      qCopy(ColourTheme::summer().begin(), ColourTheme::summer().end(), _colourTheme.begin());
+      //colours = &ColourTheme::summer();//&_summer;
+      break;
+
+    case ColourTheme::Autumn:
+      qCopy(ColourTheme::autumn().begin(), ColourTheme::autumn().end(), _colourTheme.begin());
+      //colours = &ColourTheme::autumn();//&_autumn;
+      break;
+
+    case ColourTheme::Winter:
+      qCopy(ColourTheme::winter().begin(), ColourTheme::winter().end(), _colourTheme.begin());
+      //colours = &ColourTheme::winter();//&_winter;
+      break;
+
+    case ColourTheme::Greyscale:
+    default:
+      qCopy(ColourTheme::greyscale().begin(), ColourTheme::greyscale().end(), _colourTheme.begin());
+      //colours = &ColourTheme::greyscale();//&_greyscale;
+      break;
+  }
+}
 
 void MapView::updateGeoPosition(QString pos)
 {

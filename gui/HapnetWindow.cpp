@@ -1450,9 +1450,16 @@ void HapnetWindow::finaliseDisplay()
 
 void HapnetWindow::changeColourTheme()
 {
-  NetworkView::ColourTheme theme = ColourDialog::getColour(this, _netView->colourTheme());
+  bool changeMap, changeNet;
+
+  // TODO maybe change this? Store colour theme elsewhere, but which one (map or net)?
+  ColourTheme::Theme theme = ColourDialog::getColour(this, _netView->colourTheme(), 0, &changeNet, &changeMap);
   
-  _netView->setColourTheme(theme);
+
+  if (changeNet)
+    _netView->setColourTheme(theme);
+  if (changeMap)
+    _mapView->setColourTheme(theme);
 }
 
 void HapnetWindow::changeColour(int colourIdx)
