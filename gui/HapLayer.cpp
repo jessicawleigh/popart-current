@@ -188,7 +188,7 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
     painter->drawEllipse(keyX, currentY, vertRadUnit, vertRadUnit);
     
     currentY += vertRadUnit + margin; //smallMetric.ascent();
-    key = QString("1");
+    key = QString("1 sample");
     textX = legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
     painter->drawText(textX, currentY , key);
     
