@@ -8,15 +8,16 @@
 #ifndef MAPVIEW_H_
 #define MAPVIEW_H_
 
-#include "HapDataPlacemark.h"
 #include "HapLayer.h"
 #include "HapLocation.h"
 #include "NetworkView.h"
 #include "Trait.h"
 
 #include <marble/GeoDataCoordinates.h>
+#include <marble/GeoDataPlacemark.h>
 #include <marble/MarbleWidget.h>
 
+#include <QBrush>
 #include <QLabel>
 #include <QSlider>
 #include <QString>
@@ -35,17 +36,21 @@ public:
   void addHapLocations(const std::vector<Trait *> &);
   ColourTheme::Theme colourTheme() const { return _currentTheme; };
   static ColourTheme::Theme defaultColourTheme() { return _defaultTheme; };
-
+  
 public slots:
   void setColourTheme(ColourTheme::Theme = _defaultTheme);
+  void savePDFFile(const QString &filename) const;
+  void savePNGFile(const QString &filename) const;  
+  void saveSVGFile(const QString &filename) const;
 
 private:
   void setupWidget();
   void clearHapLocations();
-  Marble::GeoDataCoordinates lookupLocation(HapLocation*);
+  void lookupLocation(HapLocation*);
+  void updateColours();
 
   Marble::MarbleWidget *_mapWidget;
-  QVector<QColor> _colourTheme;
+  QVector<QBrush> _colourTheme;
   ColourTheme::Theme _currentTheme;
   static const ColourTheme::Theme _defaultTheme;
 

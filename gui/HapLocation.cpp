@@ -1,6 +1,7 @@
 #include "HapAppError.h"
 #include "HapLocation.h"
 
+#include <QDebug>
 #include <QList>
 
 #include <vector>
@@ -9,17 +10,28 @@ using namespace std;
 
 using namespace Marble;
 
+/*QMap<QString, unsigned> emptyMap()
+{
+  QMap<QString, unsigned> tmp;
+  
+  return tmp;
+}*/
+
+QMap<QString, unsigned> HapLocation::_seqIDs = QMap<QString, unsigned>();
+
 HapLocation::HapLocation(const QString &name, QObject *parent)
-  : QObject(parent), _location(0, 0, 0), _totalCount(0)
+  : QObject(parent), _location(0,0,0), _totalCount(0)
 {
   _name = name;
+  //_location = new GeoDataCoordinates(0,0,0);
   emit nameSet(_name);
 }
 
 HapLocation::HapLocation(const Trait &trait, QObject *parent)
-  : QObject(parent), _location(0, 0, 0), _totalCount(0)
+  : QObject(parent), _location(0,0,0), _totalCount(0)
 {
   _name = QString::fromStdString(trait.name());
+ // _location = new GeoDataCoordinates(0,0,0);
   emit nameSet(_name);
 
   const vector<string> seqNames = trait.seqNames();
@@ -35,15 +47,48 @@ HapLocation::HapLocation(const HapLocation &loc)
 HapLocation::~HapLocation()
 {
   //TODO
+  // delete _location
 }
 
 void HapLocation::addSeq(const QString &seqname, unsigned seqcount)
 {
   _seqCounts[seqname] = seqcount;
   _totalCount += seqcount;
+  
+  int id = seqID(seqname);
+  if (id < 0)
+    _seqIDs[seqname] = _seqIDs.size();
+    
+  else
+    _seqIDs[seqname] = id;
 
 
   emit seqAdded(seqname, seqcount);
+}
+
+void HapLocation::associateSeqIDs(QSet<QString> seqNames)
+{
+  _seqIDs.clear();
+  
+  unsigned count = 0;
+  
+  QSet<QString>::const_iterator nameIt = seqNames.constBegin();
+  
+  while(nameIt != seqNames.constEnd())
+  {
+    _seqIDs[*nameIt] = count;
+    ++nameIt;
+    count++;
+  }
+}
+
+
+void HapLocation::setLocation(const Marble::GeoDataCoordinates &coords) 
+{
+  _location = coords;
+  //qDebug() << "Latitude:" << _location->latToString() << "Longitude:" << _location->lonToString();
+  emit locationSet(_location);
+  
 }
 
 QVector<QString> HapLocation::seqNames() const
@@ -59,5 +104,15 @@ unsigned HapLocation::seqCount(const QString &seqname) const
 
   return locIt.value();
 }
+
+int HapLocation::seqID(const QString &seqname)
+{
+  QMap<QString, unsigned>::const_iterator locIt = _seqIDs.find(seqname);
+
+  if (locIt == _seqIDs.end())  return -1;
+
+  return locIt.value();
+}
+
 
 

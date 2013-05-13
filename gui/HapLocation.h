@@ -26,9 +26,14 @@ public:
   QVector<QString> seqNames() const;
   unsigned seqCount(const QString &) const;
   unsigned totalCount() const { return _totalCount; };
+  
+  static const QMap<QString, unsigned> & seqIDs() { return _seqIDs; };
+  static void associateSeqIDs(QSet<QString>);
+  static int seqID(const QString & seqName);
+  static void clearSeqIDs() { _seqIDs.clear(); };
 
 public slots:
-  void setLocation(const Marble::GeoDataCoordinates &coords) { _location = coords; emit locationSet(_location); };
+  void setLocation(const Marble::GeoDataCoordinates &coords);// { _location = new Marble::GeoDataCoordinates(coords); };//emit locationSet(_location); };
 
 private:
 
@@ -36,11 +41,12 @@ private:
   QString _name;
   Marble::GeoDataCoordinates _location;
   QMap<QString, unsigned> _seqCounts;
+  static QMap<QString, unsigned> _seqIDs;
   unsigned _totalCount;
   //const std::vector<unsigned> & traits(unsigned) const;
 signals:
   void nameSet(const QString &);
-  void locationSet(const Marble::GeoDataCoordinates);
+  void locationSet(const Marble::GeoDataCoordinates &);
   void seqAdded(const QString &, unsigned);
 };
 

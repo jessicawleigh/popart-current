@@ -64,7 +64,7 @@ private:
     const QPointF & min() const { return _min; };
     const QPointF & max() const { return _max; };
     const QPointF & centroid() const { return _centroid; };
-    const double meanRad() const { return _meanRad; };
+    double meanRad() const { return _meanRad; };
     void setMin(QPointF minVal) { _min = minVal; };
     void setMax(QPointF maxVal) { _max = maxVal; };
     void adjustCentroid(const QPointF &);

@@ -1016,13 +1016,28 @@ void HapnetWindow::saveGraphics()
   if (filename.isEmpty())  return;
   
   if (filename.endsWith(".svg", Qt::CaseInsensitive))
-    _netView->saveSVGFile(filename);
+  {
+    if (_view == Net)
+      _netView->saveSVGFile(filename);
+    else if (_view == Map)
+      _mapView->saveSVGFile(filename);
+  }
     
   else if (filename.endsWith(".png", Qt::CaseInsensitive))
-    _netView->savePNGFile(filename);
+  {
+    if (_view == Net)
+      _netView->savePNGFile(filename);
+    else if (_view == Map)
+      _mapView->savePNGFile(filename);
+  }
   
   else if (filename.endsWith(".pdf", Qt::CaseInsensitive))
-    _netView->savePDFFile(filename);
+  {
+    if (_view == Net)
+      _netView->savePDFFile(filename);
+    else if (_view == Map)
+      _mapView->savePDFFile(filename);
+  }
   
   else
   {
