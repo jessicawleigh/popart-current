@@ -84,6 +84,7 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
   
       if (seqnames.size() == 1)
       {
+        painter->setBrush(hapBrush(HapLocation::seqID(seqnames.at(0))));
         for (unsigned k = 0; k < repeats; k++)
           painter->drawEllipse(QRectF(x[k] - diametre/2, y - diametre/2, diametre, diametre));
 
