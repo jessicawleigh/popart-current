@@ -10,6 +10,7 @@
 #include <marble/MarbleModel.h>
 
 #include <QBrush>
+#include <QMap>
 #include <QMouseEvent>
 #include <QFont>
 #include <QObject>
@@ -53,10 +54,12 @@ private:
   QVector<QRegion> _clusters;
   QVector<QString> _clustLabels;
   const Marble::MarbleWidget *_target;
-  QRegion *_legendRegion;
+  QRegion _legendRegion; // why is this a pointer?
   QPoint _legendStart;
+  QVector<QRegion> _legendKeys;
 
   bool _clickedInLegend;
+  int _clickedInKey;
   QPoint _mouseDownPos;
 
 signals:

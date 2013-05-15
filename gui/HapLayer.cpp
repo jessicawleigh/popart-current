@@ -27,7 +27,7 @@ HapLayer::HapLayer(QVector<HapLocation*> locations, QObject *parent)
   _smallFont.setPointSize(6); 
 
   _target = 0;
-  _legendRegion = 0;
+  //_legendRegion = 0;
   _clickedInLegend = false;
   _legendStart.setX(-1);
   _legendStart.setY(-1);
@@ -54,7 +54,8 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
   //_filter->clearClusters();
   _clusters.clear();
   _clustLabels.clear();
-  if (_legendRegion)  delete _legendRegion;
+  //if (_legendRegion)  delete _legendRegion;
+  _legendKeys.clear();
 
   double vertRadUnit = NetworkItem::VERTRAD;
   painter->setPen(Qt::SolidLine);
@@ -195,10 +196,10 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
     qreal lon, lat;
     bool inglobe = viewport->geoCoordinates(_legendStart.x(), _legendStart.y(), lon, lat);
 
+    
+    // Will this ever be false? Some sort of default legend region?
     if (inglobe)
-      _legendRegion = new QRegion(painter->regionFromRect(GeoDataCoordinates(lon, lat, 0,  GeoDataCoordinates::Degree), legendWidth, legendHeight, false, 1));
-    else
-      _legendRegion = 0;
+      _legendRegion = painter->regionFromRect(GeoDataCoordinates(lon, lat, 0,  GeoDataCoordinates::Degree), legendWidth, legendHeight, false, 1);
     
     double currentY = _legendStart.y() + margin;
     double keyX = _legendStart.x() + legendWidth / 2 - diam5seq/2;
@@ -225,6 +226,7 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
     painter->setFont(legendFont());
     painterMetric = painter->fontMetrics();
 
+    _legendKeys = QVector<QRegion>(seqIDs.size());
     seqNameIt = seqIDs.constBegin();
     
     while (seqNameIt != seqIDs.constEnd())
@@ -236,6 +238,7 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
       /*textBox = metric.boundingRect(seqNameIt.key());
       painterRect = painter->boundingRect(textBox, Qt::AlignLeft, seqNameIt.key());
       qDebug() << "text width:" << metric.width(seqNameIt.key()) << "textBox width:" << textBox.width() << "painter box width:" << painterRect.width();*/
+      _legendKeys[seqNameIt.value()] = QRegion(keyX, currentY, vertRadUnit, vertRadUnit, QRegion::Ellipse);
       
       currentY += entryHeight;
       ++seqNameIt;
@@ -260,7 +263,7 @@ void HapLayer::updateLegendPos(const QPoint &p)
   _legendStart.ry() += p.y();
 
   // shouldn't be necessary, gets destroyed in render anyway
-  _legendRegion->translate(p);
+  _legendRegion.translate(p);
 }
 
 bool HapLayer::eventFilter(QObject *object, QEvent *event)
@@ -277,10 +280,18 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
   {
   case QEvent::MouseButtonPress:
 
-    if (_legendRegion->contains(mEvent->pos()))
+    if (_legendRegion.contains(mEvent->pos()))
     {
-      qDebug() << "pressed in legend";
+      //qDebug() << "pressed in legend";
       _clickedInLegend = true;
+      for (unsigned i = 0; i < _legendKeys.size(); i++)
+      {
+        if (_legendKeys.at(i).contains(mEvent->pos()))
+        {
+          qDebug() << "pressed in legend key" << i;
+          _clickedInKey = i;
+        }
+      }
       _mouseDownPos = mEvent->pos();
       returnVal = true;
       break;
@@ -302,13 +313,14 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
   case QEvent::MouseMove:
     if (_clickedInLegend)
     {
-      qDebug() << "clicked in legend, moving";
+      //qDebug() << "clicked in legend, moving";
       QPoint moved = mEvent->pos() - _mouseDownPos;
-      qDebug() << "moved:" << moved.x() << moved.y();
+      //qDebug() << "moved:" << moved.x() << moved.y();
 
-      QRegion region(*_legendRegion);
+      // A bit useless, unless I learn to update part of a MapWidget
+      QRegion region(_legendRegion);
       updateLegendPos(moved);
-      region = region.intersected(*_legendRegion);
+      region = region.intersected(_legendRegion);
 
       emit dirtyRegion(region);
 
@@ -319,9 +331,9 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
     break;
 
   case QEvent::MouseButtonRelease:
-    if (_legendRegion->contains(mEvent->pos()))
+    if (_legendRegion.contains(mEvent->pos()))
     {
-      qDebug() << "released in legend";
+      //qDebug() << "released in legend";
       returnVal = true;
     }
     _clickedInLegend = false;
