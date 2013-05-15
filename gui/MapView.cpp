@@ -111,10 +111,21 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
   }
 
   _hapLayer = new HapLayer(_locations);
+  connect(_hapLayer, SIGNAL(dirtyRegion(const QRegion &)), this, SLOT(updateDirtyRegion(const QRegion &)));
   _hapLayer->setColours(_colourTheme);
   _mapWidget->addLayer(_hapLayer);
+  _hapLayer->setTarget(_mapWidget);
+  _mapWidget->installEventFilter(_hapLayer);
   _mapWidget->update();
   
+}
+
+void MapView::updateDirtyRegion(const QRegion &region)
+{
+  //_mapWidget->repaint(region);
+  qDebug() << "updating dirty legend";
+  // maybe just render the legend layer?
+  _mapWidget->update();
 }
 
 void MapView::savePDFFile(const QString &filename) const

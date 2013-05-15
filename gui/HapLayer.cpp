@@ -15,8 +15,8 @@
 
 using namespace Marble;
 
-HapLayer::HapLayer(QVector<HapLocation*> locations)
-  : _hapLocations(locations), _defaultBrush(Qt::black)
+HapLayer::HapLayer(QVector<HapLocation*> locations, QObject *parent)
+  : QObject(parent), _hapLocations(locations), _defaultBrush(Qt::black)
 {
   //qDebug() << "in constructor, address:" << this;
   _defaultFont.setFamily("Baskerville");
@@ -25,6 +25,14 @@ HapLayer::HapLayer(QVector<HapLocation*> locations)
   
   _smallFont = QFont(_defaultFont);
   _smallFont.setPointSize(6); 
+
+  _target = 0;
+  _legendRegion = 0;
+  _clickedInLegend = false;
+  _legendStart.setX(-1);
+  _legendStart.setY(-1);
+  //_filter = new HapLayerFilter(this, parent);
+  //installEventFilter(_filter);
 }
 
 
@@ -43,6 +51,10 @@ QStringList HapLayer::renderPosition() const
 bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QString &renderPos, GeoSceneLayer *layer)
 {
   //qDebug() << "number of locations:" << _hapLocations.size();
+  //_filter->clearClusters();
+  _clusters.clear();
+  _clustLabels.clear();
+  if (_legendRegion)  delete _legendRegion;
 
   double vertRadUnit = NetworkItem::VERTRAD;
   painter->setPen(Qt::SolidLine);
@@ -81,6 +93,8 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
         painter->drawEllipse(x[k] - diameter/2, y - diameter/2, diameter, diameter);
 
       qDebug() << "number of seq types:" << seqnames.size() << "nseqs:" << nseqs;*/
+      _clusters.push_back(painter->regionFromEllipse(_hapLocations.at(i)->location(), diametre, diametre, false, 1));
+      _clustLabels.push_back(_hapLocations.at(i)->name());
   
       if (seqnames.size() == 1)
       {
@@ -169,32 +183,44 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
 
     double legendHeight = entryHeight * seqIDs.size() + painterMetric.height() + diam5seq + 3 * margin;
   
-    QPointF legendStart(x - legendWidth, y - legendHeight);//x[repeats - 1], y - legendHeight);
+    //QPointF legendStart(x - legendWidth, y - legendHeight);//x[repeats - 1], y - legendHeight);
+    if (_legendStart.x() < 0)
+    {
+      _legendStart.setX(x - legendWidth);
+      _legendStart.setY(y - legendHeight);
+    }
     
     painter->setBrush(Qt::white);
-    painter->drawRect(legendStart.x(), legendStart.y(), legendWidth, legendHeight);
+    painter->drawRect(_legendStart.x(), _legendStart.y(), legendWidth, legendHeight);
+    qreal lon, lat;
+    bool inglobe = viewport->geoCoordinates(_legendStart.x(), _legendStart.y(), lon, lat);
+
+    if (inglobe)
+      _legendRegion = new QRegion(painter->regionFromRect(GeoDataCoordinates(lon, lat, 0,  GeoDataCoordinates::Degree), legendWidth, legendHeight, false, 1));
+    else
+      _legendRegion = 0;
     
-    double currentY = legendStart.y() + margin;
-    double keyX = legendStart.x() + legendWidth / 2 - diam5seq/2;
+    double currentY = _legendStart.y() + margin;
+    double keyX = _legendStart.x() + legendWidth / 2 - diam5seq/2;
     
     painter->setBrush(Qt::transparent);
     painter->drawEllipse(keyX, currentY, diam5seq, diam5seq);
     QString key("10 samples");
     
-    double textX = legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
+    double textX = _legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
     painter->drawText(textX, currentY + diam5seq/2, key);
      
     currentY += (diam5seq - vertRadUnit);
-    keyX = legendStart.x() + legendWidth / 2 - vertRadUnit/2;
+    keyX = _legendStart.x() + legendWidth / 2 - vertRadUnit/2;
     painter->drawEllipse(keyX, currentY, vertRadUnit, vertRadUnit);
     
     currentY += vertRadUnit + margin; //smallMetric.ascent();
     key = QString("1 sample");
-    textX = legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
+    textX = _legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
     painter->drawText(textX, currentY , key);
     
     currentY += margin;
-    keyX = legendStart.x() + margin;
+    keyX = _legendStart.x() + margin;
     textX = keyX + vertRadUnit + margin;    
     painter->setFont(legendFont());
     painterMetric = painter->fontMetrics();
@@ -226,6 +252,87 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
   //qDebug() << "deleted";
   
   return true;
+}
+
+void HapLayer::updateLegendPos(const QPoint &p)
+{
+  _legendStart.rx() += p.x();
+  _legendStart.ry() += p.y();
+
+  // shouldn't be necessary, gets destroyed in render anyway
+  _legendRegion->translate(p);
+}
+
+bool HapLayer::eventFilter(QObject *object, QEvent *event)
+{
+  if (object != _target)  return false;
+
+  QMouseEvent *mEvent = dynamic_cast<QMouseEvent*>(event);
+
+  if (! mEvent)  return false;
+
+  bool returnVal = false;
+
+  switch (event->type())
+  {
+  case QEvent::MouseButtonPress:
+
+    if (_legendRegion->contains(mEvent->pos()))
+    {
+      qDebug() << "pressed in legend";
+      _clickedInLegend = true;
+      _mouseDownPos = mEvent->pos();
+      returnVal = true;
+      break;
+    }
+
+    else  _clickedInLegend = false;
+
+    for(unsigned i = 0; i < _clusters.size(); i++)
+    {
+      const QRegion &clust = _clusters.at(i);
+      if (clust.contains(mEvent->pos()))
+      {
+        qDebug() << "pressed in cluster" << _clustLabels.at(i);
+        returnVal = true;
+      }
+    }
+    break;
+
+  case QEvent::MouseMove:
+    if (_clickedInLegend)
+    {
+      qDebug() << "clicked in legend, moving";
+      QPoint moved = mEvent->pos() - _mouseDownPos;
+      qDebug() << "moved:" << moved.x() << moved.y();
+
+      QRegion region(*_legendRegion);
+      updateLegendPos(moved);
+      region = region.intersected(*_legendRegion);
+
+      emit dirtyRegion(region);
+
+      _mouseDownPos = mEvent->pos();
+
+      returnVal = true;
+    }
+    break;
+
+  case QEvent::MouseButtonRelease:
+    if (_legendRegion->contains(mEvent->pos()))
+    {
+      qDebug() << "released in legend";
+      returnVal = true;
+    }
+    _clickedInLegend = false;
+    break;
+
+  default:
+    returnVal = false;
+    break;
+  }
+
+  return returnVal;
 }
 
 /*void HapLayer::addLegend()

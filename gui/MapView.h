@@ -62,6 +62,7 @@ private:
 
 private slots:
   void updateGeoPosition(QString);
+  void updateDirtyRegion(const QRegion &);
 
 signals:
   void positionChanged(const QString &);
