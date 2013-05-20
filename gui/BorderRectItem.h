@@ -6,14 +6,16 @@
 #include <QGraphicsItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsSceneHoverEvent>
+#include <QObject>
 #include <QPen>
 #include <QPointF>
 #include <QRectF>
 #include <QVariant>
 #include <QVector>
 
-class BorderRectItem : public QGraphicsRectItem
+class BorderRectItem : public QObject, public QGraphicsRectItem
 {
+  Q_OBJECT
 public:
   BorderRectItem(const QRectF &, QGraphicsItem * = 0);
   BorderRectItem(qreal, qreal, qreal, qreal, QGraphicsItem * = 0 );
@@ -66,6 +68,11 @@ private:
   QBrush _gripBrush;
   QPen _gripPen;
   bool _gripFiltersSet;
+
+signals:
+  void grabbable(bool);
+  void grabbing(bool);
+
 };
 
 #endif

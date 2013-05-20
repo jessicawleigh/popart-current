@@ -123,7 +123,7 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
 void MapView::updateDirtyRegion(const QRegion &region)
 {
   //_mapWidget->repaint(region);
-  qDebug() << "updating dirty legend";
+  //qDebug() << "updating dirty legend";
   // maybe just render the legend layer?
   _mapWidget->update();
 }

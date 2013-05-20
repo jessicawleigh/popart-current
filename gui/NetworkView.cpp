@@ -245,6 +245,31 @@ void NetworkView::handleItemMove(QList<QPair<QGraphicsItem *, QPointF> >  itemLi
   emit itemsMoved(itemList); 
 }
 
+void NetworkView::setGrabbableCursor(bool grabbable)
+{
+  if (grabbable)
+    setCursor(Qt::OpenHandCursor);
+  else
+    setCursor(Qt::ArrowCursor);
+}
+
+void NetworkView::setGrabbingCursor(bool grabbing)
+{
+  if (grabbing)
+    setCursor(Qt::ClosedHandCursor); // DragMoveCursor ?
+  else
+    setCursor(Qt::OpenHandCursor);
+}
+
+void NetworkView::setClickableCursor(bool clickable)
+{
+  if (clickable)
+    setCursor(Qt::PointingHandCursor);
+  else
+    setCursor(Qt::ArrowCursor);
+
+}
+
 void NetworkView::drawLayout()
 {
   _theScene.setBackgroundBrush(_backgroundBrush);
@@ -401,6 +426,8 @@ void NetworkView::drawLayout()
     drawLegend();
       
   _border = new BorderRectItem(_theScene.sceneRect());
+  connect(_border, SIGNAL(grabbable(bool)), this, SLOT(setGrabbableCursor(bool)));
+  connect(_border, SIGNAL(grabbing(bool)), this, SLOT(setGrabbingCursor(bool)));
   _border->setPen(borderPen());
   _border->setBrush(Qt::transparent);
   _border->setAcceptHoverEvents(true);
@@ -502,7 +529,9 @@ void NetworkView::drawLegend()
     legkey->setBrush(vertBrush(i));
     legkey->setData(0, -1);
     legkey->setData(1, i);
-    connect(legkey, SIGNAL(clicked(LegendItem *)), this, SLOT(legendItemClicked(LegendItem *))); 
+    //connect(legkey, SIGNAL(clicked(LegendItem *)), this, SLOT(legendItemClicked(LegendItem *)));
+    connect(legkey, SIGNAL(colourChangeTriggered(LegendItem *)), this, SLOT(legendItemClicked(LegendItem *)));
+    connect(legkey, SIGNAL(clickable(bool)), this, SLOT(setClickableCursor(bool)));
     _legendKeys.push_back(legkey);
     
     legendLabel = new QGraphicsSimpleTextItem(model()->headerData(i, Qt::Vertical).toString(), _legend);

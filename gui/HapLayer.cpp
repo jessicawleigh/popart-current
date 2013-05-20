@@ -194,8 +194,10 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
     painter->setBrush(Qt::white);
     painter->drawRect(_legendStart.x(), _legendStart.y(), legendWidth, legendHeight);
     qreal lon, lat;
-    bool inglobe = viewport->geoCoordinates(_legendStart.x(), _legendStart.y(), lon, lat);
-
+    bool inglobe = viewport->geoCoordinates(_legendStart.x() + legendWidth/2, _legendStart.y() + legendHeight/2, lon, lat);
+    /*painter->setBrush(Qt::black);
+    painter->drawRect(GeoDataCoordinates(lon, lat, 0,  GeoDataCoordinates::Degree), legendWidth, legendHeight);
+    painter->setBrush(Qt::white);*/
     
     // Will this ever be false? Some sort of default legend region?
     if (inglobe)
@@ -291,6 +293,7 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
           qDebug() << "pressed in legend key" << i;
           _clickedInKey = i;
         }
+        //else  qDebug() << "didn't press in key" << i;
       }
       _mouseDownPos = mEvent->pos();
       returnVal = true;
@@ -304,7 +307,7 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
       const QRegion &clust = _clusters.at(i);
       if (clust.contains(mEvent->pos()))
       {
-        qDebug() << "pressed in cluster" << _clustLabels.at(i);
+        //qDebug() << "pressed in cluster" << _clustLabels.at(i);
         returnVal = true;
       }
     }
@@ -315,7 +318,7 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
     {
       //qDebug() << "clicked in legend, moving";
       QPoint moved = mEvent->pos() - _mouseDownPos;
-      //qDebug() << "moved:" << moved.x() << moved.y();
+      qDebug() << "moved:" << moved.x() << moved.y();
 
       // A bit useless, unless I learn to update part of a MapWidget
       QRegion region(_legendRegion);
@@ -333,7 +336,7 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
   case QEvent::MouseButtonRelease:
     if (_legendRegion.contains(mEvent->pos()))
     {
-      //qDebug() << "released in legend";
+      qDebug() << "released in legend";
       returnVal = true;
     }
     _clickedInLegend = false;

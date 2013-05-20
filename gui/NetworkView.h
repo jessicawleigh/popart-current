@@ -216,6 +216,9 @@ private slots:
   /*void prepareMoveEvent(QGraphicsItem *);
   void captureMoveEvent(const QPointF &);*/
   void handleItemMove(QList<QPair<QGraphicsItem *, QPointF> >);
+  void setGrabbableCursor(bool);
+  void setGrabbingCursor(bool);
+  void setClickableCursor(bool);
   
 signals:
   void networkDrawn();

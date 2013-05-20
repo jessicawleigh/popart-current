@@ -112,22 +112,26 @@ bool BorderRectItem::sceneEventFilter(QGraphicsItem *watched, QEvent *event)
       returnval = true;
       grip->setBrush(_gripBrush);
       grip->update(grip->boundingRect());
+      emit grabbable(true);
       break;
     case QEvent::GraphicsSceneHoverLeave:
       returnval = true;
       grip->setBrush(Qt::transparent);
       grip->update(grip->boundingRect());
+      emit grabbable(false);
       break;
     case QEvent::GraphicsSceneMousePress:
       returnval = true;
       grip->setMouseState(BorderGrip::MouseDown);
       grip->setMouseDownPos(mouseEvent->pos());
+      emit grabbing(true);
       break;
     case QEvent::GraphicsSceneMouseRelease:
       returnval = true;
       grip->setMouseState(BorderGrip::MouseUp);
       if (grip->pos() != grip->mouseDownPos())
         scene()->setSceneRect(rect());
+      emit grabbing(false);
       break;
     case QEvent::GraphicsSceneMouseMove:
       returnval = true;

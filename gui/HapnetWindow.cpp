@@ -1483,7 +1483,8 @@ void HapnetWindow::changeColour(int colourIdx)
   
   QColor newColour = QColorDialog::getColor(oldColour, this, tr("Choose a new trait colour"));
   
-  _netView->setColour(colourIdx, newColour);
+  if (newColour.isValid())
+    _netView->setColour(colourIdx, newColour);
 }
 
 void HapnetWindow::changeVertexColour()
@@ -1492,6 +1493,7 @@ void HapnetWindow::changeVertexColour()
   
   QColor newColour = QColorDialog::getColor(oldColour, this, tr("Choose a new default vertex colour"));
   
+  if (newColour.isValid())
   _netView->setVertexColour(newColour);
 }
 
@@ -1538,8 +1540,9 @@ void HapnetWindow::changeEdgeColour()
   const QColor & oldColour = _netView->edgeColour();
   
   QColor newColour = QColorDialog::getColor(oldColour, this, tr("Choose a new edge colour"));
-  
-  _netView->setEdgeColour(newColour);
+
+  if (newColour.isValid())
+    _netView->setEdgeColour(newColour);
 }
 
 void HapnetWindow::changeEdgeMutationView(QAction *viewAction)
@@ -1591,7 +1594,8 @@ void HapnetWindow::changeBackgroundColour()
   
   QColor newColour = QColorDialog::getColor(oldColour, this, tr("Choose a new background colour"));
   
-  _netView->setBackgroundColour(newColour);
+  if (newColour.isValid())
+    _netView->setBackgroundColour(newColour);
 }
 
 void HapnetWindow::changeLabelFont()

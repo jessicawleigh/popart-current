@@ -57,7 +57,10 @@ void HapLocation::addSeq(const QString &seqname, unsigned seqcount)
   
   int id = seqID(seqname);
   if (id < 0)
-    _seqIDs[seqname] = _seqIDs.size();
+  {
+    id = _seqIDs.size();
+    _seqIDs[seqname] = id;//_seqIDs.size();
+  }
     
   else
     _seqIDs[seqname] = id;
