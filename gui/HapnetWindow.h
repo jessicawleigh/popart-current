@@ -48,7 +48,7 @@ private:
   void setupMenus();
   void setupTools();
   void doStatsSetup();
-  bool loadAlignmentFromFile();
+  bool loadAlignmentFromFile(QString = QString());
   bool loadTreesFromParser(vector<ParsimonyTree *> &);
   bool loadTraitsFromParser();
   void inferNetwork(HapnetType, QVariant = QVariant());
@@ -91,6 +91,9 @@ private:
   
   QAction *_openAct;
   QAction *_closeAct;
+  QAction *_importAlignAct;
+  QAction *_importTraitsAct;
+  QAction *_importGeoTagsAct;
   QAction *_exportAct;
   QAction *_saveGraphicsAct;
   QAction *_quitAct;
@@ -144,6 +147,9 @@ private:
 private slots:
   void printprog(int);
   void openAlignment();
+  void importAlignment();
+  void importTraits();
+  void importGeoTags();
   void closeAlignment();
   void saveGraphics();
   void exportNetwork();

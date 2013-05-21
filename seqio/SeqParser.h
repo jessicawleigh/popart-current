@@ -29,6 +29,8 @@ public:
     Stockholm
   } SeqType;
 
+
+  // TODO write function to guess chartype
   typedef enum CHARTYPE
   {
     AAType,

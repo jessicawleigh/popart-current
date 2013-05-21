@@ -10,6 +10,7 @@ using namespace std;
 #include "Sequence.h"
 #include "SequenceError.h"
 #include "NexusParser.h"
+#include "PhylipParser.h"
 
 SeqParser* Sequence::_parser = 0;
 
@@ -202,7 +203,8 @@ void Sequence::setParser(istream &input)
   
   /*if (c == '>')  setParser(new FastaSeqParser());
 
-  else */if (c == '#')  //setParser(new NexusSeqParser());
+  else */
+  if (c == '#')  //setParser(new NexusSeqParser());
   {
     string line;
     getline(input, line);
@@ -226,17 +228,17 @@ void Sequence::setParser(istream &input)
 
   else
   {
-    /*int nseq = -1, nchar = -1;
+    int nseq = -1, nchar = -1;
     input >> nseq >> nchar;
     input.seekg(ios_base::beg);
     if (nseq > 0 && nchar > 0)
       setParser(new PhylipSeqParser());
     else
-    {*/
+    {
       /*cerr << "Error, unable to guess sequence type!" << endl;
       setParser(0);*/
       throw SequenceError("Unable to guess alignment type!");
-    //}
+    }
   }
 }
 

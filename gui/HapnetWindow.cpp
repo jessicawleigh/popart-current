@@ -193,6 +193,18 @@ void HapnetWindow::setupActions()
   _closeAct->setStatusTip(tr("Close current alignment"));
   connect(_closeAct, SIGNAL(triggered()), this, SLOT(closeAlignment()));
 
+  _importAlignAct = new QAction(tr("&Alignment"), this);
+  _importAlignAct->setStatusTip(tr("Import Phylip-format alignment"));
+  connect(_importAlignAct, SIGNAL(triggered()), this, SLOT(importAlignment()));
+
+  _importTraitsAct = new QAction(tr("&Traits"), this);
+  _importTraitsAct->setStatusTip(tr("Import traits from table"));
+  connect(_importTraitsAct, SIGNAL(triggered()), this, SLOT(importTraits()));
+
+  _importGeoTagsAct = new QAction(tr("&Geo Tags"), this);
+  _importGeoTagsAct->setStatusTip(tr("Import geo tags from table"));
+  connect(_importGeoTagsAct, SIGNAL(triggered()), this, SLOT(importGeoTags()));
+
   _saveGraphicsAct = new QAction(tr("Export &graphics"), this);
   _saveGraphicsAct->setStatusTip(tr("Export network as an image"));
   _saveGraphicsAct->setEnabled(false);
@@ -369,6 +381,11 @@ void HapnetWindow::setupMenus()
   fileMenu->addAction(_closeAct);
   fileMenu->addSeparator();
   
+  QMenu *importMenu = fileMenu->addMenu(tr("Import..."));
+  importMenu->addAction(_importAlignAct);
+  importMenu->addAction(_importTraitsAct);
+  importMenu->addAction(_importGeoTagsAct);
+
   fileMenu->addAction(_exportAct);
   fileMenu->addAction(_saveGraphicsAct);
   fileMenu->addSeparator();
@@ -584,11 +601,13 @@ void HapnetWindow::openAlignment()
   }
 }
 
-bool HapnetWindow::loadAlignmentFromFile()
+bool HapnetWindow::loadAlignmentFromFile(QString filename)
 {
   
   //int index = 0;
-  const char *cstr = _filename.toLatin1().constData();
+  if (filename.isEmpty())  filename = _filename;
+
+  const char *cstr = filename.toLatin1().constData();
 
 
   // need a std::ifstream to deal with Sequence input
@@ -944,6 +963,78 @@ void HapnetWindow::closeAlignment()
     _stats = 0;
   }
   
+}
+
+void HapnetWindow::importAlignment()
+{
+  QString phylipname = QFileDialog::getOpenFileName(this, "Open alignment file", tr("."), "Phylip files (*.phy *.seq *.phylip);;All Files(*)");
+
+  if (phylipname != "")
+  {
+    if (! _alignment.empty())
+       closeAlignment();
+
+    bool success = loadAlignmentFromFile(phylipname);
+
+    if (success)
+    {
+      _filename = QString("%1.%2").arg(phylipname).arg("nex");
+      statusBar()->showMessage(tr("Imported file %1").arg(phylipname));
+      //_networkMenu->setEnabled(true);
+
+      QFileInfo fileInfo(phylipname);
+      setWindowTitle(tr("PopART: %1").arg(fileInfo.fileName()));
+      toggleAlignmentActions(true);
+
+      if (! _alModel)
+      {
+        _alModel = new AlignmentModel(_alignment);
+        _alView->setModel(_alModel);
+
+        _alModel->setCharType(_datatype);
+
+        if (! _mask.empty())
+        {
+          for (unsigned i = 0; i < _mask.size(); i++)
+            if (! _mask.at(i))
+              _alModel->maskColumns(i, i);
+        }
+
+        if (! _badSeqs.empty())
+        {
+          for (unsigned i = 0; i < _badSeqs.size(); i++)
+            _alModel->maskRows(_badSeqs.at(i), _badSeqs.at(i));
+        }
+
+
+      }
+
+      else
+      {
+        _netView->clearModel();
+        toggleNetActions(false);
+        QAbstractItemModel *tmpModel = _alView->model();
+        _alModel = new AlignmentModel(_alignment);
+        _alView->setModel(_alModel);
+        _alModel->setCharType(_datatype);
+        delete tmpModel;
+        //_alView->resizeColumnsToContents();
+      }
+    }
+  }
+
+  else
+    statusBar()->showMessage(tr("No file selected"));
+}
+
+void HapnetWindow::importTraits()
+{
+  qDebug() << "import traits here";
+}
+
+void HapnetWindow::importGeoTags()
+{
+  qDebug() << "import geotags here";
 }
 
 void HapnetWindow::exportNetwork()
