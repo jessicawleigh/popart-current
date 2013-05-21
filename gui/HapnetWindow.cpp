@@ -123,6 +123,7 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
    _centralContainer->addWidget(_mapView);
    _mapTraitsSet = false;
    connect(_mapView, SIGNAL(positionChanged(const QString &)), sbar, SLOT(showMessage(const QString &)));
+   connect(_mapView, SIGNAL(seqColourChangeRequested(int)), this, SLOT(changeColour(int)));
 
   _stats = 0;
   _alModel = 0;
@@ -1479,12 +1480,29 @@ void HapnetWindow::changeColourTheme()
 
 void HapnetWindow::changeColour(int colourIdx)
 {
-  const QColor & oldColour = _netView->colour(colourIdx);
+  QColor oldColour;
+  QString dlgStr;
+
+  if (_view == Net)
+  {
+    oldColour = _netView->colour(colourIdx);
+    dlgStr = tr("Choose a new trait colour");
+  }
+  else
+  {
+    oldColour = _mapView->colour(colourIdx);
+    dlgStr = tr("Choose a new sequence colour");
+  }
   
-  QColor newColour = QColorDialog::getColor(oldColour, this, tr("Choose a new trait colour"));
+  QColor newColour = QColorDialog::getColor(oldColour, this, dlgStr);
   
   if (newColour.isValid())
-    _netView->setColour(colourIdx, newColour);
+  {
+    if (_view == Net)
+      _netView->setColour(colourIdx, newColour);
+    else
+      _mapView->setColour(colourIdx, newColour);
+  }
 }
 
 void HapnetWindow::changeVertexColour()

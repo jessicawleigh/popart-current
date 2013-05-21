@@ -11,15 +11,13 @@
 
 #include <QBrush>
 #include <QMap>
-#include <QMouseEvent>
+#include <QEvent>
 #include <QFont>
 #include <QObject>
 #include <QPoint>
 #include <QString>
 #include <QStringList>
 #include <QVector>
-
-class HapLayerFilter;
 
 class HapLayer : public QObject, public Marble::LayerInterface
 {
@@ -32,6 +30,7 @@ public:
   virtual bool eventFilter(QObject *, QEvent *);
 
   void setColours(const QVector<QBrush> &colours) { _colours = colours; };
+
   const QBrush & hapBrush(int) const;
   const QFont & defaultFont() const { return _defaultFont; };
   const QFont & smallFont() const { return _smallFont; };
@@ -44,7 +43,6 @@ private:
   void updateLegendPos(const QPoint &);
 
   QVector<HapLocation*> _hapLocations;
-  HapLayerFilter *_filter;
   QVector<QBrush> _colours;
   QBrush _defaultBrush;
   QFont _defaultFont;
@@ -61,9 +59,16 @@ private:
   bool _clickedInLegend;
   int _clickedInKey;
   QPoint _mouseDownPos;
+  QPoint _enteredPos;
+
+private slots:
+  void changeColour();
 
 signals:
   void dirtyRegion(const QRegion &);
+  void colourChangeTriggered(int);
+  void entered(const QString &);
+  void left(const QString &);
 };
 
 /*class HapLayerFilter : public QObject

@@ -110,8 +110,11 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
     _locations.push_back(loc);
   }
 
-  _hapLayer = new HapLayer(_locations);
+  _hapLayer = new HapLayer(_locations, this);
   connect(_hapLayer, SIGNAL(dirtyRegion(const QRegion &)), this, SLOT(updateDirtyRegion(const QRegion &)));
+  connect(_hapLayer, SIGNAL(colourChangeTriggered(int)), this, SLOT(requestChangeSeqColour(int)));
+  connect(_hapLayer, SIGNAL(entered(const QString &)), this, SLOT(setMapToolTip(const QString &)));
+  connect(_hapLayer, SIGNAL(left(const QString &)), this, SLOT(resetMapToolTip(const QString &)));
   _hapLayer->setColours(_colourTheme);
   _mapWidget->addLayer(_hapLayer);
   _hapLayer->setTarget(_mapWidget);
@@ -308,51 +311,6 @@ void  MapView::setColourTheme(ColourTheme::Theme theme)
     _colourTheme.push_back(QBrush(*colIt));
     ++colIt;
   }
-
-  /*_colourTheme.clear();
-
-  switch (theme)
-  {
-    case ColourTheme::Camo:
-      qCopy(ColourTheme::camo().begin(), ColourTheme::camo().end(), _colourTheme.begin());// = &ColourTheme::camo();//_camo;
-      break;
-
-    case ColourTheme::Pastelle:
-      qCopy(ColourTheme::pastelle().begin(), ColourTheme::pastelle().end(), _colourTheme.begin());
-      //colours = &ColourTheme::pastelle();//&_pastelle;
-      break;
-
-    case ColourTheme::Vibrant:
-      qCopy(ColourTheme::vibrant().begin(), ColourTheme::vibrant().end(), _colourTheme.begin());
-      //colours = &ColourTheme::vibrant();//&_vibrant;
-      break;
-
-    case ColourTheme::Spring:
-      qCopy(ColourTheme::spring().begin(), ColourTheme::spring().end(), _colourTheme.begin());
-      //colours = &ColourTheme::spring();//&_spring;
-      break;
-
-    case ColourTheme::Summer:
-      qCopy(ColourTheme::summer().begin(), ColourTheme::summer().end(), _colourTheme.begin());
-      //colours = &ColourTheme::summer();//&_summer;
-      break;
-
-    case ColourTheme::Autumn:
-      qCopy(ColourTheme::autumn().begin(), ColourTheme::autumn().end(), _colourTheme.begin());
-      //colours = &ColourTheme::autumn();//&_autumn;
-      break;
-
-    case ColourTheme::Winter:
-      qCopy(ColourTheme::winter().begin(), ColourTheme::winter().end(), _colourTheme.begin());
-      //colours = &ColourTheme::winter();//&_winter;
-      break;
-
-    case ColourTheme::Greyscale:
-    default:
-      qCopy(ColourTheme::greyscale().begin(), ColourTheme::greyscale().end(), _colourTheme.begin());
-      //colours = &ColourTheme::greyscale();//&_greyscale;
-      break;
-  }*/
   
   updateColours();
 }
@@ -374,6 +332,41 @@ void MapView::updateGeoPosition(QString pos)
   if (pos != "not available")
     emit positionChanged(_geoPos);
 }
+
+void MapView::requestChangeSeqColour(int seqID)
+{
+  emit seqColourChangeRequested(seqID);
+}
+
+const QColor & MapView::colour(int seqID) const
+{
+  return _colourTheme.at(seqID % _colourTheme.size()).color();
+}
+
+void MapView::setColour(int seqID, const QColor &col)
+{
+  if (seqID >= _colourTheme.size())
+  {
+    int newColours = seqID - _colourTheme.size() + 1;
+    for (unsigned i = 0; i < newColours; i++)
+      _colourTheme.push_back(_colourTheme.at(i));
+  }
+
+  _colourTheme[seqID] = QBrush(col);
+  updateColours();
+}
+
+void MapView::setMapToolTip(const QString &toolTip)
+{
+  _mapWidget->setToolTip(toolTip);
+}
+
+void MapView::resetMapToolTip(const QString &toolTip)
+{
+  _mapWidget->setToolTip("");
+}
+
+
 
 
 

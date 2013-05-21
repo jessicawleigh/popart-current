@@ -4,10 +4,15 @@
 #include <marble/GeoDataCoordinates.h>
 #include <marble/ViewportParams.h>
 
+#include <QAction>
 #include <QBrush>
 #include <QColor>
+#include <QContextMenuEvent>
 #include <QDebug>
 #include <QFontMetrics>
+#include <QHoverEvent>
+#include <QMenu>
+#include <QMouseEvent>
 #include <QPen>
 #include <QPointF>
 #include <QRect>
@@ -18,7 +23,6 @@ using namespace Marble;
 HapLayer::HapLayer(QVector<HapLocation*> locations, QObject *parent)
   : QObject(parent), _hapLocations(locations), _defaultBrush(Qt::black)
 {
-  //qDebug() << "in constructor, address:" << this;
   _defaultFont.setFamily("Baskerville");
   _defaultFont.setPointSize(10);
   _legendFont = _defaultFont;
@@ -27,34 +31,28 @@ HapLayer::HapLayer(QVector<HapLocation*> locations, QObject *parent)
   _smallFont.setPointSize(6); 
 
   _target = 0;
-  //_legendRegion = 0;
   _clickedInLegend = false;
   _legendStart.setX(-1);
   _legendStart.setY(-1);
-  //_filter = new HapLayerFilter(this, parent);
-  //installEventFilter(_filter);
+  _enteredPos = QPoint(-1,-1);
 }
 
 
 QStringList HapLayer::renderPosition() const
 {
-  // We will paint in exactly one of the following layers.
-  // The current one can be changed by pressing the '+' key
   //QStringList layers = QStringList() << "SURFACE" << "HOVERS_ABOVE_SURFACE";
   //layers << "ORBIT" << "USER_TOOLS" << "STARS";
 
-  //int index = m_index % layers.size();
+
+  // which layer to paint in? ORBIT is above location names, HOVERS_ABOVE_SURFACE is under
   return QStringList() << "ORBIT";//"HOVERS_ABOVE_SURFACE"; //layers.at(index);
 
 }
 
 bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QString &renderPos, GeoSceneLayer *layer)
 {
-  //qDebug() << "number of locations:" << _hapLocations.size();
-  //_filter->clearClusters();
   _clusters.clear();
   _clustLabels.clear();
-  //if (_legendRegion)  delete _legendRegion;
   _legendKeys.clear();
 
   double vertRadUnit = NetworkItem::VERTRAD;
@@ -64,11 +62,6 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
 
   for (unsigned i = 0; i < _hapLocations.size(); i++)
   {
-    //const GeoDataCoordinates coords = _hapLocations.at(i)->location();
-    //qDebug() << "coords:" << coords.toString();
-    //painter->setBrush(QBrush(Qt::black));
-    //painter->drawEllipse(coords, diameter+5, diameter+5);
-    //QRect boundingRect = painter->regionFromEllipse(coords, diameter, diameter, false, 1).boundingRect();
     double *x, y;
     int repeats;
     bool behindGlobe;
@@ -88,12 +81,7 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
         diametre = vertRadUnit;
       
       QVector<QString> seqnames = _hapLocations.at(i)->seqNames();
-      /*painter->setBrush(QBrush(Qt::blue));
 
-      for (unsigned k = 0; k < repeats; k++)
-        painter->drawEllipse(x[k] - diameter/2, y - diameter/2, diameter, diameter);
-
-      qDebug() << "number of seq types:" << seqnames.size() << "nseqs:" << nseqs;*/
       _clusters.push_back(painter->regionFromEllipse(_hapLocations.at(i)->location(), diametre, diametre, false, 1));
       _clustLabels.push_back(_hapLocations.at(i)->name());
   
@@ -113,7 +101,6 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
           
           double seqFreq = count/nseqs;
           
-          // Do something clever with spanAngle to make sure it goes all the way to 360 degrees
           double spanAngle = seqFreq * circleUnits;
           painter->setBrush(hapBrush(HapLocation::seqID(seqnames.at(j))));
           
@@ -128,134 +115,100 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
     delete [] x;
   }
   
-  //addLegend(painter);
-  
-  // Choose location differently: Make it the bottom left of the viewport
-  // Store default location, then allow it to move
-  /*GeoDataCoordinates antarctica(-179,-85,0, GeoDataCoordinates::Degree); 
-  double *x, y;
-  int repeats;
-  bool behindGlobe;
-  x = new double[5]; // allow coordinates to be repeated up to 5 times (should be overkill)
-  
-  bool visible = viewport->screenCoordinates(antarctica, x, y, repeats, behindGlobe);*/
-  
-  //if (visible)
-  //{
-  
-    const QMap<QString, unsigned> & seqIDs = HapLocation::seqIDs();
-    
-    // TODO font metrics don't seem to match painter.
-    QFontMetrics painterMetric = painter->fontMetrics();
-    QRect painterRect = painter->viewport();
-    int x = painterRect.bottomRight().x();
-    int y = painterRect.bottomRight().y();
 
-    double maxwidth = 0;
-    
-    QMap<QString, unsigned>::const_iterator seqNameIt = seqIDs.constBegin();
-    painter->setFont(legendFont());
-    
-    while (seqNameIt != seqIDs.constEnd())
-    {
-      double width = painterMetric.width(seqNameIt.key());
-      if (width > maxwidth)  maxwidth = width;
-      
-      ++seqNameIt;
-    }
-    
-    unsigned margin = 15;
-    double minHeight = vertRadUnit + 5;
-    double entryHeight = painterMetric.height();
-    if (minHeight > entryHeight)
-      entryHeight = minHeight;
-    
-    // TODO text always drawn a bit to the right of where I expect, figure this out
-    // maybe play with QFontMetricsF::boundingRect
-    
-    double diam5seq = sqrt(10) * vertRadUnit;
-    double minLegendWidth = diam5seq + 2 * margin;
-    double legendWidth = maxwidth + vertRadUnit + 3 * margin;
-        
-    if (legendWidth < minLegendWidth)  legendWidth = minLegendWidth;
-
-    painter->setFont(smallFont());
-    painterMetric = painter->fontMetrics();
-
-    double legendHeight = entryHeight * seqIDs.size() + painterMetric.height() + diam5seq + 3 * margin;
+  const QMap<QString, unsigned> & seqIDs = HapLocation::seqIDs();
   
-    //QPointF legendStart(x - legendWidth, y - legendHeight);//x[repeats - 1], y - legendHeight);
-    if (_legendStart.x() < 0)
-    {
-      _legendStart.setX(x - legendWidth);
-      _legendStart.setY(y - legendHeight);
-    }
+  // TODO set a bool if using another painter (i.e., to save a file) and use new QFontMetrics to do font geometry
+  QFontMetrics painterMetric = painter->fontMetrics();
+  QRect painterRect = painter->viewport();
+  int x = painterRect.bottomRight().x();
+  int y = painterRect.bottomRight().y();
+
+  double maxwidth = 0;
+  
+  QMap<QString, unsigned>::const_iterator seqNameIt = seqIDs.constBegin();
+  painter->setFont(legendFont());
+  
+  while (seqNameIt != seqIDs.constEnd())
+  {
+    double width = painterMetric.width(seqNameIt.key());
+    if (width > maxwidth)  maxwidth = width;
+
+    ++seqNameIt;
+  }
+  
+  unsigned margin = 15;
+  double minHeight = vertRadUnit + 5;
+  double entryHeight = painterMetric.height();
+  if (minHeight > entryHeight)
+    entryHeight = minHeight;
+
+  double diam5seq = sqrt(10) * vertRadUnit;
+  double minLegendWidth = diam5seq + 2 * margin;
+  double legendWidth = maxwidth + vertRadUnit + 3 * margin;
+
+  if (legendWidth < minLegendWidth)  legendWidth = minLegendWidth;
+
+  painter->setFont(smallFont());
+  painterMetric = painter->fontMetrics();
+
+  double legendHeight = entryHeight * seqIDs.size() + painterMetric.height() + diam5seq + 3 * margin;
+
+  if (_legendStart.x() < 0)
+  {
+    _legendStart.setX(x - legendWidth);
+    _legendStart.setY(y - legendHeight);
+  }
+
+  painter->setBrush(Qt::white);
+  painter->drawRect(_legendStart.x(), _legendStart.y(), legendWidth, legendHeight);
+  qreal lon, lat;
+  bool inglobe = viewport->geoCoordinates(_legendStart.x() + legendWidth/2, _legendStart.y() + legendHeight/2, lon, lat);
+
+  // Will this ever be false? Some sort of default legend region?
+  if (inglobe)
+    _legendRegion = painter->regionFromRect(GeoDataCoordinates(lon, lat, 0,  GeoDataCoordinates::Degree), legendWidth, legendHeight, false, 1);
+
+  double currentY = _legendStart.y() + margin;
+  double keyX = _legendStart.x() + legendWidth / 2 - diam5seq/2;
+
+  painter->setBrush(Qt::transparent);
+  painter->drawEllipse(keyX, currentY, diam5seq, diam5seq);
+  QString key("10 samples");
+
+  double textX = _legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
+  painter->drawText(textX, currentY + diam5seq/2, key);
+
+  currentY += (diam5seq - vertRadUnit);
+  keyX = _legendStart.x() + legendWidth / 2 - vertRadUnit/2;
+  painter->drawEllipse(keyX, currentY, vertRadUnit, vertRadUnit);
+
+  currentY += vertRadUnit + margin; //smallMetric.ascent();
+  key = QString("1 sample");
+  textX = _legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
+  painter->drawText(textX, currentY , key);
+
+  currentY += margin;
+  keyX = _legendStart.x() + margin;
+  textX = keyX + vertRadUnit + margin;
+  painter->setFont(legendFont());
+  painterMetric = painter->fontMetrics();
+
+  _legendKeys = QVector<QRegion>(seqIDs.size());
+  seqNameIt = seqIDs.constBegin();
+  
+  while (seqNameIt != seqIDs.constEnd())
+  {
+    painter->setBrush(hapBrush(seqNameIt.value()));
     
-    painter->setBrush(Qt::white);
-    painter->drawRect(_legendStart.x(), _legendStart.y(), legendWidth, legendHeight);
-    qreal lon, lat;
-    bool inglobe = viewport->geoCoordinates(_legendStart.x() + legendWidth/2, _legendStart.y() + legendHeight/2, lon, lat);
-    /*painter->setBrush(Qt::black);
-    painter->drawRect(GeoDataCoordinates(lon, lat, 0,  GeoDataCoordinates::Degree), legendWidth, legendHeight);
-    painter->setBrush(Qt::white);*/
-    
-    // Will this ever be false? Some sort of default legend region?
-    if (inglobe)
-      _legendRegion = painter->regionFromRect(GeoDataCoordinates(lon, lat, 0,  GeoDataCoordinates::Degree), legendWidth, legendHeight, false, 1);
-    
-    double currentY = _legendStart.y() + margin;
-    double keyX = _legendStart.x() + legendWidth / 2 - diam5seq/2;
-    
-    painter->setBrush(Qt::transparent);
-    painter->drawEllipse(keyX, currentY, diam5seq, diam5seq);
-    QString key("10 samples");
-    
-    double textX = _legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
-    painter->drawText(textX, currentY + diam5seq/2, key);
-     
-    currentY += (diam5seq - vertRadUnit);
-    keyX = _legendStart.x() + legendWidth / 2 - vertRadUnit/2;
     painter->drawEllipse(keyX, currentY, vertRadUnit, vertRadUnit);
+    painter->drawText(textX, currentY + (painterMetric.ascent() + vertRadUnit)/2, seqNameIt.key());
+    _legendKeys[seqNameIt.value()] = QRegion(keyX, currentY, vertRadUnit, vertRadUnit, QRegion::Ellipse);
     
-    currentY += vertRadUnit + margin; //smallMetric.ascent();
-    key = QString("1 sample");
-    textX = _legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
-    painter->drawText(textX, currentY , key);
-    
-    currentY += margin;
-    keyX = _legendStart.x() + margin;
-    textX = keyX + vertRadUnit + margin;    
-    painter->setFont(legendFont());
-    painterMetric = painter->fontMetrics();
-
-    _legendKeys = QVector<QRegion>(seqIDs.size());
-    seqNameIt = seqIDs.constBegin();
-    
-    while (seqNameIt != seqIDs.constEnd())
-    {
-      painter->setBrush(hapBrush(seqNameIt.value()));
+    currentY += entryHeight;
+    ++seqNameIt;
+  }
       
-      painter->drawEllipse(keyX, currentY, vertRadUnit, vertRadUnit);
-      painter->drawText(textX, currentY + (painterMetric.ascent() + vertRadUnit)/2, seqNameIt.key());
-      /*textBox = metric.boundingRect(seqNameIt.key());
-      painterRect = painter->boundingRect(textBox, Qt::AlignLeft, seqNameIt.key());
-      qDebug() << "text width:" << metric.width(seqNameIt.key()) << "textBox width:" << textBox.width() << "painter box width:" << painterRect.width();*/
-      _legendKeys[seqNameIt.value()] = QRegion(keyX, currentY, vertRadUnit, vertRadUnit, QRegion::Ellipse);
-      
-      currentY += entryHeight;
-      ++seqNameIt;
-    }
-    
-    
-    
-  //}
-  
-  //else
-  //  qDebug() << "Not visible.";
- 
-  
-  //qDebug() << "deleted";
-  
   return true;
 }
 
@@ -273,34 +226,47 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
   if (object != _target)  return false;
 
   QMouseEvent *mEvent = dynamic_cast<QMouseEvent*>(event);
-
-  if (! mEvent)  return false;
+  QContextMenuEvent *cEvent = dynamic_cast<QContextMenuEvent*>(event);
+  QHoverEvent *hEvent = dynamic_cast<QHoverEvent*>(event);
+  //if (! mEvent)  return false;
 
   bool returnVal = false;
 
   switch (event->type())
   {
+  case QEvent::ContextMenu:
+    if (_legendRegion.contains(cEvent->pos()))
+    {
+      //qDebug() << "pressed in legend";
+      for (unsigned i = 0; i < _legendKeys.size(); i++)
+      {
+        if (_legendKeys.at(i).contains(cEvent->pos()))
+        {
+          _clickedInKey = i;
+          QMenu menu;
+          QAction *a = menu.addAction(tr("Change sequence colour"));
+          connect(a, SIGNAL(triggered()), this, SLOT(changeColour()));
+          //a = menu.addAction(tr("Change sequence label"));
+          a = menu.exec(_target->mapToGlobal(cEvent->pos()));
+          break;
+        }
+      }
+    }
+    returnVal = true;
+    break;
   case QEvent::MouseButtonPress:
 
     if (_legendRegion.contains(mEvent->pos()))
     {
-      //qDebug() << "pressed in legend";
-      _clickedInLegend = true;
-      for (unsigned i = 0; i < _legendKeys.size(); i++)
-      {
-        if (_legendKeys.at(i).contains(mEvent->pos()))
-        {
-          qDebug() << "pressed in legend key" << i;
-          _clickedInKey = i;
-        }
-        //else  qDebug() << "didn't press in key" << i;
-      }
-      _mouseDownPos = mEvent->pos();
       returnVal = true;
-      break;
-    }
+      if (mEvent->button() == Qt::LeftButton)
+      {
+         _clickedInLegend = true;
+         _mouseDownPos = mEvent->pos();
+      }
 
-    else  _clickedInLegend = false;
+      else  _clickedInLegend = false;
+    }
 
     for(unsigned i = 0; i < _clusters.size(); i++)
     {
@@ -318,7 +284,7 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
     {
       //qDebug() << "clicked in legend, moving";
       QPoint moved = mEvent->pos() - _mouseDownPos;
-      qDebug() << "moved:" << moved.x() << moved.y();
+      //qDebug() << "moved:" << moved.x() << moved.y();
 
       // A bit useless, unless I learn to update part of a MapWidget
       QRegion region(_legendRegion);
@@ -331,15 +297,59 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
 
       returnVal = true;
     }
+
+    else
+    {
+      for (unsigned i = 0; i < _clusters.size(); i++)
+      {
+        if (_clusters.at(i).contains(mEvent->pos()))
+        {
+          _enteredPos = mEvent->pos();
+          emit entered(_clustLabels.at(i));
+          returnVal = true;
+        }
+
+        else if (_enteredPos.x() > 0 && _clusters.at(i).contains(_enteredPos))
+        {
+          emit left(_clustLabels.at(i));
+          _enteredPos.setX(-1);
+
+          returnVal = true;
+        }
+      }
+    }
+
     break;
 
   case QEvent::MouseButtonRelease:
     if (_legendRegion.contains(mEvent->pos()))
     {
-      qDebug() << "released in legend";
+      //qDebug() << "released in legend";
       returnVal = true;
     }
     _clickedInLegend = false;
+    break;
+
+  case QEvent::HoverMove:
+    for (unsigned i = 0; i < _clusters.size(); i++)
+    {
+      if (_clusters.at(i).contains(hEvent->pos()))
+      {
+        //_target->setToolTip(_clustLabels.at(i));
+        emit entered(_clustLabels.at(i));
+        qDebug() << "entered" << _clustLabels.at(i);
+        returnVal = true;
+      }
+
+      else if (_clusters.at(i).contains(hEvent->oldPos()))
+      {
+        //_target->setToolTip("");
+        emit left(_clustLabels.at(i));
+
+        returnVal = true;
+        qDebug() << "left" << _clustLabels.at(i);
+      }
+    }
     break;
 
   default:
@@ -350,17 +360,16 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
   return returnVal;
 }
 
-/*void HapLayer::addLegend()
-{
-  GeoDataCoordinates antarctica(-76.598545,-171.738281, 0);
-  
-  
-}*/
 
 const QBrush & HapLayer::hapBrush(int hapID) const
 {
   if (_colours.empty() || hapID < 0)  return _defaultBrush;
   return _colours.at(hapID % _colours.size());
+}
+
+void HapLayer::changeColour()
+{
+  emit colourChangeTriggered(_clickedInKey);
 }
 
 

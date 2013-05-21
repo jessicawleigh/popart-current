@@ -18,6 +18,7 @@
 #include <marble/MarbleWidget.h>
 
 #include <QBrush>
+#include <QContextMenuEvent>
 #include <QLabel>
 #include <QSlider>
 #include <QString>
@@ -25,6 +26,8 @@
 #include <QWidget>
 
 #include <vector>
+
+class HapMapWidget;
 
 class MapView : public QWidget
 {
@@ -39,6 +42,8 @@ public:
   
 public slots:
   void setColourTheme(ColourTheme::Theme = _defaultTheme);
+  const QColor & colour(int) const;
+  void setColour(int, const QColor &);
   void savePDFFile(const QString &filename) const;
   void savePNGFile(const QString &filename) const;  
   void saveSVGFile(const QString &filename) const;
@@ -63,10 +68,24 @@ private:
 private slots:
   void updateGeoPosition(QString);
   void updateDirtyRegion(const QRegion &);
+  void requestChangeSeqColour(int);
+  void setMapToolTip(const QString &);
+  void resetMapToolTip(const QString &);
 
 signals:
   void positionChanged(const QString &);
+  void seqColourChangeRequested(int);
 
 };
+
+/*class HapMapWidget : public Marble::MarbleWidget
+{
+  Q_OBJECT
+public:
+  HapMapWidget(QWidget *parent = 0) : Marble::MarbleWidget(parent) {};
+protected:
+  virtual void contextMenuEvent(QContextMenuEvent *);
+};*/
+
 
 #endif /* MAPVIEW_H_ */
