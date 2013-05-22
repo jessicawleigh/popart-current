@@ -64,7 +64,7 @@ void ParserTools::tokenise(vector<string>& tokens, const string & str, const str
   //vector<string> *tokens = new vector<string>;//(INITSIZE);
   //int tokcount = 0;
 
-  size_t tokstart;
+  size_t tokstart = 0;
   if (mergeDelims)
     tokstart = str.find_first_not_of(delim);
   size_t tokend;
@@ -73,15 +73,20 @@ void ParserTools::tokenise(vector<string>& tokens, const string & str, const str
   {
     tokend = str.find_first_of(delim, tokstart);
     if (tokend == string::npos)
+    {
       tokens.push_back(str.substr(tokstart));
+      tokstart = string::npos;
+    }
 
     else
+    {
       tokens.push_back(str.substr(tokstart, tokend - tokstart));
-
-    if (mergeDelims)
-      tokstart = str.find_first_not_of(delim, tokend);
-    else
-      tokstart = tokend;
+      
+      if (mergeDelims)
+        tokstart = str.find_first_not_of(delim, tokend);
+      else
+        tokstart = tokend + 1;
+    }
   }
 
   //return tokens;

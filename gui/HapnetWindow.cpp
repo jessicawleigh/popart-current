@@ -55,6 +55,7 @@ using namespace std;
 #include "MedJoinNet.h"
 #include "ParsimonyNet.h"
 #include "IntNJ.h"
+#include "TableParser.h"
 #include "TCS.h"
 #include "TightSpanWalker.h"
 #include "NetworkError.h"
@@ -1030,7 +1031,35 @@ void HapnetWindow::importAlignment()
 
 void HapnetWindow::importTraits()
 {
-  qDebug() << "import traits here";
+  QString filename = QFileDialog::getOpenFileName(this, "Open alignment file", tr("."), "Table files (*.csv *.txt);;All Files(*)");
+  
+  if (filename != "")
+  {  
+    const char *cstr = filename.toLatin1().constData();
+
+    // need a std::ifstream to deal with Sequence input
+    ifstream tabfile(cstr);
+    
+    TableParser tp;
+    
+    tp.readTable(tabfile);
+    
+    const vector<vector<string> > & data = tp.data();
+    
+    for (unsigned i = 0; i < data.size(); i++)
+    {
+      for (unsigned j = 0; j < data.at(i).size(); j++)
+        cout << data.at(i).at(j) << " ";
+      cout << "\n";
+    }
+    
+    tabfile.close();
+  }
+  
+  else 
+  {
+    statusBar()->showMessage(tr("No file selected"));
+  }
 }
 
 void HapnetWindow::importGeoTags()

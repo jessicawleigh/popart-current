@@ -8,7 +8,7 @@
 #include "TableParser.h"
 #include "ParserTools.h"
 
-#include <cmath>
+#include <sstream>
 using namespace std;
 
 TableParser::TableParser(char delim, bool mergeDelims, bool hasHeader, char eolChar)
@@ -119,7 +119,13 @@ double TableParser::dataDouble(unsigned row, unsigned col) const
   if (row >= _nrow || col >= _ncol)  throw SeqParseError("Index out of range.");
 
   if (_dataTypes.at(col) != 'f')  throw SeqParseError("Value is not a double.");
-  return atof(_rows.at(row).at(col).data());
+
+  istringstream iss(_rows.at(row).at(col).data());
+  double dval;
+  
+  iss >> dval;
+
+  return dval;
 }
 
 int TableParser::dataInt(unsigned row, unsigned col) const
@@ -127,7 +133,12 @@ int TableParser::dataInt(unsigned row, unsigned col) const
   if (row >= _nrow || col >= _ncol)  throw SeqParseError("Index out of range.");
 
   if (_dataTypes.at(col) != 'd')  throw SeqParseError("Value is not an integer.");
-  return atoi(_rows.at(row).at(col).data());
+ 
+  istringstream iss(_rows.at(row).at(col).data());
+  int ival;
+  
+  iss >> ival;
+  return ival;
 }
 
 
