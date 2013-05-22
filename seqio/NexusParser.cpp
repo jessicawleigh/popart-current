@@ -10,6 +10,7 @@ using namespace std;
 
 #include "NexusParser.h"
 #include "SeqParseError.h"
+#include "ParserTools.h"
 
 int NexusParser::_seqidx = -1;
 
@@ -144,7 +145,7 @@ Sequence & NexusParser::getSeq(istream &input, Sequence &sequence)
 
       if (! _firstLineRead)
       {
-        size_t headerstart = caselessfind("#nexus", line);
+        size_t headerstart = ParserTools::caselessfind("#nexus", line);
         if (headerstart == string::npos)  throw SeqParseError("No Nexus header!");
 
         else  _firstLineRead = true;
@@ -158,19 +159,19 @@ Sequence & NexusParser::getSeq(istream &input, Sequence &sequence)
           commentstart = line.find('[');
         } while (commentstart != string::npos);
 
-        strip(line);
+        ParserTools::strip(line);
 
         if (! line.empty() && ! _inComment)
         {
           if (_currentKeyWord == NoKwd)
           {
             wordlist.clear();
-            tokenise(wordlist, line);
+            ParserTools::tokenise(wordlist, line);
             worditer = wordlist.begin();
             if (worditer == wordlist.end())
               throw SeqParseError("Empty wordlist, but not empty line. This shouldn't happen.");
 
-            lower(word = *worditer);
+            ParserTools::lower(word = *worditer);
             if (word.at(word.length() - 1) == ';')  word.erase(word.length() - 1);
             kwdResult = _kwdMap.find(word);
             if (kwdResult == _kwdMap.end())
@@ -309,9 +310,9 @@ void NexusParser::parseLine(string line, Sequence &sequence)
   {
     case Begin:
     {
-      lower(line);
+      ParserTools::lower(line);
       wordlist.clear();
-      tokenise(wordlist, line);
+      ParserTools::tokenise(wordlist, line);
       worditer = wordlist.begin() + 1;
 
       if (worditer == wordlist.end()) 
@@ -347,7 +348,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       else if (_currentBlock == Taxa || _currentBlock == Characters ||
           _currentBlock == Data || _currentBlock == Unaligned ||_currentBlock == Traits) //|| _currentBlock == Distances)
       {
-        lower(line);
+        ParserTools::lower(line);
         //fixEquals(line);
 
         if (line.at(line.length() - 1) == ';')  line.erase(line.length() - 1);
@@ -356,7 +357,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         istringstream iss;
         size_t eqpos;
         wordlist.clear(); 
-        tokenise(wordlist, line);
+        ParserTools::tokenise(wordlist, line);
         worditer = wordlist.begin();
         if (*worditer == "dimensions")  worditer++;
 
@@ -449,7 +450,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       else if (_currentBlock == Characters || _currentBlock == Data ||
                _currentBlock == Unaligned || _currentBlock == Traits) // _currentBlock == Distances)
       {
-        lower(line);
+        ParserTools::lower(line);
         //fixEquals(line);
 
         if (line.at(line.length() - 1) == ';')  line.erase(line.length() - 1);
@@ -460,7 +461,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         size_t eqpos, quotepos;
         char quotechar = '\0';
         wordlist.clear();
-        tokenise(wordlist, line);
+        ParserTools::tokenise(wordlist, line);
         worditer = wordlist.begin();
         if (*worditer == "format")  worditer++;
 
@@ -633,7 +634,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       if (_currentBlock == Other)  return;
       else if (_currentBlock == Traits)
       {
-        if (caselessfind("matrix", line) == string::npos)
+        if (ParserTools::caselessfind("matrix", line) == string::npos)
         {
           if (line.at(line.length() - 1) == ';')
             line.erase(line.length() - 1);
@@ -653,11 +654,11 @@ void NexusParser::parseLine(string line, Sequence &sequence)
                 throw SeqParseError("Quoted taxon name has no end quote!");
 
               seqname = line.substr(quotestart + 1, quoteend - quotestart - 1);
-              //replaceChars(seqname, ' ', '_');
-              strip(seqname);
+              //ParserTools::replaceChars(seqname, ' ', '_');
+              ParserTools::strip(seqname);
               traitstr = line.substr(quoteend + 1);
-              eraseChars(traitstr, ' ');
-              eraseChars(traitstr, '\t');
+              ParserTools::eraseChars(traitstr, ' ');
+              ParserTools::eraseChars(traitstr, '\t');
             }
             
             else
@@ -670,8 +671,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
 
               seqname = line.substr(0, nameend);
               traitstr = line.substr(nameend);
-              eraseChars(traitstr, ' ');
-              eraseChars(traitstr, '\t');
+              ParserTools::eraseChars(traitstr, ' ');
+              ParserTools::eraseChars(traitstr, '\t');
             }
             
             if (seqname.empty())  throw SeqParseError("Taxon name empty.");
@@ -686,14 +687,14 @@ void NexusParser::parseLine(string line, Sequence &sequence)
               throw SeqParseError("Too many rows in Traits block.");
             seqname = _taxonVect.at(_taxonCount++);
             traitstr = line;
-            eraseChars(traitstr, ' ');
-            eraseChars(traitstr, '\t');
+            ParserTools::eraseChars(traitstr, ' ');
+            ParserTools::eraseChars(traitstr, '\t');
           }
           
           int counter = 0;
           wordlist.clear();
           string sep(1, _traitSep);
-          tokenise(wordlist, traitstr, sep);
+          ParserTools::tokenise(wordlist, traitstr, sep);
           worditer = wordlist.begin();
           int nsamples;
           istringstream iss;
@@ -727,7 +728,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       else if (_currentBlock == Characters || _currentBlock == Data ||
                _currentBlock == Unaligned)
       {
-        if (caselessfind("matrix", line) == string::npos)
+        if (ParserTools::caselessfind("matrix", line) == string::npos)
         {
           if (line.at(line.length() - 1) == ';')  line.erase(line.length() - 1);
 
@@ -742,8 +743,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
               throw SeqParseError("Quoted taxon name has no end quote!");
 
             string seqname = line.substr(quotestart + 1, quoteend - quotestart - 1);
-            //replaceChars(seqname, ' ', '_');
-            strip(seqname);
+            //ParserTools::replaceChars(seqname, ' ', '_');
+            ParserTools::strip(seqname);
             
             // if there's a TaxLabels block, and no newtaxa directive, check that this label matches
             // TODO count taxa that don't match to make sure they don't exceed newtaxa ntax
@@ -769,29 +770,29 @@ void NexusParser::parseLine(string line, Sequence &sequence)
               sequence.setName(seqname);
 
             string seq = line.substr(quoteend + 1);
-            eraseChars(seq, ' ');
-            eraseChars(seq, '\t');
+            ParserTools::eraseChars(seq, ' ');
+            ParserTools::eraseChars(seq, '\t');
 
             if (_gap != '-')
-              replaceChars(seq, _gap, '-');
+              ParserTools::replaceChars(seq, _gap, '-');
 
             if (charType() == DNAType && tolower(_missing) != 'n')
             {
-              replaceChars(seq, toupper(_missing), 'N');
-              replaceChars(seq, tolower(_missing), 'n');
+              ParserTools::replaceChars(seq, toupper(_missing), 'N');
+              ParserTools::replaceChars(seq, tolower(_missing), 'n');
             }
 
             else if (charType() == AAType && tolower(_missing) != 'x')
             {
-              replaceChars(seq, toupper(_missing), 'X');
-              replaceChars(seq, tolower(_missing), 'x');
+              ParserTools::replaceChars(seq, toupper(_missing), 'X');
+              ParserTools::replaceChars(seq, tolower(_missing), 'x');
             }
             
             else if (charType() == StandardType && _missing != '?')
             {
               // consider upper and lower case, in case missing is a letter
-              replaceChars(seq, toupper(_missing), '?');
-              replaceChars(seq, tolower(_missing), '?');
+              ParserTools::replaceChars(seq, toupper(_missing), '?');
+              ParserTools::replaceChars(seq, tolower(_missing), '?');
             }
 
             if ( !_interleave)
@@ -828,8 +829,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             {
               seqname = sequence.name();
               seq = line;
-              eraseChars(seq, ' ');
-              eraseChars(seq, '\t'); // probably shouldn't happen
+              ParserTools::eraseChars(seq, ' ');
+              ParserTools::eraseChars(seq, '\t'); // probably shouldn't happen
             }
             
             else
@@ -848,8 +849,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
                 seqname = line.substr(0, nameend);
                 //string 
                 seq = line.substr(nameend);
-                eraseChars(seq, ' ');
-                eraseChars(seq, '\t');
+                ParserTools::eraseChars(seq, ' ');
+                ParserTools::eraseChars(seq, '\t');
               }
 
               
@@ -876,24 +877,24 @@ void NexusParser::parseLine(string line, Sequence &sequence)
              } // end not _inSeq
 
             if (_gap != '-')
-              replaceChars(seq, _gap, '-');
+              ParserTools::replaceChars(seq, _gap, '-');
 
             if (charType() == DNAType && tolower(_missing) != 'n')
             {
-              replaceChars(seq, toupper(_missing), 'N');
-              replaceChars(seq, toupper(_missing), 'n');
+              ParserTools::replaceChars(seq, toupper(_missing), 'N');
+              ParserTools::replaceChars(seq, toupper(_missing), 'n');
             }
 
             else if (charType() == AAType && tolower(_missing) != 'x')
             {
-              replaceChars(seq, toupper(_missing), 'X');
-              replaceChars(seq, tolower(_missing), 'x');
+              ParserTools::replaceChars(seq, toupper(_missing), 'X');
+              ParserTools::replaceChars(seq, tolower(_missing), 'x');
             }
             
             else if (charType() == StandardType && _missing != '?')
             {
-              replaceChars(seq, toupper(_missing), '?');
-              replaceChars(seq, tolower(_missing), '?');              
+              ParserTools::replaceChars(seq, toupper(_missing), '?');
+              ParserTools::replaceChars(seq, tolower(_missing), '?');
             }
 
             if ( !_interleave)
@@ -936,13 +937,13 @@ void NexusParser::parseLine(string line, Sequence &sequence)
 
         _taxLabels = true;
         wordlist.clear();
-        tokenise(wordlist, line);
+        ParserTools::tokenise(wordlist, line);
         worditer = wordlist.begin();
 
         if (worditer == wordlist.end())
           throw SeqParseError("Empty word list, but line isn't empty!");
 
-        lower(word = (*worditer));
+        ParserTools::lower(word = (*worditer));
         if (word == "taxlabels")  worditer++;
 
         while (worditer != wordlist.end())
@@ -962,8 +963,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
                 throw SeqParseError("Quoted taxon name has no end quote!");
 
               taxname = word.substr(quotestart + 1, quoteend - quotestart - 1);
-              //replaceChars(seqname, ' ', '_');
-              strip(taxname);
+              //ParserTools::replaceChars(seqname, ' ', '_');
+              ParserTools::strip(taxname);
             }
             
             //_taxa.insert(word);
@@ -981,14 +982,14 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     case TraitLabels:
     {
       wordlist.clear();
-      tokenise(wordlist, line);
+      ParserTools::tokenise(wordlist, line);
 
       worditer = wordlist.begin();
 
       if (worditer == wordlist.end())
         throw SeqParseError("Empty word list, but line isn't empty!");
 
-      lower(word = (*worditer));
+      ParserTools::lower(word = (*worditer));
       if (word == "traitlabels")  worditer++;
 
       while (worditer != wordlist.end())
@@ -1011,7 +1012,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     {
       if (_currentBlock != Trees)  break;
       
-      size_t translatestart = caselessfind("translate", line);
+      size_t translatestart = ParserTools::caselessfind("translate", line);
       
       if (translatestart != string::npos)  
       {
@@ -1027,12 +1028,12 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       if (line.empty())  return;
       
       vector<string> pairlist;
-      tokenise(pairlist, line, ",");
+      ParserTools::tokenise(pairlist, line, ",");
       vector<string>::iterator pairiter = pairlist.begin();
       while (pairiter != pairlist.end())
       {
         wordlist.clear();
-        tokenise(wordlist, *pairiter);
+        ParserTools::tokenise(wordlist, *pairiter);
         
         if (wordlist.size() == 0 || wordlist.size() > 2)
           throw SeqParseError("Error parsing translate line.");
@@ -1077,7 +1078,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           throw SeqParseError("Last tree string didn't end and new tree string has begun!");
 
         line = line.substr(eqpos + 1);
-        strip(line);
+        ParserTools::strip(line);
         _treestr = new string(line); 
           
       }
@@ -1133,20 +1134,20 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       // TODO make this more error tolerant allowing line breaks mid-trait
       if (line.at(line.length() - 1) == ';')  line.erase(line.length() - 1);
 
-      size_t traitpos = caselessfind("trait", line);
+      size_t traitpos = ParserTools::caselessfind("trait", line);
       size_t eqpos = line.find('='); 
             
       
       if (traitpos == string::npos || eqpos == string::npos)  throw SeqParseError("Error parsing traits line.");
       
       string traitname = line.substr(traitpos + 5, eqpos - (traitpos + 6));
-      strip(traitname);
+      ParserTools::strip(traitname);
       
       Trait *trait = new Trait(traitname);
       
       string traitdef = line.substr(eqpos + 1);
       wordlist.clear();
-      tokenise(wordlist, traitdef, ",");
+      ParserTools::tokenise(wordlist, traitdef, ",");
       
       vector<string>::iterator worditer = wordlist.begin();
       

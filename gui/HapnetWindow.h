@@ -12,6 +12,7 @@
 #include <QProgressDialog>
 #include <QStackedWidget>
 #include <QUndoStack>
+#include <QTabWidget>
 #include <QThread>
 #include <QVariant>
 #include <QWidget>
@@ -77,6 +78,7 @@ private:
   AlignmentView *_alView;
   TraitModel *_tModel;
   TraitView *_tView;
+  QTabWidget *_dataWidget;
   QMenu *_networkMenu;
   QMenu *_viewMenu;
   QMenu *_statsMenu;

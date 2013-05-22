@@ -54,16 +54,6 @@ public:
   std::string getWarning();
   void setEOLChar(char c) { _eol = c; };
   char eolChar() const { return _eol; };
-
-
-  static std::string & strip(std::string &);
-  static void tokenise(std::vector<std::string> &, const std::string &, const std::string &  = " \t\n\r");
-  static bool caselessmatch(char, char);
-  static size_t caselessfind(const std::string &, const std::string &);
-  static std::string & replaceChars(std::string &, char, char);
-  static std::string & eraseChars(std::string &, char);
-  static std::string & lower(std::string &);
-  static std::string & upper(std::string &);
   
 protected:
   void warn(std::string msg) { _warnings.push(msg); };

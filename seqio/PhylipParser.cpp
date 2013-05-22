@@ -3,9 +3,12 @@
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
+#include <string>
+using namespace std;
 
 #include "PhylipParser.h"
 #include "SeqParseError.h"
+#include "ParserTools.h"
 
 
 PhylipSeqParser::PhylipSeqParser(PhylipVariant variant, int nseq, int nchar)
@@ -92,185 +95,201 @@ void PhylipSeqParser::resetParser()
   setCharType(DNAType);
   _seqsloaded = false;
   _headerwritten = false;
+  _seqvect.clear();
+}
+
+bool PhylipSeqParser::readSeqsVariant(istream &input, PhylipVariant var)
+{
+  int start = input.tellg();
+  unsigned seqcount = 0;
+
+  string line;
+  string strippedline;
+  string name;
+
+  switch(var)
+  {
+  case Relaxed:
+    while (input.good())
+    {
+      vector<string> wordlist;
+      getline(input, line, eolChar());
+      ParserTools::rstrip(strippedline = line);
+      if (strippedline.empty())
+        continue;
+      wordlist.clear();
+      ParserTools::tokenise(wordlist, line);
+      if (wordlist.size() != 2)
+      {
+        _seqvect.clear();
+        input.seekg(start);
+        input.clear();
+        return false;
+      }
+      ParserTools::strip(wordlist[0]);
+      ParserTools::strip(wordlist[1]);
+      if (wordlist[1].size() != nChar())
+      {
+        _seqvect.clear();
+        input.seekg(start);
+        input.clear();
+        return false;
+      }
+      _seqvect.push_back(Sequence(wordlist[0], wordlist[1]));
+    }
+    return true;
+    break;
+  case Interleaved:
+    while (input.good())
+    {
+      getline(input, line, eolChar());
+      ParserTools::rstrip(strippedline = line);
+      if (strippedline.empty())
+        continue;
+      if (seqcount < nSeq())
+      {
+        name = strippedline.substr(0, NAMELENGTH);
+        ParserTools::strip(name);
+        string seq = strippedline.substr(NAMELENGTH);
+        ParserTools::strip(seq);
+        ParserTools::eraseChars(seq, ' ');
+        if (seq.size() > nChar())
+        {
+          _seqvect.clear();
+          input.seekg(start);
+          input.clear();
+          return false;
+        }
+        _seqvect.push_back(Sequence(name, seq));
+      }
+
+      else
+      {
+        unsigned idx = seqcount % nSeq();
+        string seq = strippedline;
+        ParserTools::strip(seq);
+        ParserTools::eraseChars(seq, ' ');
+        _seqvect.at(idx) += seq;
+        if (_seqvect.at(idx).length() > nChar())
+        {
+          _seqvect.clear();
+          input.seekg(start);
+          input.clear();
+          return false;
+        }
+      }
+      seqcount++;
+    }
+
+    for (unsigned i = 0; i < _seqvect.size(); i++)
+      if (_seqvect.at(i).length() != nChar())
+      {
+        _seqvect.clear();
+        input.seekg(start);
+        input.clear();
+        return false;
+      }
+
+    return true;
+    break;
+
+  case Sequential:
+    while (input.good())
+    {
+      getline(input, line, eolChar());
+      ParserTools::rstrip(strippedline = line);
+      if (strippedline.empty())
+        continue;
+
+      if (name.empty())
+      {
+        name = strippedline.substr(0, NAMELENGTH);
+        ParserTools::strip(name);
+        string seq = strippedline.substr(NAMELENGTH);
+        ParserTools::strip(seq);
+        ParserTools::eraseChars(seq, ' ');
+        _seqvect.push_back(Sequence(name, seq));
+      }
+
+      else
+      {
+        string seq = strippedline;
+        ParserTools::strip(seq);
+        ParserTools::eraseChars(seq, ' ');
+       _seqvect.back() += seq;
+      }
+
+      if (_seqvect.back().length() > nChar())
+      {
+        _seqvect.clear();
+        input.seekg(start);
+        input.clear();
+        return false;
+      }
+
+      else if (_seqvect.back().length() == nChar())
+        name.clear();
+    }
+
+    if (_seqvect.back().length() != nChar())
+    {
+      _seqvect.clear();
+      input.seekg(start);
+      input.clear();
+      return false;
+    }
+
+    return true;
+    break;
+
+  default:
+    break;
+  }
+
+  _seqvect.clear();
+  input.seekg(start);
+  input.clear();
+  return false;
 }
 
 
 void PhylipSeqParser::readSeqs(istream &input)
 {
 
-  vector<string> wordlist; //*tokens;
   string header;
-  getline(input, header);
+  getline(input, header, eolChar());
   istringstream iss(header);
   int nseq, nchar;
   iss >> nseq;
   setNseq(nseq);
   iss >> nchar;
   setNchar(nchar);
-  streampos postheader = input.tellg();
   
   if (nSeq() < 0 || nChar() < 0)  
     throw SeqParseError("Error reading Phylip header.");
 
-  _seqvect = vector<Sequence>(nSeq());
-  string line;
-  string strippedline;
-  string name;
-  string seq;
-  int expCharsPerLine = -1;
-  const int NAMELENGTH = 10;
-  int linecount = 0;
-  bool startagain = false;
-  bool isNewSeq = true;
-  int seqcount = 0; // number of seqs read
-  
-  /* Identical loop conditions: if the inner loop finishes without 
-     explicitly moving back to the beginning of the file, it was read
-     in the correct format */
-  while (input.good())
-  {  
-    while (input.good())
-    {
-      getline(input, line);
-      strip(strippedline = line);
-      if (strippedline.length() == 0) continue;
-      switch(variant())
-      {
-        case Interleaved:
-          strip(name = line.substr(0, NAMELENGTH));
-          strip(seq = line.substr(NAMELENGTH));
-          if (expCharsPerLine < 0)  expCharsPerLine = seq.length();
-
-          if (linecount < nSeq())
-          {
-            if (strippedline.length() == expCharsPerLine || name.length() == 0)
-            {
-              setPhylipVariant(Sequential);
-              seqcount--;
-              if (seqcount < 0)  throw SeqParseError("Bad Phylip sequential format!");
-              _seqvect[seqcount] += strippedline;
-              linecount++;
-              if (_seqvect[seqcount].length() > nChar())  
-                throw SeqParseError("Bad Phylip sequential format!");
-              else if (_seqvect[seqcount].length() == nChar()) 
-              {
-                seqcount++;
-                isNewSeq = true;
-              }
-            }
-          
-            else if (seq.length() != expCharsPerLine)
-            {
-              setPhylipVariant(Relaxed);
-              startagain = true;
-            }
-          
-            else
-            {
-              _seqvect[linecount] = Sequence(name, seq);
-              seqcount++;
-              linecount++;
-            }
-          }
-        
-          else
-          {
-            _seqvect[linecount % nSeq()] += seq;
-            linecount++;
-          }
-          
-          break;
-
-        case Sequential:
-          if (isNewSeq)
-          {
-            strip(name = line.substr(0, NAMELENGTH));
-            strip(seq = line.substr(NAMELENGTH));
-            if (name.length() == 0 && linecount >= nSeq())
-              throw SeqParseError("Bad format: perhaps Phylip interleaved?");
-            else if (name.length() == 0 || seq.length() == 0)  
-              throw SeqParseError("Bad Phylip sequential format!");
-            else
-              _seqvect[seqcount] = Sequence(name, seq);
-            isNewSeq = false;
-          }
-        
-          else
-          {
-            strip(seq = line);
-            _seqvect[seqcount] += (seq);
-          }
-        
-          if (_seqvect[seqcount].length() > nChar())  
-          throw SeqParseError("Bad Phylip sequential format!");
-          else if (_seqvect[seqcount].length() == nChar())  
-          {
-            isNewSeq = true;
-            seqcount++;
-          }
-          linecount++;
-          break;
-        
-        case Relaxed:
-          //tokens =
-          wordlist.clear();
-          tokenise(wordlist, line);
-          if (wordlist.size() > 0)
-          {
-            if (wordlist.size() != 2)  throw SeqParseError("Too many tokens for Phylip relaxed format");
-            name = wordlist.at(0);
-            seq = wordlist.at(1);
-      
-            if (name.length() == 0 || seq.length() != nChar())
-              throw SeqParseError("Error reading sequence: expected relaxed Phylip format");
-            _seqvect[seqcount++] = Sequence(name, seq);
-          }
-      }
-    
-      if (startagain)
-      {
-        linecount = 0;
-        seqcount = 0;
-        _seqvect = vector<Sequence>(nSeq());
-        input.seekg(postheader);
-        break;
-      }
-    
-      if (seqcount > nSeq())  throw SeqParseError("Bad Phylip format!");
-    }
-    
-    /* a problem has already been flagged, no need to look for more,
-       but don't want to carry startagain flag into next attempt */
-    if (startagain)  startagain = false;
-    
-    else
-    {
-      for (int i = 0; i < seqcount; i++)
-      {
-        if (_seqvect[i].length() != nChar())
-        {
-          if (variant() == Relaxed)
-            throw SeqParseError("Bad Phylip relaxed format!");
-          else
-          {
-            setPhylipVariant(Relaxed);
-            linecount = 0;
-            seqcount = 0;
-            _seqvect = vector<Sequence>(nChar());
-            input.seekg(postheader);
-          }
-        }
-      }
-    }
+  if (variant() != Unknown)
+  {
+    if (! readSeqsVariant(input, variant()))
+      throw SeqParseError("Error reading specified Phylip variant.");
   }
   
-  
-  if (seqcount != nSeq())  
-    throw SeqParseError("Bad Phylip header: wrong number of sequences");
-  
-  /* this is probably sequential format, one seq per line */
-  if (variant() == Interleaved && seqcount == linecount)
-    setPhylipVariant(Sequential);
+  else
+  {
+    if (readSeqsVariant(input, Relaxed))
+      setPhylipVariant(Relaxed);
+
+    else if (readSeqsVariant(input, Interleaved))
+      setPhylipVariant(Interleaved);
+
+    else if (readSeqsVariant(input, Sequential))
+      setPhylipVariant(Sequential);
+
+    else  throw SeqParseError("Unable to determine Phylip variant.");
+  }
+
+  if (_seqvect.size() != nSeq())
+    throw SeqParseError("Wrong number of sequences.");
     
   _seqsloaded = true;
 }

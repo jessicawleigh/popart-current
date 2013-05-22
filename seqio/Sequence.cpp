@@ -11,6 +11,7 @@ using namespace std;
 #include "SequenceError.h"
 #include "NexusParser.h"
 #include "PhylipParser.h"
+#include "ParserTools.h"
 
 SeqParser* Sequence::_parser = 0;
 
@@ -200,6 +201,7 @@ void Sequence::setParser(istream &input)
 {
   if (input.eof())  throw SequenceError("Cannot guess sequence format from an empty file!");
   char c = input.peek();
+  char eol = ParserTools::getEOLchar(input);
   
   /*if (c == '>')  setParser(new FastaSeqParser());
 
@@ -208,12 +210,13 @@ void Sequence::setParser(istream &input)
   {
     string line;
     getline(input, line);
-    size_t index = SeqParser::caselessfind("nexus", line);
+    size_t index = ParserTools::caselessfind("nexus", line);
     if (index != string::npos)
     {
       setParser(new NexusParser());
-      if (line.at(line.length() - 1) == '\r')
-        parser()->setEOLChar('\r');
+      parser()->setEOLChar(eol);
+      //if (line.at(line.length() - 1) == '\r')
+      //  parser()->setEOLChar('\r');
     }
 
     /*else if ((index = SeqParser::caselessfind("stockholm", line)) != string::npos)
@@ -232,7 +235,11 @@ void Sequence::setParser(istream &input)
     input >> nseq >> nchar;
     input.seekg(ios_base::beg);
     if (nseq > 0 && nchar > 0)
+    {
       setParser(new PhylipSeqParser());
+      parser()->setEOLChar(eol);
+    }
+
     else
     {
       /*cerr << "Error, unable to guess sequence type!" << endl;

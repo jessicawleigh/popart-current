@@ -26,7 +26,6 @@
 #include <QStatusBar>
 #include <QStringList>
 #include <QStyle>
-#include <QTabWidget>
 #include <QTextStream>
 #include <QTime>
 #include <QToolBar>
@@ -132,14 +131,14 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _tView = new TraitView(this);
   _tView->setSelectionBehavior(QAbstractItemView::SelectRows);
   _tView->setSelectionMode(QAbstractItemView::ContiguousSelection);
-  QTabWidget *dataWidget = new QTabWidget(this);
-  dataWidget->addTab(_tView, "Traits"); 
-  dataWidget->addTab(_alView, "Alignment");
+  _dataWidget = new QTabWidget(this);
+  _dataWidget->addTab(_tView, "Traits");
+  _dataWidget->addTab(_alView, "Alignment");
 
   QDockWidget *dockWidget = new QDockWidget("Data Viewer", this);
   dockWidget->setFeatures(QDockWidget::NoDockWidgetFeatures|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable);
   dockWidget->setAllowedAreas(Qt::BottomDockWidgetArea|Qt::LeftDockWidgetArea);
-  dockWidget->setWidget(dataWidget);//new QLabel("Placeholder", this));
+  dockWidget->setWidget(_dataWidget);//new QLabel("Placeholder", this));
   addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
   
   
@@ -1021,6 +1020,8 @@ void HapnetWindow::importAlignment()
         //_alView->resizeColumnsToContents();
       }
     }
+
+    _dataWidget->setCurrentWidget(_alView);
   }
 
   else
