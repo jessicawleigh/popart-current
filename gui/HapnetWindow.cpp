@@ -1,7 +1,10 @@
+#include <QAbstractButton>
 #include <QAbstractItemView>
 #include <QAbstractItemModel>
 #include <QApplication>
+#include <QButtonGroup>
 #include <QChar>
+#include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
 #include <QDateTime>
@@ -20,12 +23,14 @@
 #include <QMessageBox>
 #include <QPixmap>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QSizePolicy>
 #include <QSlider>
 #include <QSpinBox>
 #include <QStatusBar>
 #include <QStringList>
 #include <QStyle>
+#include <QTableWidgetItem>
 #include <QTextStream>
 #include <QTime>
 #include <QToolBar>
@@ -55,7 +60,6 @@ using namespace std;
 #include "MedJoinNet.h"
 #include "ParsimonyNet.h"
 #include "IntNJ.h"
-#include "TableParser.h"
 #include "TCS.h"
 #include "TightSpanWalker.h"
 #include "NetworkError.h"
@@ -1031,29 +1035,54 @@ void HapnetWindow::importAlignment()
 
 void HapnetWindow::importTraits()
 {
-  QString filename = QFileDialog::getOpenFileName(this, "Open alignment file", tr("."), "Table files (*.csv *.txt);;All Files(*)");
+  QString filename = QFileDialog::getOpenFileName(this, "Open traits table", tr("."), "Table files (*.csv *.txt);;All Files(*)");
   
   if (filename != "")
   {  
-    const char *cstr = filename.toLatin1().constData();
-
-    // need a std::ifstream to deal with Sequence input
-    ifstream tabfile(cstr);
-    
-    TableParser tp;
-    
-    tp.readTable(tabfile);
-    
-    const vector<vector<string> > & data = tp.data();
-    
-    for (unsigned i = 0; i < data.size(); i++)
+    _tp = new TableParser();
+    bool success = loadTableFromFile(filename);
+    if (success)
     {
-      for (unsigned j = 0; j < data.at(i).size(); j++)
-        cout << data.at(i).at(j) << " ";
-      cout << "\n";
+      if (! _traitVect.empty())
+      {
+        for (unsigned i = 0; i < _traitVect.size(); i++)
+          delete _traitVect.at(i);
+      }
+
+      for (unsigned i = 0; i < _tp->columns(); i++)
+        _traitVect.push_back(new Trait(_tp->headerData().at(i)));
+
+      for (unsigned i = 0; i < _tp->rows(); i++)
+      {
+        for (unsigned j = 1; j < _tp->columns(); j++)
+        {
+          // TODO wrap this in a try/catch
+          // if alignment is imported after, warn that traits will need to be re-imported
+          // remove whitespace from entries after reading!!!
+
+          // not that header indices will normally be one off from entry indices, because column 0 should be a "row header"
+          _traitVect.at(j - 1)->addSeq(_tp->data(i, 0), (unsigned)(_tp->dataInt(i, j)));
+        }
+      }
+
+      QAbstractItemModel *tmpModel = _tView->model();
+      _tModel = new TraitModel(_traitVect);
+      _tView->setModel(_tModel);
+      delete tmpModel;
+
+      if (_view == Map)
+      {
+        _mapView->addHapLocations(_traitVect);
+        _mapTraitsSet = true;
+      }
+
+      else
+        _mapTraitsSet = false;
+
     }
-    
-    tabfile.close();
+
+    delete _tp;
+
   }
   
   else 
@@ -1065,6 +1094,229 @@ void HapnetWindow::importTraits()
 void HapnetWindow::importGeoTags()
 {
   qDebug() << "import geotags here";
+}
+
+bool HapnetWindow::loadTableFromFile(const QString &filename)
+{
+  const char *cstr = filename.toLatin1().constData();
+
+  ifstream tabfile(cstr);
+  _tabfile = &tabfile;
+
+  //_tp = new TableParser();
+
+  _tp->setHasHeader(true);
+  _tp->setHasVHeader(true);
+  _tp->setMergeDelims(true);
+  // Do this in another function so that we can connect table interaction checkboxes to parser
+
+
+  QDialog dlg(this);
+  QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
+
+  QHBoxLayout *hlayout = new QHBoxLayout;
+
+  QButtonGroup *radioButtons = new QButtonGroup(this);
+  int idCount = 0;
+
+  QVBoxLayout *vlayout2 = new QVBoxLayout;
+  hlayout->addWidget(new QLabel("Delimiter:", &dlg));
+
+  QAbstractButton *button = new QRadioButton("Comma", &dlg);
+  button->setChecked(true);
+  radioButtons->addButton(button, idCount++);
+  vlayout2->addWidget(button);
+
+  button = new QRadioButton("Space", &dlg);
+  radioButtons->addButton(button, idCount++);
+  vlayout2->addWidget(button);
+
+  button = new QRadioButton("Tab", &dlg);
+  radioButtons->addButton(button, idCount++);
+  vlayout2->addWidget(button);
+
+  connect(radioButtons, SIGNAL(buttonClicked(int)), this, SLOT(changeDelimiter(int)));
+  hlayout->addLayout(vlayout2);
+
+  vlayout2 = new QVBoxLayout;
+
+  button = new QCheckBox("Merge consecutive delimiters", &dlg);
+  button->setChecked(true);
+  connect(button, SIGNAL(toggled(bool)), this, SLOT(setMergeDelims(bool)));
+  vlayout2->addWidget(button);
+
+  button = new QCheckBox("Table has header row", &dlg);
+  button->setChecked(true);
+  connect(button, SIGNAL(toggled(bool)), this, SLOT(setHasHeader(bool)));
+  //button->setEnabled(false);
+  vlayout2->addWidget(button);
+
+  /*button = new QCheckBox("Table has header column", &dlg);
+  button->setChecked(true);
+  connect(button, SIGNAL(toggled(bool)), this, SLOT(setHasVHeader(bool)));
+  button->setEnabled(false);
+  vlayout2->addWidget(button);*/
+
+  hlayout->addLayout(vlayout2);
+  vlayout->addLayout(hlayout);
+
+  // TODO check for vertical header
+  // Use a delegate to colour columns by data type?
+  // Allow user to set data type?
+  // Fix column widths (too wide by default)
+  // Add checkboxes to change delimiters, etc.
+  _table = new QTableWidget(&dlg);
+  updateTable();
+  //table->setRowCount(tp.rows());
+  //table->setColumnCount(tp.columns());
+
+  vlayout->addWidget(_table);
+
+
+  hlayout = new QHBoxLayout;
+
+
+  hlayout->addStretch(1);
+  QPushButton *okButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogOkButton), "OK", &dlg);
+  connect(okButton, SIGNAL(clicked()), &dlg, SLOT(accept()));
+  hlayout->addWidget(okButton, 0, Qt::AlignRight);
+  QPushButton *cancelButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogCancelButton), "Cancel", &dlg);
+  connect(cancelButton, SIGNAL(clicked()), &dlg, SLOT(reject()));
+  hlayout->addWidget(cancelButton, 0, Qt::AlignRight);
+
+  vlayout->addLayout(hlayout);
+
+  int result = dlg.exec();
+
+
+ bool cancelled = false;
+ if (result == QDialog::Rejected)
+   cancelled = true;
+
+  // return parse result
+
+
+  /*tp.readTable(tabfile);
+
+  const vector<vector<string> > & data = tp.data();
+
+  for (unsigned i = 0; i < data.size(); i++)
+  {
+    for (unsigned j = 0; j < data.at(i).size(); j++)
+      cout << data.at(i).at(j) << " ";
+    cout << "\n";
+  }*/
+
+  tabfile.close();
+
+  delete _table;
+
+  return ! cancelled;
+}
+
+void HapnetWindow::updateTable()
+{
+  _tabfile->seekg(ios::beg);
+  _tabfile->clear();
+  _table->clear();
+  _tp->readTable(*_tabfile);
+
+  const vector<vector<string> > & data = _tp->data();
+
+  QStringList headerList;
+
+  //qDebug() << "header list:" << headerList;
+
+  _table->setRowCount(_tp->rows());
+  _table->setColumnCount(_tp->columns());
+
+  if (_tp->hasHeader())
+  {
+    const vector<string> & header = _tp->headerData();
+    for (unsigned i = 0; i < header.size(); i++)
+      headerList << QString::fromStdString(header.at(i));
+    _table->setHorizontalHeaderLabels(headerList);
+  }
+
+  if (_tp->hasVHeader())
+  {
+    headerList.clear();
+    const vector<string> & header = _tp->vHeaderData();
+    for (unsigned i = 0; i < header.size(); i++)
+      headerList << QString::fromStdString(header.at(i));
+    _table->setVerticalHeaderLabels(headerList);
+  }
+
+  for (unsigned i = 0; i < data.size(); i++)
+  {
+    for (unsigned j = 0; j < data.at(i).size(); j++)
+    {
+      /*if (hasVheader)
+      {
+        if (j == 0)
+          _table->setVerticalHeaderItem(i, new QTableWidgetItem(QString::fromStdString(data.at(i).at(j))));
+        else
+        {
+          QTableWidgetItem *item = new QTableWidgetItem(QString::fromStdString(data.at(i).at(j)));
+          item->setFlags(Qt::NoItemFlags);
+          _table->setItem(i, j - 1, item);
+        }
+      }
+
+      else
+      {*/
+        QTableWidgetItem *item = new QTableWidgetItem(QString::fromStdString(data.at(i).at(j)));
+        item->setFlags(Qt::NoItemFlags);
+        _table->setItem(i, j, item);
+      //}
+    }
+  }
+
+  qDebug() << "table dimensions:" << _table->rowCount() << _table->columnCount();
+
+
+  _table->resizeColumnsToContents();
+
+
+}
+
+void HapnetWindow::changeDelimiter(int buttonIdx)
+{
+  switch(buttonIdx)
+  {
+    case 0:
+      _tp->setDelimChar(',');
+      break;
+    case 1:
+      _tp->setDelimChar(' ');
+      break;
+    case 2:
+      _tp->setDelimChar('\t');
+      break;
+    default:
+      qDebug() << "this shouldn't happen";
+      break;
+  }
+
+  updateTable();
+}
+
+void HapnetWindow::setMergeDelims(bool merge)
+{
+  _tp->setMergeDelims(merge);
+  updateTable();
+}
+
+void HapnetWindow::setHasHeader(bool hasHeader)
+{
+  _tp->setHasHeader(hasHeader);
+  updateTable();
+}
+
+void HapnetWindow::setHasVHeader(bool hasVHeader)
+{
+  _tp->setHasVHeader(hasVHeader);
+  updateTable();
 }
 
 void HapnetWindow::exportNetwork()

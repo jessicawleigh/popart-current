@@ -12,11 +12,13 @@
 #include <QProgressDialog>
 #include <QStackedWidget>
 #include <QUndoStack>
+#include <QTableWidget>
 #include <QTabWidget>
 #include <QThread>
 #include <QVariant>
 #include <QWidget>
 
+#include <istream>
 #include <vector>
 
 #include "AlignmentView.h"
@@ -25,6 +27,7 @@
 #include "NetworkView.h"
 #include "NetworkModel.h"
 #include "Statistics.h"
+#include "TableParser.h"
 #include "TraitView.h"
 #include "TraitModel.h"
 #include "HapNet.h"
@@ -52,6 +55,8 @@ private:
   bool loadAlignmentFromFile(QString = QString());
   bool loadTreesFromParser(vector<ParsimonyTree *> &);
   bool loadTraitsFromParser();
+  bool loadTableFromFile(const QString &);
+  void updateTable();
   void inferNetwork(HapnetType, QVariant = QVariant());
   virtual void resizeEvent(QResizeEvent *);
   
@@ -82,6 +87,8 @@ private:
   QMenu *_networkMenu;
   QMenu *_viewMenu;
   QMenu *_statsMenu;
+  TableParser *_tp;
+  QTableWidget *_table;
   
   std::vector<Sequence*> _alignment;//*_alignment;
   std::vector<Sequence*> _goodSeqs;
@@ -91,6 +98,8 @@ private:
   std::vector<ParsimonyTree *> _treeVect;
   Statistics *_stats;
   
+  std::istream *_tabfile;
+
   QAction *_openAct;
   QAction *_closeAct;
   QAction *_importAlignAct;
@@ -152,6 +161,10 @@ private slots:
   void importAlignment();
   void importTraits();
   void importGeoTags();
+  void changeDelimiter(int);
+  void setMergeDelims(bool);
+  void setHasHeader(bool);
+  void setHasVHeader(bool);
   void closeAlignment();
   void saveGraphics();
   void exportNetwork();

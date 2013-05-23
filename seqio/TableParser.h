@@ -27,11 +27,14 @@ public:
   void setMergeDelims(bool mergeDelims) { _mergeDelims = mergeDelims; };
   char mergeDelims() const { return _mergeDelims; };
   void setHasHeader(bool hasHeader) { _hasHeader = hasHeader; };
-  char hasHeader() const { return _hasHeader; };
+  bool hasHeader() const { return _hasHeader; };
+  void setHasVHeader(bool hasVHeader) { _hasVHeader = hasVHeader; };
+  bool hasVHeader() const { return _hasVHeader; };
+
   void setEOLChar(char c) { _eol = c; };
   char eolChar() const { return _eol; };
+  void setDataType(unsigned, char);
   char dataType(unsigned) const;
-  char setDataType(unsigned, char);
 
   unsigned rows() const { return _nrow; };
   unsigned columns() const { return _ncol; };
@@ -39,7 +42,9 @@ public:
   void readTable(std::istream &);
   const std::vector<std::vector<std::string> > & data() const { return _rows; };
   const std::vector<std::string> & headerData() const { return _headerData; };
+  const std::vector<std::string> & vHeaderData() const { return _vHeaderData; };
   const std::string & headerData(unsigned) const;
+  const std::string & vHeaderData(unsigned) const;
   const std::string & data(unsigned, unsigned) const;
   double dataDouble(unsigned, unsigned) const;
   int dataInt(unsigned, unsigned) const;
@@ -57,10 +62,12 @@ private:
   char _delim;
   bool _mergeDelims;
   bool _hasHeader;
+  bool _hasVHeader;
   char _eol;
 
   std::vector<std::vector<std::string> > _rows;
   std::vector<char> _dataTypes;
+  std::vector<std::string> _vHeaderData;
   std::vector<std::string> _headerData;
 
   unsigned _ncol;
