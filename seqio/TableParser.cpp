@@ -54,17 +54,21 @@ void TableParser::readTable(istream &input)
   while (input.good())
   {
     getline(input, line, eol);
-    if (eol == '\n' && line.at(line.size() - 1) == '\r')
+ 
+    if (! line.empty() && eol == '\n' && line.at(line.size() - 1) == '\r')
       line.erase(line.size() - 1);
-
+    if (line.empty())
+      continue;
+   
     if (_headerData.empty() && _hasHeader)
     {
       ParserTools::tokenise(_headerData, line, delimstr, _mergeDelims);
 
-      if (_hasVHeader)
+      /*if (_hasVHeader)
         _ncol = _headerData.size() - 1;
       else
-        _ncol = _headerData.size();
+        _ncol = _headerData.size();*/
+      _ncol = _headerData.size();
 
       _dataTypes.assign(_ncol, 's');
     }
@@ -72,7 +76,7 @@ void TableParser::readTable(istream &input)
     else
     {
       ParserTools::tokenise(wordlist, line, delimstr, _mergeDelims);
-      if ((_hasVHeader && wordlist.size() > _ncol - 1) || wordlist.size() > _ncol)
+      if ((_hasVHeader && wordlist.size() > _ncol + 1) || (! _hasVHeader && wordlist.size() > _ncol))
       {
         for (unsigned i = 0; i <_rows.size(); i++)
         {
@@ -89,6 +93,11 @@ void TableParser::readTable(istream &input)
 
       if (_hasVHeader)
       {
+        if (wordlist.size() < _ncol + 1)
+        {
+          for (unsigned i = wordlist.size(); i < _ncol + 1; i++)
+            wordlist.push_back("");
+        }
         _vHeaderData.push_back(wordlist.at(0));
         vector<string>::iterator vit = wordlist.begin();
         vit++;
@@ -96,7 +105,16 @@ void TableParser::readTable(istream &input)
       }
 
       else
+      {
+        if (wordlist.size() < _ncol)
+        {
+          for (unsigned i = wordlist.size(); i < _ncol; i++)
+            wordlist.push_back("");
+        }
+
         _rows.push_back(wordlist);
+      }
+      
       wordlist.clear();
     }
   }
@@ -113,7 +131,7 @@ char TableParser::dataType(unsigned col) const
 
 void TableParser::setDataType(unsigned col, char type)
 {
-  if (type != 's' && type != 'i' && type != 'f')  throw SeqParseError("Invalid type.");
+  if (type != 's' && type != 'd' && type != 'f')  throw SeqParseError("Invalid type.");
   if (col >= _ncol)  throw SeqParseError("Index out of range.");
 
   _dataTypes.at(col) = type;

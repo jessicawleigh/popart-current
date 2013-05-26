@@ -43,6 +43,7 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <set>
 #include <sstream>
 using namespace std;
 
@@ -51,7 +52,7 @@ using namespace std;
 #include "ColourDialog.h"
 #include "HapAppError.h"
 #include "MoveCommand.h"
-
+#include "GeoTrait.h"
 #include "XPM.h"
 #include "Edge.h"
 #include "EdgeItem.h"
@@ -180,7 +181,7 @@ HapnetWindow::~HapnetWindow()
     //_netThread->wait();
   }*/
   
-  
+  closeTraits();
   closeAlignment();
 }
 
@@ -196,6 +197,7 @@ void HapnetWindow::setupActions()
   _closeAct->setShortcut(QKeySequence::Close);
   _closeAct->setStatusTip(tr("Close current alignment"));
   connect(_closeAct, SIGNAL(triggered()), this, SLOT(closeAlignment()));
+  connect(_closeAct, SIGNAL(triggered()), this, SLOT(closeTraits()));
 
   _importAlignAct = new QAction(tr("&Alignment"), this);
   _importAlignAct->setStatusTip(tr("Import Phylip-format alignment"));
@@ -499,6 +501,36 @@ void HapnetWindow::setupTools()
   toolbar->addAction(_barchartAct);
 }
 
+void HapnetWindow::showErrorDlg(const QString &text, const QString &detailedText, const QString &informativeText)
+{
+  QMessageBox errorBox;
+  errorBox.setIcon(QMessageBox::Critical);
+  errorBox.setText(text);
+  if (! detailedText.isEmpty())
+    errorBox.setDetailedText(detailedText);
+  if (! informativeText.isEmpty())
+    errorBox.setInformativeText(informativeText);
+  errorBox.setStandardButtons(QMessageBox::Ok);
+  errorBox.setDefaultButton(QMessageBox::Ok);
+  errorBox.exec();
+
+}
+
+void HapnetWindow::showWarnDlg(const QString &text, const QString &detailedText, const QString &informativeText)
+{
+  QMessageBox warnBox;
+  warnBox.setIcon(QMessageBox::Warning);
+  warnBox.setText(text);
+  if (! detailedText.isEmpty())
+    warnBox.setDetailedText(detailedText);
+  if (! informativeText.isEmpty())
+    warnBox.setInformativeText(informativeText);
+  warnBox.setStandardButtons(QMessageBox::Ok);
+  warnBox.setDefaultButton(QMessageBox::Ok);
+  warnBox.exec();
+
+}
+
 
 void HapnetWindow::openAlignment()
 {
@@ -510,8 +542,10 @@ void HapnetWindow::openAlignment()
   if (_filename != "")
   {  
     if (! _alignment.empty())
-
+    {
        closeAlignment();
+       closeTraits();
+    }
 
     // TODO check whether these functions can produce traits exceptions that aren't caught
     bool success = loadAlignmentFromFile();
@@ -648,10 +682,10 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
     //_progress->hide();
   }
     
-  catch (SeqParseError spe)
+  catch (SeqParseError &spe)
   {
     _progress->hide();
-    cerr << spe.what() << endl;
+    //cerr << spe.what() << endl;
     //_errorMessage.showMessage("Error parsing sequence data.");
     QMessageBox error;
     error.setIcon(QMessageBox::Critical);
@@ -661,7 +695,6 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
     error.setDefaultButton(QMessageBox::Ok);
     error.exec();
    
-    
     return false;
   }
 
@@ -944,11 +977,11 @@ void HapnetWindow::closeAlignment()
     delete tmpModel;
     _alModel = 0;
     
-    tmpModel = _tView->model();
+    /*tmpModel = _tView->model();
     //_tModel = new TraitModel(_traitVect);
     _tView->setModel(0);//_tModel);
     delete tmpModel;
-    _tModel = 0;
+    _tModel = 0;*/
 
     toggleAlignmentActions(false);
     
@@ -969,6 +1002,74 @@ void HapnetWindow::closeAlignment()
   
 }
 
+void HapnetWindow::closeTraits()
+{
+  if (! _traitVect.empty())
+  {
+    for (unsigned i = 0; i < _traitVect.size(); i++)
+      delete _traitVect.at(i);
+    _traitVect.clear();
+  }
+
+  QAbstractItemModel *tmpModel = _tView->model();
+    //_tModel = new TraitModel(_traitVect);
+    _tView->setModel(0);//_tModel);
+    delete tmpModel;
+    _tModel = 0;
+}
+
+void HapnetWindow::askAndCloseAlignment()
+{  
+  QDialog dlg(this);
+  
+  QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
+  
+  vlayout->addWidget(new QLabel("Clear alignment data?", this));
+
+  QHBoxLayout *hlayout = new QHBoxLayout;
+  
+  hlayout->addStretch(1);
+  QPushButton *yesButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogYesButton), "Yes", &dlg);
+  connect(yesButton, SIGNAL(clicked()), &dlg, SLOT(accept()));
+  hlayout->addWidget(yesButton, 0, Qt::AlignRight);
+  QPushButton *noButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogNoButton), "No", &dlg);
+  connect(noButton, SIGNAL(clicked()), &dlg, SLOT(reject()));
+  hlayout->addWidget(noButton, 0, Qt::AlignRight);
+  vlayout->addLayout(hlayout);
+
+  
+  int result = dlg.exec();
+  
+  if (result == QDialog::Accepted)
+    closeAlignment();
+}
+
+void HapnetWindow::askAndCloseTraits()
+{  
+  QDialog dlg(this);
+  
+  QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
+  
+  vlayout->addWidget(new QLabel("Clear traits data?", this));
+
+  QHBoxLayout *hlayout = new QHBoxLayout;
+  
+  hlayout->addStretch(1);
+  QPushButton *yesButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogYesButton), "Yes", &dlg);
+  connect(yesButton, SIGNAL(clicked()), &dlg, SLOT(accept()));
+  hlayout->addWidget(yesButton, 0, Qt::AlignRight);
+  QPushButton *noButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogNoButton), "No", &dlg);
+  connect(noButton, SIGNAL(clicked()), &dlg, SLOT(reject()));
+  hlayout->addWidget(noButton, 0, Qt::AlignRight);
+  vlayout->addLayout(hlayout);
+
+  
+  int result = dlg.exec();
+  
+  if (result == QDialog::Accepted)
+    closeTraits();
+}
+
 void HapnetWindow::importAlignment()
 {
   QString phylipname = QFileDialog::getOpenFileName(this, "Open alignment file", tr("."), "Phylip files (*.phy *.seq *.phylip);;All Files(*)");
@@ -977,6 +1078,9 @@ void HapnetWindow::importAlignment()
   {
     if (! _alignment.empty())
        closeAlignment();
+    
+    if (! _traitVect.empty())
+      askAndCloseTraits();
 
     bool success = loadAlignmentFromFile(phylipname);
 
@@ -1024,9 +1128,8 @@ void HapnetWindow::importAlignment()
         delete tmpModel;
         //_alView->resizeColumnsToContents();
       }
-    }
-
     _dataWidget->setCurrentWidget(_alView);
+    }
   }
 
   else
@@ -1036,34 +1139,91 @@ void HapnetWindow::importAlignment()
 void HapnetWindow::importTraits()
 {
   QString filename = QFileDialog::getOpenFileName(this, "Open traits table", tr("."), "Table files (*.csv *.txt);;All Files(*)");
-  
+    
   if (filename != "")
-  {  
+  {      
+    if (! _alignment.empty())
+      askAndCloseAlignment();
+    
+    if (! _traitVect.empty())
+      closeTraits();
+
     _tp = new TableParser();
     bool success = loadTableFromFile(filename);
     if (success)
-    {
-      if (! _traitVect.empty())
+    {    
+      bool warned = false;
+      set<string> seqnames;
+      set<string> alseqnames;
+      if (! _alignment.empty())
       {
-        for (unsigned i = 0; i < _traitVect.size(); i++)
-          delete _traitVect.at(i);
+        for (unsigned i = 0; i < _alignment.size(); i++)
+          alseqnames.insert(_alignment.at(i)->name());
       }
 
       for (unsigned i = 0; i < _tp->columns(); i++)
+      {
         _traitVect.push_back(new Trait(_tp->headerData().at(i)));
+        // set data type to integer for trait data
+        _tp->setDataType(i, 'd');
+      }
 
       for (unsigned i = 0; i < _tp->rows(); i++)
       {
-        for (unsigned j = 1; j < _tp->columns(); j++)
+        pair<set<string>::iterator,bool> result = seqnames.insert(_tp->vHeaderData(i));
+        if (! warned && ! alseqnames.empty())
         {
-          // TODO wrap this in a try/catch
-          // if alignment is imported after, warn that traits will need to be re-imported
-          // remove whitespace from entries after reading!!!
+           set<string>::iterator sit = alseqnames.find(*(result.first));
+           
+           if (sit == alseqnames.end())
+           {
+             QString text(tr("<b>Sequence %1 appears in traits file but not alignment</b>").arg(QString::fromStdString(*(result.first))));
+             QString infText("If traits file does not correspond to alignment, network inference will produce errors.");
+             showWarnDlg(text, QString(), infText);
+            
+             warned = true;
 
-          // not that header indices will normally be one off from entry indices, because column 0 should be a "row header"
-          _traitVect.at(j - 1)->addSeq(_tp->data(i, 0), (unsigned)(_tp->dataInt(i, j)));
+           }
+        }
+        
+        if (! result.second) // sequence name repeated in file
+        {
+          QString text(tr("<b>Sequence %1 appears more than once!</b>").arg(QString::fromStdString(*(result.first))));
+          QString detText("Duplicate sequence names should be merged into one line");
+          showErrorDlg(text, detText);
+          
+          closeTraits();
+          delete _tp;
+          
+          return;
+          
+        }
+        
+        for (unsigned j = 0; j < _tp->columns(); j++)
+        {
+          // TODO remove whitespace from entries after reading!!!
+          try
+          {
+            unsigned count = (unsigned)(_tp->dataInt(i, j));
+            if (count > 0)
+              _traitVect.at(j)->addSeq(*(result.first), count);
+          } 
+          
+          catch (SeqParseError &spe)
+          {
+            QString text("<b>Error importing traits</b>");
+            QString detText(spe.what());
+            showErrorDlg(text, detText);
+            
+            closeTraits();
+            delete _tp;
+            
+            return;
+          }
+
         }
       }
+      
 
       QAbstractItemModel *tmpModel = _tView->model();
       _tModel = new TraitModel(_traitVect);
@@ -1079,10 +1239,11 @@ void HapnetWindow::importTraits()
       else
         _mapTraitsSet = false;
 
+    _dataWidget->setCurrentWidget(_tView);
     }
 
     delete _tp;
-
+    
   }
   
   else 
@@ -1093,7 +1254,103 @@ void HapnetWindow::importTraits()
 
 void HapnetWindow::importGeoTags()
 {
-  qDebug() << "import geotags here";
+  QString filename = QFileDialog::getOpenFileName(this, "Open geotag table", tr("."), "Table files (*.csv *.txt);;All Files(*)");
+    
+  // TODO ask user for number, location of clusters?
+  if (filename != "")
+  {      
+    if (! _alignment.empty())
+      askAndCloseAlignment();
+    
+    if (! _traitVect.empty())
+      closeTraits();
+
+    _tp = new TableParser();
+    bool success = loadTableFromFile(filename);
+    
+    // check that sequence names match alignment
+    // note that sequences can appear more than once, at different locations
+    // TODO (also: check this when importing alignment)
+    // get lat,long pair for each sequence
+    // check for header: if longitude latitude or long lat, treat as backwards
+    // dump sequence names into a vector, coordinate pair into another
+    // or maybe a geoseq? sequence with coordinates?
+    // run kmeans, get a set of GeoTraits? This could even be a GeoTrait static method
+    // think about extending Trait to GeoTrait (cluster centroid, can be given a name)
+    if (success)
+    { 
+      cout << "columns: " << _tp->columns() << endl;
+      if (_tp->columns() == 3)
+        _tp->setDataType(2, 'd');
+
+      else if (_tp->columns() != 2)
+      {
+        QString text("<b>Wrong number of columns in geotags table</b>");
+        QString detText("Each entry in the geotags file should consist of a sequence name, latitude, longitude, and (optionally) count");
+        showErrorDlg(text, detText);
+        
+        delete _tp;
+        return;
+      }  
+      
+      vector<string> seqnames;
+      vector<pair<float,float> > coordinates;
+      vector<unsigned> seqcounts;
+     
+      set<string> alseqnames;
+      bool warned = false;
+      if (! _alignment.empty())
+      {
+        for (unsigned i = 0; i < _alignment.size(); i++)
+          alseqnames.insert(_alignment.at(i)->name());
+      }
+            
+      for (unsigned i = 0; i < _tp->rows(); i++)
+      {
+        string name = _tp->vHeaderData(i);
+        if (! warned && ! alseqnames.empty())
+        {
+           set<string>::iterator sit = alseqnames.find(name);
+           
+           if (sit == alseqnames.end())
+           {
+             QString text(tr("<b>Sequence %1 appears in traits file but not alignment</b>").arg(QString::fromStdString(name)));
+             QString infText("If traits file does not correspond to alignment, network inference will produce errors.");
+             showWarnDlg(text, QString(), infText);
+            
+             warned = true;
+           }
+        }
+        
+        seqnames.push_back(name);
+        const string & latStr = _tp->data(i,0);
+        const string & lonStr = _tp->data(i,1);
+        coordinates.push_back(GeoTrait::getCoordinate(latStr, lonStr));
+        
+        unsigned count = 1;
+        if (_tp->columns() == 3)
+          count = (unsigned)(_tp->dataInt(i, 2));
+        if (count == 0)
+          count = 1;
+        
+        seqcounts.push_back(count);
+          
+      }
+      vector<GeoTrait> geoTraits = GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts);
+      
+      // TODO prompt user for number of clusters
+      // use geoTraits to make actual traits
+      // add geo option to Traits block in Nexus
+      // create GeoTags block
+      // work on save network (and parsing)
+
+    }
+  }
+  
+  else 
+  {
+    statusBar()->showMessage(tr("No file selected"));
+  }
 }
 
 bool HapnetWindow::loadTableFromFile(const QString &filename)
@@ -1216,8 +1473,9 @@ bool HapnetWindow::loadTableFromFile(const QString &filename)
 
 void HapnetWindow::updateTable()
 {
-  _tabfile->seekg(ios::beg);
   _tabfile->clear();
+  _tabfile->seekg(ios::beg);
+  
   _table->clear();
   _tp->readTable(*_tabfile);
 
@@ -1430,6 +1688,7 @@ void HapnetWindow::saveGraphics()
 void HapnetWindow::quit()
 {
   closeAlignment();
+  closeTraits();
   qApp->quit();
 }
 

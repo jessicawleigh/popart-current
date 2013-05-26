@@ -51,11 +51,15 @@ private:
   void setupActions();
   void setupMenus();
   void setupTools();
+  void showErrorDlg(const QString &, const QString & = "", const QString & = "");
+  void showWarnDlg(const QString &, const QString & = "", const QString & = "");
   void doStatsSetup();
   bool loadAlignmentFromFile(QString = QString());
   bool loadTreesFromParser(vector<ParsimonyTree *> &);
   bool loadTraitsFromParser();
   bool loadTableFromFile(const QString &);
+  void askAndCloseAlignment();
+  void askAndCloseTraits();
   void updateTable();
   void inferNetwork(HapnetType, QVariant = QVariant());
   virtual void resizeEvent(QResizeEvent *);
@@ -166,6 +170,7 @@ private slots:
   void setHasHeader(bool);
   void setHasVHeader(bool);
   void closeAlignment();
+  void closeTraits();
   void saveGraphics();
   void exportNetwork();
   void quit();

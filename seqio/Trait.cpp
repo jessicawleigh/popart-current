@@ -26,7 +26,13 @@ const string & Trait::name() const
 
 void Trait::addSeq(const string &seqname, unsigned seqcount)
 {
-  _seqCounts[seqname] = seqcount; 
+  map<string, unsigned>::const_iterator traitIt = _seqCounts.find(seqname);
+  
+  if (traitIt == _seqCounts.end())
+    _seqCounts[seqname] = seqcount; 
+  
+  else
+    _seqCounts[seqname] += seqcount;
 }
 
 unsigned Trait::seqCount(const string &seqname) const
