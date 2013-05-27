@@ -33,13 +33,15 @@ public:
   virtual void resetParser();
   const std::vector<Tree *> & treeVector() const;
   const std::vector<Trait *> & traitVector() const;
+  bool hasGeoTags() const { return _hasGeoTags; };
+  bool hasTraits() const { return _hasTraits; };
   
 protected:
   //void fixEquals(string &);
   std::string & fixEquals(std::string &);
   
 private:
-  typedef enum BLOCKTYPE
+  typedef enum
   {
     // Blocks that are commented out should be supported
 	// Important: add block for auxiliary info about haplotypes?
@@ -58,11 +60,12 @@ private:
     //StSplits,
     //Ha
     Traits,
+    GeoTags,
     Sets,
     Other
   } BlockType;
 
-  typedef enum KEYWORD
+  typedef enum
   {
     NoKwd,
     Begin,
@@ -76,10 +79,23 @@ private:
     TraitLabels,
     TraitLatitude,
     TraitLongitude,
+    ClustLabels,
+    ClustLongitude,
+    ClustLatitude,
     Translate,
     TreeKW,
     Unknown
   } KeyWord;
+  
+  typedef struct
+  {
+    string name;
+    float latitude;
+    float longitude;
+    unsigned nsamples;
+    unsigned clusterID;
+    
+  } SeqGeoData;
 
   typedef std::map<std::string, BlockType, std::less<std::string> > strblockmap;
   typedef std::map<std::string, KeyWord, std::less<std::string> > strkwdmap;
@@ -106,10 +122,15 @@ private:
   bool _inSeq;
   bool _interleave;
   bool _traitsLabeled;
+  bool _geotagsLabeled;
   bool _newTaxa;
   bool _taxLabels;
   int _ntraits;
-  
+  int _nclusts;
+  unsigned _latCount;
+  unsigned _lonCount;
+  bool _hasGeoTags;
+  bool _hasTraits;  
   const std::string *_keystr;
   std::string *_treestr;
   
@@ -129,10 +150,13 @@ private:
   std::map<std::string, std::string> _treeTaxMap;
   std::vector<Tree *> _trees;
   std::vector<Trait *> _traits;
+  
+  // Vectors for trait names and locations reused for GeoTags
   std::vector<std::string> _traitNames;
   std::vector<std::pair<float,float> > _traitLocations;
-  unsigned _latCount;
-  unsigned _lonCount;
+  std::vector<SeqGeoData> _geoTags;
+  std::vector<GeoTrait *> _geoTagTraits;
+
   //bool _geoDataSaved;
   static int _seqidx;
 };

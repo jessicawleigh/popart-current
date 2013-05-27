@@ -372,6 +372,10 @@ pair<float,float> GeoTrait::getCoordinate(const string &latstr, const string &lo
   }
   
   iss.clear();
+  
+  // e causes problems, assumed to be scientific notation
+  if (lower(lonstr.at(lonstr.size() - 1)) == 'e')
+    lonstr.erase(lonstr.size() - 1);
   iss.str(lonstr);
   
   iss >> lon;

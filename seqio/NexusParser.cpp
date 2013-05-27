@@ -36,6 +36,11 @@ NexusParser::~NexusParser()
   for (unsigned i = 0; i < _traits.size(); i++)
     delete _traits.at(i);
   _traits.clear();
+  
+  for (unsigned i = 0; i < _geoTagTraits.size(); i++)
+    delete _geoTagTraits.at(i);
+  _geoTagTraits.clear();
+
   _traitNames.clear();
   _traitLocations.clear();
 }
@@ -59,11 +64,15 @@ void NexusParser::resetParser()
   _inSeq = false;
   _interleave = false;
   _traitsLabeled = false;
+  _geotagsLabeled = false;
   _newTaxa = false;
   _taxLabels = false;
   _ntraits = 0;
+  _nclusts = 0;
   _latCount = 0;
   _lonCount = 0;
+  _hasTraits = false;
+  _hasGeoTags = false;
   //_geoDataSaved = false;
 
   _currentBlock = NoBlock;
@@ -94,6 +103,11 @@ void NexusParser::resetParser()
   for (unsigned i = 0; i < _traits.size(); i++)
     delete _traits.at(i);
   _traits.clear();
+  
+  for (unsigned i = 0; i < _geoTagTraits.size(); i++)
+    delete _geoTagTraits.at(i);
+  _geoTagTraits.clear();
+
   _traitNames.clear();
   _traitLocations.clear();
 }
@@ -109,6 +123,9 @@ void NexusParser::setupMaps()
   _kwdMap["traitlabels"] = TraitLabels; 
   _kwdMap["traitlatitude"] = TraitLatitude;
   _kwdMap["traitlongitude"] = TraitLongitude;
+  _kwdMap["clustlabels"] = TraitLabels; 
+  _kwdMap["clustlatitude"] = TraitLatitude;
+  _kwdMap["clustlongitude"] = TraitLongitude;  
   _kwdMap["translate"] = Translate;
   _kwdMap["tree"] = TreeKW;
   _kwdMap["charstatelabels"] = CharstateLabels;
@@ -128,6 +145,7 @@ void NexusParser::setupMaps()
   //_blockMap["st_splits", StSplits));
   //_blockMap["ha_traits", HaTraits));  
   _blockMap["traits"] = Traits;
+  _blockMap["geotags"] = GeoTags;
   _blockMap["sets"] = Sets;
 
 
@@ -337,16 +355,39 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         _currentBlock = blockResult->second;
       
       if (_currentBlock == Traits)
+      {
         _taxonCount = 0;
+        _hasTraits = true;
+        _traitNames.clear();
+        _traitLocations.clear();
+      }
+      
+      else if (_currentBlock == GeoTags)
+      {
+        _hasGeoTags = true;
+        _traitNames.clear();
+        _traitLocations.clear();
+      }
       
     }
     break;
 
-    case (End):
+    case End:
     {
       if (_currentBlock == NoBlock)  throw SeqParseError("End keyword found outside block!");
 
+      if (_currentBlock == GeoTags)
+      {
+        // TODO this
+        // Check all sequences for cluster IDs
+        // if all sequences have them, then no clustering necessary
+        // otherwise, use GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts, nclusts)
+        
+        
+      }
+        
       _currentBlock = NoBlock;
+      
     }
     break;
 
@@ -441,6 +482,16 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             iss >> ntraits;
             _ntraits = ntraits;
           }
+          
+          else if (key == "nclusts")
+          {
+            int nclusts;
+            if (val.empty() || _currentBlock != GeoTags)
+              throw SeqParseError("clusts can only be used in GeoTags block.");
+            iss >> nclusts;
+            _nclusts = nclusts;
+          }
+
 
           else  throw SeqParseError("Invalid directive!");
 
@@ -456,7 +507,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     {
       if (_currentBlock == Other)  return;
       else if (_currentBlock == Characters || _currentBlock == Data ||
-               _currentBlock == Unaligned || _currentBlock == Traits) // _currentBlock == Distances)
+               _currentBlock == Unaligned || _currentBlock == Traits ||
+               _currentBlock == GeoTags) // _currentBlock == Distances)
       {
         ParserTools::lower(line);
         //fixEquals(line);
@@ -554,13 +606,15 @@ void NexusParser::parseLine(string line, Sequence &sequence)
 
           else if (key == "missing")
           {
-            if (val.empty())  throw SeqParseError("No value given for missing char!");
+            if (val.empty())  throw SeqParseError("No value given for 'missing' char.");
+            if (_currentBlock == GeoTag)
+              throw SeqParseError("'Missing' directive not allowed in GeoTag block."); 
             iss >> _missing;
           }
 
           else if (key == "gap")
           {
-            if (val.empty())  throw SeqParseError("No value given for gap char!");
+            if (val.empty())  throw SeqParseError("No value given for 'gap' char.");
             iss >> _gap;
           }
 
@@ -590,6 +644,21 @@ void NexusParser::parseLine(string line, Sequence &sequence)
                 _traitsLabeled = false;
               else  throw SeqParseError("Trait labels must be specified yes or no.");
             }
+            
+            if (_currentBlock == GeoTags)
+            {
+              if (val.empty()) 
+              {
+                cerr << "line: " << line << endl;
+                throw SeqParseError("Trait labels must be specified yes or no.");
+              }
+              if (val == "yes")
+                _geotagsLabeled = true;
+              else  if (val == "no")
+                _geotagsLabeled = false;
+              else  throw SeqParseError("GeoTag labels must be specified yes or no.");
+            }
+
           }
 
           else if (key == "nolabels")
@@ -597,10 +666,21 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           
           else if (key == "separator")
           {
-            if (val == "comma")  _traitSep = ',';
-            else if (val == "spaces")  _traitSep = ' ';
-            else if (val == "tab")  _traitSep = '\t';
-            else throw SeqParseError("Trait separator must be tab, spaces, or comma.");
+            if (_currentBlock == Traits)
+            {
+              if (val == "comma")  _traitSep = ',';
+              else if (val == "spaces")  _traitSep = ' ';
+              else if (val == "tab")  _traitSep = '\t';
+              else throw SeqParseError("Trait separator must be tab, spaces, or comma.");
+            }
+            else if (_currentBlock == GeoTags)
+            {
+              if (val == "comma")  _geotagSep = ',';
+              else if (val == "spaces")  _geotagSep = ' ';
+              else if (val == "tab")  _geotagSep = '\t';
+              else throw SeqParseError("GeoTag separator must be tab, spaces, or comma.");
+            }
+
           }
 
           else if (key == "transpose")
@@ -642,22 +722,6 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       if (_currentBlock == Other)  return;
       else if (_currentBlock == Traits)
       {
-        // First, check if trait location data has been read.  
-        /*if (! _traitLocations.empty() && !_geoDataSaved)
-        {
-          vector<GeoTrait *> geotVect;
-          
-          for (unsigned i = 0; i < _traits.size(); i++)
-          {
-            geotVect.push_back(new GeoTrait(_traitLocations.at(i), *(_traits.at(i))));
-            delete _traits.at(i);
-          }
-          
-          _traits.clear();
-          _traits.assign(geotVect.begin(), geotVect.end());
-          _geoDataSaved = true;
-        }*/
-
         if (ParserTools::caselessfind("matrix", line) == string::npos)
         {
           if (line.at(line.length() - 1) == ';')
@@ -752,7 +816,138 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             ++worditer;
           }
         }
-      }
+      } // end Traits handling
+      
+      else if (_currentBlock == GeoTags)
+      {
+        if (ParserTools::caselessfind("matrix", line) == string::npos)
+        {
+          if (line.at(line.length() - 1) == ';')
+            line.erase(line.length() - 1);
+          
+          string geotagstr;
+          string seqname;
+
+          if (_geotagsLabeled)
+          {
+            size_t quotestart = line.find_first_of("\"'");
+
+            if (quotestart != string::npos)
+            {
+              char quotechar = line.at(quotestart);
+              size_t quoteend = line.find(quotechar, quotestart + 1);
+              if (! quoteend)
+                throw SeqParseError("Quoted taxon name has no end quote!");
+
+              seqname = line.substr(quotestart + 1, quoteend - quotestart - 1);
+              //ParserTools::replaceChars(seqname, ' ', '_');
+              ParserTools::strip(seqname);
+              geotagstr = line.substr(quoteend + 1);
+              ParserTools::eraseChars(traitstr, ' ');
+              ParserTools::eraseChars(traitstr, '\t');
+            }
+            
+            else
+            {
+              size_t nameend = line.find_first_of(" \t");
+              if (nameend == string::npos)
+              {
+                throw SeqParseError("No space separating sequence and name!");
+              }
+
+              seqname = line.substr(0, nameend);
+              geotagstr = line.substr(nameend);
+              ParserTools::eraseChars(traitstr, ' ');
+              ParserTools::eraseChars(traitstr, '\t');
+            }
+            
+            if (seqname.empty())  throw SeqParseError("Taxon name empty.");
+            map<string, int>::iterator taxonIt = _taxonIndexMap.find(seqname);
+            if (taxonIt == _taxonIndexMap.end())
+              throw SeqParseError("Taxon found in GeoTags not defined in prior TaxLabels or Data blocks.");
+          }
+          
+          else // traits unlabeled
+          {
+            if (_taxonCount >= _taxonVect.size())  
+              throw SeqParseError("Too many rows in GeoTags block.");
+            seqname = _taxonVect.at(_taxonCount++);
+            traitstr = line;
+            ParserTools::eraseChars(traitstr, ' ');
+            ParserTools::eraseChars(traitstr, '\t');
+          }
+          
+          int counter = 0;
+          /*wordlist.clear();
+          string sep(1, _geotagSep);
+          ParserTools::tokenise(wordlist, geotagstr, sep);*/
+          if (sep == ',')
+            replaceChars(geotagstr, ',', ' '); // replace commas so we can use iss to parse string
+          
+          float lat;
+          char latHemi;
+          string lonstr;
+          float lon;
+          char lonHemi;
+          int nsamples;
+          int clusterID;
+          istringstream iss(geotagstr);
+          iss >> lat;
+          if (iss.fail())
+            throw SeqParseError("Error reading coordinates for sequence.");         
+          iss >> latHemi;
+          if (isdigit(latHemi))
+            iss.putback(latHemi);
+          else
+          {
+            latHemi = tolower(latHemi);
+            if (latHemi == 's')
+              lat *= -1;
+            else if (latHemi != 'n')
+              throw SeqParseError("Unknown latitude format");
+              
+          }
+          
+          iss >> lonstr;
+          lonHemi = tolower(lonstr.at(lonstr.size() - 1));
+          if (isdigit(lonHemi) || lonHemi == 'w')
+          {
+            istringstream iss2(lonstr);
+            iss2 >> lon;
+            if (lonHemi == 'w')
+              lon *= -1;
+          }
+          
+          else
+          {
+            if (lonHemi == 'e')
+              lonstr.erase(lonstr.size() - 1);
+            
+            else 
+              throw SeqParseError("Unknown longitude format");
+            
+            istringstream iss2(lonstr);
+            iss2 >> lon;
+          }
+          
+          
+          if (iss.fail())
+            throw SeqParseError("Error reading coordinates for sequence.");
+          
+          iss >> nsamples;
+          if (iss.fail())
+            nsamples = 1;
+          else
+            iss >> clusterID;
+          if (iss.fail())
+            clusterID = -1;
+          else if (clusterID < 1)
+            throw SeqParseError("Cluster numbers should be positive.");
+          
+          _geoTags.push_back(SeqGeoData(seqname, lat, lon, nsamples, clusterID));
+          
+        }// end if caselessfind("matrix"...)     
+      } // end GeoTags handling
       
       else if (_currentBlock == Characters || _currentBlock == Data ||
                _currentBlock == Unaligned)
@@ -1009,6 +1204,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     break;
     
     case TraitLabels:
+    case ClustLabels:
     {
       wordlist.clear();
       ParserTools::tokenise(wordlist, line);
@@ -1019,7 +1215,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         throw SeqParseError("Empty word list, but line isn't empty!");
 
       ParserTools::lower(word = (*worditer));
-      if (word == "traitlabels")  ++worditer;
+      if (word == "traitlabels" || word == "clustlabels")  ++worditer;
 
       while (worditer != wordlist.end())
       {
@@ -1033,6 +1229,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     break;
     
     case TraitLatitude:
+    case ClustLatitude:
+    {
       wordlist.clear();
       ParserTools::tokenise(wordlist, line);
       
@@ -1042,7 +1240,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         throw SeqParseError("Empty word list, but line isn't empty!");
 
       ParserTools::lower(word = (*worditer));
-      if (word == "traitlatitude")  ++worditer;
+      if (word == "traitlatitude" || word == "clustlatitude")  ++worditer;
       
       if (_traitLocations.empty())
         _traitLocations.resize(_ntraits, pair<float,float>(0,0));
@@ -1055,8 +1253,11 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         if (word.at(word.length() - 1) == ';')  word.erase(word.length() - 1);
         if (! word.empty()) 
         {
-          if (_latCount >= _ntraits)
+          if (_currentKeyWord == TraitLatitude && _latCount >= _ntraits)
             throw SeqParseError("Too many trait latitudes read.");
+          else if (_currentKeyWord == ClustLatitude && _latCount >= _nclusts)
+            throw SeqParseError("Too many geotag cluster latitudes read.");
+          
           istringstream iss(word);
           iss >> lat;
           _traitLocations.at(_latCount++).first = lat;
@@ -1065,7 +1266,10 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       }
          
       break;
+    }
     case TraitLongitude:
+    case ClustLongitude:
+    {
       wordlist.clear();
       ParserTools::tokenise(wordlist, line);
       
@@ -1084,8 +1288,11 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       float lon;
       while (worditer != wordlist.end())
       {
-        if (_lonCount >= _ntraits)
-          throw SeqParseError("Too many trait longitudes read.");
+         if (_currentKeyWord == TraitLongitude && _lonCount >= _ntraits)
+           throw SeqParseError("Too many trait longitudes read.");
+         else if (_currentKeyWord == ClustLongitude && _lonCount >= _nclusts)
+           throw SeqParseError("Too many geotag cluster longitudes read.");
+         
         word = *worditer;
         if (word.at(word.length() - 1) == ';')  word.erase(word.length() - 1);
         if (! word.empty()) 
@@ -1098,6 +1305,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       }
       
       break;
+    }
 
     case NoKwd:
       break;
