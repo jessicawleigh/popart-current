@@ -11,13 +11,18 @@ class GeoTrait : public Trait
 {
 public:
   GeoTrait(const std::pair<float,float> &, const std::string &);
+  GeoTrait(const std::pair<float,float> &, const Trait &);
   
   const std::pair<float,float> & location() const { return _location; };
+  float latitude() const { return _location.first; };
+  float longitude() const { return _location.second; };
   void setLocation(const std::pair<float,float> &location) { _location = location; };
+  void setLatitude(float lat) { _location.first = lat; };
+  void setLongitude(float lon) { _location.second = lon; };
   
   virtual void addSeq(const std::string &, unsigned);
   virtual void addSeq(const std::pair<float,float> &, const std::string &, unsigned);
-  const std::vector<std::pair<float,float> >& seqLocations(const std::string &) const;
+  std::vector<std::pair<float,float> > seqLocations(const std::string &) const;
   
   static std::vector<GeoTrait> clusterSeqs(const std::vector<std::pair<float,float> >&, const std::vector<std::string> &, const std::vector<unsigned>& = std::vector<unsigned>(), unsigned = 0, const std::vector<std::pair<float,float> >& = std::vector<std::pair<float,float> >(), const std::vector<std::string> & = std::vector<std::string>());
   
@@ -28,10 +33,6 @@ private:
   static void randomCentroids(unsigned, const std::vector<std::pair<float,float> >&);
   static void optimiseCentroids(const std::vector<std::pair<float,float> >&);
   static void optimiseClusters(const std::vector<std::pair<float,float> >&);
-  
-  //static double sumSqWithin(const std::vector<pair<float,float> >&);
-  //static double sumSqBetween(const std::vector<pair<float,float> >&);
-  
   static double chIndex(const std::vector<std::pair<float,float> >&, double*, double* = 0, double* = 0);
   
   std::pair<float,float> _location;

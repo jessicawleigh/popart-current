@@ -13,6 +13,7 @@
 #include <queue>
 #include <set>
 #include <string>
+#include <utility>
 
 #include "SeqParser.h"
 #include "Sequence.h"
@@ -73,6 +74,8 @@ private:
     TaxLabels,
     //TraitKW,
     TraitLabels,
+    TraitLatitude,
+    TraitLongitude,
     Translate,
     TreeKW,
     Unknown
@@ -127,6 +130,10 @@ private:
   std::vector<Tree *> _trees;
   std::vector<Trait *> _traits;
   std::vector<std::string> _traitNames;
+  std::vector<std::pair<float,float> > _traitLocations;
+  unsigned _latCount;
+  unsigned _lonCount;
+  //bool _geoDataSaved;
   static int _seqidx;
 };
 

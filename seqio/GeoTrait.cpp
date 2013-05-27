@@ -18,6 +18,12 @@ GeoTrait::GeoTrait(const pair<float,float> &location, const string &name)
   _location = location;
 }
 
+GeoTrait::GeoTrait(const std::pair<float,float> &location, const Trait &trait)
+ : Trait(trait)
+{
+  _location = location;
+}
+
 void GeoTrait::addSeq(const string &seqname, unsigned seqcount)
 {
   addSeq(pair<float,float>(0,0), seqname, seqcount);
@@ -31,7 +37,7 @@ void GeoTrait::addSeq(const pair<float,float> &location, const string &seqname, 
   //_seqLocs[seqname] = location;
 }
 
-const std::vector<std::pair<float, float> >& GeoTrait::seqLocations(const string &seqname) const
+std::vector<std::pair<float, float> > GeoTrait::seqLocations(const string &seqname) const
 {
   pair<multimap<string, pair<float,float> >::const_iterator,multimap<string, pair<float,float> >::const_iterator> itpair = _seqLocs.equal_range(seqname);
   

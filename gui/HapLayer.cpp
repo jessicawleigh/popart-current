@@ -119,6 +119,7 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
   const QMap<QString, unsigned> & seqIDs = HapLocation::seqIDs();
   
   // TODO set a bool if using another painter (i.e., to save a file) and use new QFontMetrics to do font geometry
+  // draw legend to a separate window if too long
   QFontMetrics painterMetric = painter->fontMetrics();
   QRect painterRect = painter->viewport();
   int x = painterRect.bottomRight().x();
@@ -158,16 +159,35 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
   {
     _legendStart.setX(x - legendWidth);
     _legendStart.setY(y - legendHeight);
+    
+    if (_legendStart.y() < 0)
+      _legendStart.setY(0);
   }
 
   painter->setBrush(Qt::white);
   painter->drawRect(_legendStart.x(), _legendStart.y(), legendWidth, legendHeight);
   qreal lon, lat;
-  bool inglobe = viewport->geoCoordinates(_legendStart.x() + legendWidth/2, _legendStart.y() + legendHeight/2, lon, lat);
+  bool inglobe;
+  double goodX = _legendStart.x();
+  double goodY = _legendStart.y();
+  double goodWidth = legendWidth;
+  double goodHeight = legendHeight;
+    
+  if (goodX < 0)  goodX = 0;
+  if (goodY < 0)  goodY = 0;
+  
+  if (goodWidth > painterRect.width() - goodX)
+    goodWidth = painterRect.width() - goodX;
+  
+  if (goodHeight > painterRect.height() - goodY)
+    goodHeight = painterRect.height() - goodY;
+    
+  inglobe = viewport->geoCoordinates(goodX + goodWidth/2, goodY + goodHeight/2, lon, lat);
 
   // Will this ever be false? Some sort of default legend region?
   if (inglobe)
     _legendRegion = painter->regionFromRect(GeoDataCoordinates(lon, lat, 0,  GeoDataCoordinates::Degree), legendWidth, legendHeight, false, 1);
+
 
   double currentY = _legendStart.y() + margin;
   double keyX = _legendStart.x() + legendWidth / 2 - diam5seq/2;
@@ -267,7 +287,7 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
 
       else  _clickedInLegend = false;
     }
-
+    
     for(unsigned i = 0; i < _clusters.size(); i++)
     {
       const QRegion &clust = _clusters.at(i);

@@ -1279,7 +1279,7 @@ void HapnetWindow::importGeoTags()
     // think about extending Trait to GeoTrait (cluster centroid, can be given a name)
     if (success)
     { 
-      cout << "columns: " << _tp->columns() << endl;
+      //cout << "columns: " << _tp->columns() << endl;
       if (_tp->columns() == 3)
         _tp->setDataType(2, 'd');
 
@@ -1336,10 +1336,73 @@ void HapnetWindow::importGeoTags()
         seqcounts.push_back(count);
           
       }
-      vector<GeoTrait> geoTraits = GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts);
       
-      // TODO prompt user for number of clusters
-      // use geoTraits to make actual traits
+      QDialog dlg(this);
+      QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
+      QHBoxLayout *hlayout = new QHBoxLayout;
+      
+      QLabel *label = new QLabel("Number of location clusters (0 to estimate, very slow!):", &dlg);
+      hlayout->addWidget(label);
+      
+      QSpinBox *spinBox = new QSpinBox(&dlg);
+      //spinBox->setRange(0, 10);
+      spinBox->setMinimum(0);
+      spinBox->setValue(5);
+      hlayout->addWidget(spinBox);
+      
+      vlayout->addLayout(hlayout);
+      
+      hlayout = new QHBoxLayout;
+      
+      hlayout->addStretch(1);
+      QPushButton *okButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogOkButton), "OK", &dlg);
+      connect(okButton, SIGNAL(clicked()), &dlg, SLOT(accept()));
+      hlayout->addWidget(okButton, 0, Qt::AlignRight);
+      QPushButton *cancelButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogCancelButton), "Cancel", &dlg);
+      connect(cancelButton, SIGNAL(clicked()), &dlg, SLOT(reject()));
+      hlayout->addWidget(cancelButton, 0, Qt::AlignRight);
+      
+      vlayout->addLayout(hlayout);
+      
+      int result = dlg.exec();
+      
+      if (result == QDialog::Rejected)
+      {
+        delete _tp;
+        return;
+      }
+      
+      unsigned nclusts = spinBox->value();
+      
+      
+      vector<GeoTrait> geoTraits = GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts, nclusts);
+      
+      for (unsigned i = 0; i < geoTraits.size(); i++)
+        _traitVect.push_back(new GeoTrait(geoTraits.at(i)));
+      
+      //_traitVect.assign(geoTraits.begin(), geoTraits.end());
+      
+ 
+      QAbstractItemModel *tmpModel = _tView->model();
+      _tModel = new TraitModel(_traitVect);
+      _tView->setModel(_tModel);
+      delete tmpModel;
+
+      if (_view == Map)
+      {
+        _mapView->addHapLocations(_traitVect);
+        _mapTraitsSet = true;
+      }
+
+      else
+        _mapTraitsSet = false;
+
+    _dataWidget->setCurrentWidget(_tView);
+
+    delete _tp;
+     
+      
+      // TODO Add progress meter if number of traits estimated
       // add geo option to Traits block in Nexus
       // create GeoTags block
       // work on save network (and parsing)
@@ -1530,7 +1593,7 @@ void HapnetWindow::updateTable()
     }
   }
 
-  qDebug() << "table dimensions:" << _table->rowCount() << _table->columnCount();
+  //qDebug() << "table dimensions:" << _table->rowCount() << _table->columnCount();
 
 
   _table->resizeColumnsToContents();

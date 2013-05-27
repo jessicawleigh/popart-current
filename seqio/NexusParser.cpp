@@ -9,8 +9,9 @@
 using namespace std;
 
 #include "NexusParser.h"
-#include "SeqParseError.h"
 #include "ParserTools.h"
+#include "SeqParseError.h"
+#include "GeoTrait.h"
 
 int NexusParser::_seqidx = -1;
 
@@ -36,6 +37,7 @@ NexusParser::~NexusParser()
     delete _traits.at(i);
   _traits.clear();
   _traitNames.clear();
+  _traitLocations.clear();
 }
 
 
@@ -60,6 +62,9 @@ void NexusParser::resetParser()
   _newTaxa = false;
   _taxLabels = false;
   _ntraits = 0;
+  _latCount = 0;
+  _lonCount = 0;
+  //_geoDataSaved = false;
 
   _currentBlock = NoBlock;
   _currentKeyWord = NoKwd;
@@ -90,6 +95,7 @@ void NexusParser::resetParser()
     delete _traits.at(i);
   _traits.clear();
   _traitNames.clear();
+  _traitLocations.clear();
 }
 
 void NexusParser::setupMaps()
@@ -101,6 +107,8 @@ void NexusParser::setupMaps()
   _kwdMap["matrix"] = Matrix;
   _kwdMap["taxlabels"] = TaxLabels;
   _kwdMap["traitlabels"] = TraitLabels; 
+  _kwdMap["traitlatitude"] = TraitLatitude;
+  _kwdMap["traitlongitude"] = TraitLongitude;
   _kwdMap["translate"] = Translate;
   _kwdMap["tree"] = TreeKW;
   _kwdMap["charstatelabels"] = CharstateLabels;
@@ -290,7 +298,7 @@ const vector<Tree *> & NexusParser::treeVector() const
 }
 
 const vector<Trait *> & NexusParser::traitVector() const
-{
+{  
   return _traits;
 }
 
@@ -634,6 +642,22 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       if (_currentBlock == Other)  return;
       else if (_currentBlock == Traits)
       {
+        // First, check if trait location data has been read.  
+        /*if (! _traitLocations.empty() && !_geoDataSaved)
+        {
+          vector<GeoTrait *> geotVect;
+          
+          for (unsigned i = 0; i < _traits.size(); i++)
+          {
+            geotVect.push_back(new GeoTrait(_traitLocations.at(i), *(_traits.at(i))));
+            delete _traits.at(i);
+          }
+          
+          _traits.clear();
+          _traits.assign(geotVect.begin(), geotVect.end());
+          _geoDataSaved = true;
+        }*/
+
         if (ParserTools::caselessfind("matrix", line) == string::npos)
         {
           if (line.at(line.length() - 1) == ';')
@@ -704,7 +728,12 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             if (counter > _traitNames.size())  
               throw SeqParseError("Too many columns in Traits block.");
             if (_traits.size() <= counter)
-              _traits.push_back(new Trait(_traitNames.at(counter)));
+            {
+              if (_traitLocations.empty())
+                _traits.push_back(new Trait(_traitNames.at(counter)));
+              else
+                _traits.push_back(new GeoTrait(_traitLocations.at(counter), _traitNames.at(counter)));
+            }
             
             // treat missing trait data as 0 samples
             if ((*worditer).at(0) == _missingTrait)
@@ -990,7 +1019,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         throw SeqParseError("Empty word list, but line isn't empty!");
 
       ParserTools::lower(word = (*worditer));
-      if (word == "traitlabels")  worditer++;
+      if (word == "traitlabels")  ++worditer;
 
       while (worditer != wordlist.end())
       {
@@ -1002,6 +1031,73 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       }
     }
     break;
+    
+    case TraitLatitude:
+      wordlist.clear();
+      ParserTools::tokenise(wordlist, line);
+      
+      worditer = wordlist.begin();
+
+      if (worditer == wordlist.end())
+        throw SeqParseError("Empty word list, but line isn't empty!");
+
+      ParserTools::lower(word = (*worditer));
+      if (word == "traitlatitude")  ++worditer;
+      
+      if (_traitLocations.empty())
+        _traitLocations.resize(_ntraits, pair<float,float>(0,0));
+
+
+      float lat;
+      while (worditer != wordlist.end())
+      {
+        word = *worditer;
+        if (word.at(word.length() - 1) == ';')  word.erase(word.length() - 1);
+        if (! word.empty()) 
+        {
+          if (_latCount >= _ntraits)
+            throw SeqParseError("Too many trait latitudes read.");
+          istringstream iss(word);
+          iss >> lat;
+          _traitLocations.at(_latCount++).first = lat;
+        }
+        ++worditer;
+      }
+         
+      break;
+    case TraitLongitude:
+      wordlist.clear();
+      ParserTools::tokenise(wordlist, line);
+      
+      worditer = wordlist.begin();
+
+      if (worditer == wordlist.end())
+        throw SeqParseError("Empty word list, but line isn't empty!");
+
+      ParserTools::lower(word = (*worditer));
+      if (word == "traitlongitude")  ++worditer;
+      
+      if (_traitLocations.empty())
+        _traitLocations.resize(_ntraits, pair<float,float>(0,0));
+
+
+      float lon;
+      while (worditer != wordlist.end())
+      {
+        if (_lonCount >= _ntraits)
+          throw SeqParseError("Too many trait longitudes read.");
+        word = *worditer;
+        if (word.at(word.length() - 1) == ';')  word.erase(word.length() - 1);
+        if (! word.empty()) 
+        {
+          istringstream iss(word);
+          iss >> lon;
+          _traitLocations.at(_lonCount++).second = lon;
+        }
+        ++worditer;
+      }
+      
+      break;
 
     case NoKwd:
       break;

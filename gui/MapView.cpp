@@ -103,9 +103,10 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
     // TODO save coordinates somewhere so that lookup doesn't happen every time
     // Maybe add a coordinates field to trait? Send a signal when a location is found, allow coordinate lookup at some point
 
-    HapLocation *loc = new HapLocation(*(traits.at(i)));
+    HapLocation *loc = new HapLocation(traits.at(i));
 
-    lookupLocation(loc);
+    if (! loc->locationSet())
+      lookupLocation(loc);
 
     _locations.push_back(loc);
   }

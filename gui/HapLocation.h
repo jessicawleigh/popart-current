@@ -16,11 +16,12 @@ class HapLocation : public QObject
 public:
   HapLocation(const QString &, QObject * = 0);
   HapLocation(const HapLocation &);
-  HapLocation(const Trait &, QObject * = 0);
+  HapLocation(const Trait *, QObject * = 0);
   ~HapLocation();
 
   const QString & name() const { return _name; };
   const Marble::GeoDataCoordinates & location() const { return _location; };
+  bool locationSet() const { return _locSet; };
   void addSeq(const QString &, unsigned);
 
   QVector<QString> seqNames() const;
@@ -43,6 +44,7 @@ private:
   QMap<QString, unsigned> _seqCounts;
   static QMap<QString, unsigned> _seqIDs;
   unsigned _totalCount;
+  bool _locSet;
   //const std::vector<unsigned> & traits(unsigned) const;
 signals:
   void nameSet(const QString &);
