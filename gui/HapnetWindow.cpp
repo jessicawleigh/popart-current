@@ -879,7 +879,61 @@ bool HapnetWindow::loadTraitsFromParser()
   
   try
   {
-    _traitVect = parser->traitVector();
+    if (parser->hasTraits() && parser->hasGeoTags())
+    {
+      QDialog dlg(this);
+      
+      QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
+      
+      vlayout->addWidget(new QLabel("Nexus file has both Traits and GeoTags data.<br>Which do you want to use by default to colour networks?", this));
+      
+      QButtonGroup *buttonGroup = new QButtonGroup(this);
+      int idCount = 0;
+      QRadioButton *button = new QRadioButton("Use Traits", &dlg);
+      button->setChecked(true);
+      buttonGroup->addButton(button, idCount++);
+      vlayout->addWidget(button);
+      
+      button = new QRadioButton("Use GeoTags", &dlg);
+      buttonGroup->addButton(button, idCount++);
+      vlayout->addWidget(button);
+      
+      QHBoxLayout *hlayout = new QHBoxLayout;
+      
+      QPushButton *okButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogOkButton), "OK", &dlg);
+      connect(okButton, SIGNAL(clicked()), &dlg, SLOT(accept()));
+      hlayout->addWidget(okButton, 0, Qt::AlignRight);
+      QPushButton *cancelButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogCancelButton), "Cancel", &dlg);
+      connect(cancelButton, SIGNAL(clicked()), &dlg, SLOT(reject()));
+      hlayout->addWidget(cancelButton, 0, Qt::AlignRight);
+      
+      vlayout->addLayout(hlayout);      
+      
+      int result = dlg.exec();
+      
+      if (result == QDialog::Rejected)
+        return false;
+      
+      if (buttonGroup->checkedId() == 0)
+        _traitVect = parser->traitVector();
+      else
+      {
+        const vector<GeoTrait*> & gtv = parser->geoTraitVector();
+        _traitVect.assign(gtv.begin(), gtv.end());
+      }
+    }
+    
+    else if (parser->hasTraits())
+      _traitVect = parser->traitVector();
+    
+    else if (parser->hasGeoTags())
+    {
+      const vector<GeoTrait*> & gtv = parser->geoTraitVector();
+      _traitVect.assign(gtv.begin(), gtv.end());
+    }
+    
+    else
+      return false;
   }
   
   catch (SeqParseError &spe)

@@ -84,7 +84,7 @@ vector<GeoTrait> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLoca
     
     else
     {
-      _centroids.assign(seqLocations.begin(), seqLocations.end());
+      _centroids.assign(clusterLocations.begin(), clusterLocations.end());
       optimiseClusters(seqLocations); 
     }
   }
@@ -374,9 +374,15 @@ pair<float,float> GeoTrait::getCoordinate(const string &latstr, const string &lo
   iss.clear();
   
   // e causes problems, assumed to be scientific notation
-  if (lower(lonstr.at(lonstr.size() - 1)) == 'e')
-    lonstr.erase(lonstr.size() - 1);
-  iss.str(lonstr);
+  if (tolower(lonstr.at(lonstr.size() - 1)) == 'e')
+  {
+    string lonstrcp(lonstr);
+    lonstrcp.erase(lonstr.size() - 1);
+    iss.str(lonstrcp);
+  }
+  
+  else
+    iss.str(lonstr);
   
   iss >> lon;
   

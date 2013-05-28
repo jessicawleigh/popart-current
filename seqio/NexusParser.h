@@ -15,6 +15,7 @@
 #include <string>
 #include <utility>
 
+#include "GeoTrait.h"
 #include "SeqParser.h"
 #include "Sequence.h"
 #include "Trait.h"
@@ -33,6 +34,7 @@ public:
   virtual void resetParser();
   const std::vector<Tree *> & treeVector() const;
   const std::vector<Trait *> & traitVector() const;
+  const std::vector<GeoTrait *> & geoTraitVector() const;
   bool hasGeoTags() const { return _hasGeoTags; };
   bool hasTraits() const { return _hasTraits; };
   
@@ -117,6 +119,7 @@ private:
   char _missingTrait;
   char _match;
   char _traitSep;
+  char _geotagSep;
   bool _respectCase;
   bool _inComment;
   bool _inSeq;
