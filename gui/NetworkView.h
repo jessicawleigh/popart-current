@@ -78,6 +78,8 @@ public:
   void setVertexColour(const QColor &);
   double vertexSize() const { return _vertRadUnit; };
   void setVertexSize(double);
+  QPointF vertexPosition(unsigned) const;
+  QPointF labelPosition(unsigned) const;
   
   const QFont & defaultFont() const { return _defaultFont; };
   void setDefaultFont(const QFont & font) { _defaultFont = font; };

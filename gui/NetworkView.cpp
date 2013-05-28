@@ -1,4 +1,4 @@
-
+#include "HapAppError.h"
 #include "LabelItem.h"
 #include "NetworkView.h"
 #include "NetworkItem.h"
@@ -315,6 +315,7 @@ void NetworkView::drawLayout()
     if (traits.empty())
     {
       vItem = new VertexItem(vCentre.x(), vCentre.y(), diametre, diametre);
+      
       vItem->setPen(outlinePen());
       vItem->setBrush(vertBrush());
       vItem->setData(0, i);
@@ -341,6 +342,7 @@ void NetworkView::drawLayout()
     
       // vItem that's transparent to anchor sections
       vItem = new VertexItem(vCentre.x(), vCentre.y(), diametre, diametre);
+
       vItem->setPen(invisiblePen());
       vItem->setBrush(Qt::transparent);
       vItem->setData(0, i);
@@ -650,6 +652,30 @@ void NetworkView::changeLegendFont(const QFont &font)
     currentY += entryHeight;
   }
 }
+
+QPointF NetworkView::vertexPosition(unsigned idx) const
+{
+  
+  if (idx >= _vertexItems.size())
+    throw HapAppError("Vertex index out of range");
+  
+  QPointF brPoint = _vertexItems.at(idx)->mapToScene(_vertexItems.at(idx)->boundingRect().topLeft());
+  
+  return _vertexItems.at(idx)->mapToScene(brPoint);
+}
+
+QPointF NetworkView::labelPosition(unsigned idx) const
+{
+  
+  if (idx >= _labelItems.size())
+    throw HapAppError("Label index out of range");
+  
+  QPointF brPoint = _labelItems.at(idx)->mapToScene(_labelItems.at(idx)->boundingRect().topLeft()); 
+  
+  return _labelItems.at(idx)->mapToScene(brPoint);
+}
+
+
 
 void NetworkView::clearModel()
 {
@@ -1317,5 +1343,6 @@ void NetworkView::keyPressEvent(QKeyEvent *event)
       QAbstractItemView::keyPressEvent(event);
   }
 }
+
 
 

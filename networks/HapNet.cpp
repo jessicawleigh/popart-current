@@ -466,7 +466,7 @@ const vector<unsigned> & HapNet::traits(unsigned idx) const
 }
 
 // TODO maybe store this vector
-const vector<string> HapNet::identicalTaxa(unsigned idx) const
+vector<string> HapNet::identicalTaxa(unsigned idx) const
 {
   vector<string> taxa;
   

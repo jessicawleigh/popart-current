@@ -1694,6 +1694,102 @@ void HapnetWindow::setHasVHeader(bool hasVHeader)
   updateTable();
 }
 
+void HapnetWindow::saveNexusFile()
+{
+  writeNexusFile(cout);
+}
+
+ostream & HapnetWindow::writeNexusFile(ostream &out)
+{
+  
+  vector<string> vertLabels;
+  
+  
+  // TODO get vertex labels from _netView
+  for (unsigned i = 0; i < _g->vertexCount(); i++)
+  {
+    vector<string> identical = _g->identicalTaxa(i);
+    if (identical.size() > 0)
+      vertLabels.push_back(identical.at(0));
+  }
+  
+  out << "Begin Network;" << endl;
+  out << "Dimensions ntax=" << vertLabels.size() << " nvertices=" << _g-> vertexCount() << " nedges=" << _g->edgeCount() << ";" << endl;
+  //out << "DRAW to_scale;" << endl;
+  out << "Format ";  // FILL THIS IN!!
+  
+  out << "Font=\"" << _netView->labelFont().toString().toStdString() << "\" ";
+  out << "LabelFont=\"" << _netView->legendFont().toString().toStdString() << "\" ";
+  out << "VColour=" << _netView->vertexColour().name().toStdString() << ' ';
+  out << "EColour=" << _netView->edgeColour().name().toStdString() << ' ';
+  out << "BGColour=" << _netView->backgroundColour().name().toStdString() << ' ' ;
+  out << "VSize=" << _netView->vertexSize() << ' ';
+  out << "EView=";
+  
+  switch (_netView->edgeMutationView())
+  {
+    case EdgeItem::ShowDashes:
+      out << "Dashes;";
+      break;
+    case EdgeItem::ShowEllipses:
+      out << "Ellipses;";
+      break;
+    case EdgeItem::ShowNums:
+    default:
+      out << "Numbers;";
+      break;
+  }
+  
+  // need traits colours
+  
+  // _netView->colour(int);
+
+  // plotArea : in dimensions
+  // legend position : trait colours here
+  
+  out << endl;
+  
+  out << "Translate" << endl;
+  
+  for (unsigned i = 0; i < vertLabels.size(); i++)
+  {
+    out << (i + 1) << ' ' << vertLabels.at(i) << ',' << endl;
+  }
+  
+  out << ';' << endl;
+  
+  out << "Vertices" << endl;
+  for (unsigned i = 0; i < _g->vertexCount(); i++)
+  {
+    QPointF vertPos = _netView->vertexPosition(i);
+    out << (i + 1) << ' ' << vertPos.x() << ' ' << vertPos.y() << ',' << endl;
+  }
+  
+  out << ';' << endl;
+  
+  out << "VLabels" << endl;
+  for (unsigned i = 0; i < _g->vertexCount(); i++)
+  {
+    QPointF labPos = _netView->labelPosition(i);
+    out << (i + 1) << ' ' << labPos.x() << ' ' << labPos.y() << ',' << endl;
+  }
+  
+  out << ';' << endl;
+    
+  out << "Edges" << endl;
+  for (unsigned i = 0; i < _g->vertexCount(); i++)
+  {
+    const Edge *e = _g->edge(i);
+    out << (i + 1) << ' ' << e->from()->index() << ' ' << e->to()->index() << ',' << endl;
+  } 
+  
+  out << ';' << endl;
+  
+  out << "End;" << endl;
+           
+  return out;
+}
+
 void HapnetWindow::exportNetwork()
 {
   if (! _g)
@@ -2183,6 +2279,8 @@ void HapnetWindow::displayNetwork()
       _drawThread->start();*/
 
       _netView->setModel(_netModel);
+      
+      connect(_netView, SIGNAL(networkDrawn()), this, SLOT(saveNexusFile()));
     }
 
     catch (NetworkError &e)

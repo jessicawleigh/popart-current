@@ -49,7 +49,7 @@ public:
 
   //const unsigned * traits(unsigned) const;
   const std::vector<unsigned> & traits(unsigned) const;
-  const std::vector<std::string> identicalTaxa(unsigned) const;
+  std::vector<std::string> identicalTaxa(unsigned) const;
 #ifdef NET_QT
 public slots:
   void setupGraph();

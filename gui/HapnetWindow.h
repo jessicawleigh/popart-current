@@ -160,6 +160,10 @@ private:
   
   
 private slots:
+  
+  void saveNexusFile();
+  ostream & writeNexusFile(ostream &out);
+  
   void printprog(int);
   void openAlignment();
   void importAlignment();
