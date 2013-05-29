@@ -1713,13 +1713,18 @@ ostream & HapnetWindow::writeNexusFile(ostream &out)
       vertLabels.push_back(identical.at(0));
   }
   
+
   out << "Begin Network;" << endl;
-  out << "Dimensions ntax=" << vertLabels.size() << " nvertices=" << _g-> vertexCount() << " nedges=" << _g->edgeCount() << ";" << endl;
+  out << "Dimensions ntax=" << vertLabels.size() << " nvertices=" << _g-> vertexCount() << " nedges=" << _g->edgeCount() << ' ';
+
+  QRectF plotRect = _netView->sceneRect();
+  out << "plotDim=" << plotRect.x() << ',' << plotRect.y() << ',' << plotRect.width() << ',' << plotRect.height();
+  out << ';' << endl;
   //out << "DRAW to_scale;" << endl;
-  out << "Format ";  // FILL THIS IN!!
+  out << "Format ";
   
-  out << "Font=\"" << _netView->labelFont().toString().toStdString() << "\" ";
-  out << "LabelFont=\"" << _netView->legendFont().toString().toStdString() << "\" ";
+  out << "Font=" << _netView->labelFont().toString().toStdString() << ' ';
+  out << "LabelFont=" << _netView->legendFont().toString().toStdString() << ' ';
   out << "VColour=" << _netView->vertexColour().name().toStdString() << ' ';
   out << "EColour=" << _netView->edgeColour().name().toStdString() << ' ';
   out << "BGColour=" << _netView->backgroundColour().name().toStdString() << ' ' ;
@@ -1729,25 +1734,31 @@ ostream & HapnetWindow::writeNexusFile(ostream &out)
   switch (_netView->edgeMutationView())
   {
     case EdgeItem::ShowDashes:
-      out << "Dashes;";
+      out << "Dashes ";
       break;
     case EdgeItem::ShowEllipses:
-      out << "Ellipses;";
+      out << "Ellipses ";
       break;
     case EdgeItem::ShowNums:
     default:
-      out << "Numbers;";
+      out << "Numbers ";
       break;
   }
   
-  // need traits colours
+  QPointF legendPos = _netView->legendPosition();
+  out << "LPos=" << legendPos.x() << ',' << legendPos.y() << ' ';
+  out << "LCols=";
+  bool first = true;
+  for (QList<QColor> legendCols = _netView->traitColours(); ! legendCols.isEmpty(); legendCols.pop_front())
+  {
+    if (first)
+      first = false;
+    else
+      out << ',';
+    out << legendCols.front().name().toStdString();
+  }
   
-  // _netView->colour(int);
-
-  // plotArea : in dimensions
-  // legend position : trait colours here
-  
-  out << endl;
+  out << ';' << endl;
   
   out << "Translate" << endl;
   

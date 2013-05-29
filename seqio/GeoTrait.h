@@ -6,13 +6,16 @@
 #include <string>
 #include <utility>
 #include <vector>
+using namespace std;
+
+
 
 class GeoTrait : public Trait
 {
 public:
   GeoTrait(const std::pair<float,float> &, const std::string &);
   GeoTrait(const std::pair<float,float> &, const Trait &);
-  
+
   const std::pair<float,float> & location() const { return _location; };
   float latitude() const { return _location.first; };
   float longitude() const { return _location.second; };
@@ -24,7 +27,13 @@ public:
   virtual void addSeq(const std::pair<float,float> &, const std::string &, unsigned);
   std::vector<std::pair<float,float> > seqLocations(const std::string &) const;
   
-  static std::vector<GeoTrait> clusterSeqs(const std::vector<std::pair<float,float> >&, const std::vector<std::string> &, const std::vector<unsigned>& = std::vector<unsigned>(), unsigned = 0, const std::vector<std::pair<float,float> >& = std::vector<std::pair<float,float> >(), const std::vector<std::string> & = std::vector<std::string>());
+  static std::vector<GeoTrait> clusterSeqs(const std::vector<std::pair<float,float> >&,
+      const std::vector<std::string> &,
+      const std::vector<unsigned>& = std::vector<unsigned>(),
+      unsigned = 0,
+      const std::vector<std::pair<float,float> >&
+      = (std::vector<std::pair<float,float> >()),
+      const std::vector<std::string> & = std::vector<std::string>());
   
   static std::pair<float,float> getCoordinate(const std::string &, const std::string &);
   

@@ -1036,7 +1036,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           else if (clusterID < 1)
             throw SeqParseError("Cluster numbers should be positive.");
           
-          _geoTags.push_back(SeqGeoData{seqname, lat, lon, (unsigned)nsamples, (unsigned)clusterID});
+          SeqGeoData sgd = {seqname, lat, lon, (unsigned)nsamples, (unsigned)clusterID};
+          _geoTags.push_back(sgd);
           
         }// end if caselessfind("matrix"...)     
       } // end GeoTags handling

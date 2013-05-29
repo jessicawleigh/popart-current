@@ -66,6 +66,7 @@ public:
   void setColourTheme(ColourTheme::Theme = _defaultTheme);
   ColourTheme::Theme colourTheme() const { return _currentTheme; };
   const QColor & colour(unsigned) const;
+  QList<QColor> traitColours() const;
   void setColour(unsigned, const QColor &);
   const QColor & backgroundColour() const {return _backgroundBrush.color(); };
   void setBackgroundColour(const QColor &);
@@ -80,6 +81,8 @@ public:
   void setVertexSize(double);
   QPointF vertexPosition(unsigned) const;
   QPointF labelPosition(unsigned) const;
+  QRectF sceneRect() const;
+  QPointF legendPosition() const;
   
   const QFont & defaultFont() const { return _defaultFont; };
   void setDefaultFont(const QFont & font) { _defaultFont = font; };

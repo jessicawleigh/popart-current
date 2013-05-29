@@ -676,6 +676,24 @@ QPointF NetworkView::labelPosition(unsigned idx) const
 }
 
 
+QPointF NetworkView::legendPosition() const
+{
+  if (_legend)
+  {
+    QPointF brPoint = _legend->boundingRect().topLeft();
+
+    return _legend->mapToScene(brPoint);
+  }
+
+  return QPointF(-1,-1);
+}
+
+QRectF NetworkView::sceneRect() const
+{
+  return _theScene.sceneRect();
+}
+
+
 
 void NetworkView::clearModel()
 {
@@ -934,6 +952,18 @@ const QColor & NetworkView::colour(unsigned idx) const
 {
   return vertBrush(idx).color();
 }
+
+QList<QColor> NetworkView::traitColours() const
+{
+  QList<QColor> cols;
+
+  for (unsigned i = 0; i< _colourTheme.size(); i++)
+    cols << _colourTheme.at(i).color();
+
+  return cols;
+}
+
+
 
 void NetworkView::setColour(unsigned idx, const QColor & colour)
 {
