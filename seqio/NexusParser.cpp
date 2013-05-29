@@ -71,6 +71,8 @@ void NexusParser::resetParser()
   _nclusts = 0;
   _latCount = 0;
   _lonCount = 0;
+  _nverts = 0;
+  _nedges = 0;
   _hasTraits = false;
   _hasGeoTags = false;
   //_geoDataSaved = false;
@@ -95,6 +97,13 @@ void NexusParser::resetParser()
   _seqSeqVect.clear();
   _exSets.clear();
   _treeTaxMap.clear();
+  _plotRect.clear();
+  _vertices.clear();
+  _edges.clear();
+  _vLabels.clear();
+  
+  initGraphicsParams(_netGraphicsParams);
+  
 
   for (unsigned i = 0; i < _trees.size(); i++)
     delete _trees.at(i);
@@ -110,6 +119,19 @@ void NexusParser::resetParser()
 
   _traitNames.clear();
   _traitLocations.clear();
+}
+
+void NexusParser::initGraphicsParams(NexusParser::GraphicsParams &gp)
+{
+  gp.font.erase();
+  gp.legendFont.erase();
+  gp.vColour.erase();
+  gp.eColour.erase();
+  gp.bgColour.erase();
+  gp.eView.erase();
+  gp.vSize = -1;
+  gp.lPos.first = -1; gp.lPos.second = -1;
+  gp.lColours.clear();
 }
 
 void NexusParser::setupMaps()
@@ -129,6 +151,9 @@ void NexusParser::setupMaps()
   _kwdMap["translate"] = Translate;
   _kwdMap["tree"] = TreeKW;
   _kwdMap["charstatelabels"] = CharstateLabels;
+  _kwdMap["vertices"] = Vertices;
+  _kwdMap["edges"] = Edges;
+  _kwdMap["vlabels"] = VLabels;
 
 
   _blockMap["data"] = Data;
@@ -147,6 +172,7 @@ void NexusParser::setupMaps()
   _blockMap["traits"] = Traits;
   _blockMap["geotags"] = GeoTags;
   _blockMap["sets"] = Sets;
+  _blockMap["network"] = Network;
 
 
 }
@@ -382,6 +408,11 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         _lonCount = 0;
       }
       
+      else if (_currentBlock == Network)
+      {
+        _treeTaxMap.clear();
+      }
+      
     }
     break;
 
@@ -485,7 +516,9 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     {
       if (_currentBlock == Other)  return;
       else if (_currentBlock == Taxa || _currentBlock == Characters ||
-          _currentBlock == Data || _currentBlock == Unaligned ||_currentBlock == Traits || _currentBlock == GeoTags) //|| _currentBlock == Distances)
+          _currentBlock == Data || _currentBlock == Unaligned ||
+          _currentBlock == Traits || _currentBlock == GeoTags ||
+          _currentBlock == Network    ) //|| _currentBlock == Distances)
       {
         ParserTools::lower(line);
         //fixEquals(line);
@@ -577,9 +610,40 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           {
             int nclusts;
             if (val.empty() || _currentBlock != GeoTags)
-              throw SeqParseError("clusts can only be used in GeoTags block.");
+              throw SeqParseError("nclusts can only be used in GeoTags block.");
             iss >> nclusts;
             _nclusts = nclusts;
+          }
+          
+          else if (key == "nvertices" || key == "nedges" || key == "plotdim")
+          {
+            if (val.empty() || _currentBlock != Network)
+              throw SeqParseError("nvertices, nedges, and plotdim can only be used in Network block.");
+            if (key == "nvertices")
+              iss >> _nverts;
+            else if (key == "nedges")
+              iss >> _nedges;
+            else //if (key == "plotdim")
+            {
+              string plotdimstr;
+              iss >> plotdimstr;
+              vector<string> plotwords;
+              ParserTools::tokenise(plotwords, plotdimstr, ",");
+              if (plotwords.size() != 4)
+                throw SeqParseError("Invalid plotdim specification.");
+              
+              unsigned count = 3;
+              _plotRect.resize(4, 0);
+              while (! plotwords.empty())
+              {
+                iss.clear();
+                iss.str(plotwords.back());
+                plotwords.pop_back();
+                double dim;
+                iss >> dim;
+                _plotRect.at(count--) = dim;
+              }
+            }
           }
 
 
@@ -598,7 +662,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       if (_currentBlock == Other)  return;
       else if (_currentBlock == Characters || _currentBlock == Data ||
                _currentBlock == Unaligned || _currentBlock == Traits ||
-               _currentBlock == GeoTags) // _currentBlock == Distances)
+               _currentBlock == GeoTags || _currentBlock == Network)
+               // _currentBlock == Distances)
       {
         ParserTools::lower(line);
         //fixEquals(line);
@@ -771,6 +836,129 @@ void NexusParser::parseLine(string line, Sequence &sequence)
               else throw SeqParseError("GeoTag separator must be tab, spaces, or comma.");
             }
 
+          }
+          
+          else if (key == "font")
+          {
+            if (_currentBlock != Network)
+              throw SeqParseError("Font keyword only allowed in Network block.");
+            
+            _netGraphicsParams.font = val;
+
+          }
+          
+          else if (key == "legendfont")
+          {
+            if (_currentBlock != Network)
+              throw SeqParseError("LegendFont keyword only allowed in Network block.");
+            
+            _netGraphicsParams.legendFont = val;
+          }
+
+          else if (key == "vcolour")
+          {
+            if (_currentBlock != Network)
+              throw SeqParseError("VColour keyword only allowed in Network block.");
+            
+            _netGraphicsParams.vColour = val;
+          }
+          
+          else if (key == "ecolour")
+          {
+            if (_currentBlock != Network)
+              throw SeqParseError("EColour keyword only allowed in Network block.");
+            
+            _netGraphicsParams.eColour = val;
+          }
+          
+          else if (key == "bgcolour")
+          {
+            if (_currentBlock != Network)
+              throw SeqParseError("BGColour keyword only allowed in Network block.");
+            
+            _netGraphicsParams.bgColour = val;
+          }
+          
+          else if (key == "eview")
+          {
+            if (_currentBlock != Network)
+              throw SeqParseError("EView keyword only allowed in Network block.");
+            
+            _netGraphicsParams.eView = val;
+          }
+
+          else if (key == "vsize")
+          {
+            if (_currentBlock != Network)
+              throw SeqParseError("VSize keyword only allowed in Network block.");
+            iss.str(val);
+            
+            double size;
+            iss >> size;
+            
+            if (iss.fail())
+            {
+              warn("Invalid vertex size, will use default.");
+              
+              _netGraphicsParams.vSize = -1;
+              
+              iss.clear();
+            }
+            
+            else
+              _netGraphicsParams.vSize = size;
+          }
+          
+          else if (key == "lpos")
+          {
+            if (_currentBlock != Network)
+              throw SeqParseError("LPos keyword only allowed in Network block.");
+            
+            unsigned commaPos = val.find_first_of(',');
+            
+            if (commaPos == string::npos)
+            {
+              warn("Invalid legend position, will use (0,0).");
+              _netGraphicsParams.lPos.first = 0;
+              _netGraphicsParams.lPos.second = 0;
+            }
+              
+            else
+            {
+              double x, y;
+              iss.clear();
+              iss.str(val.substr(0, commaPos));
+              iss >> x;
+              
+              
+              iss.clear();
+              iss.str(val.substr(commaPos + 1));    
+              iss >> y;
+              
+              if (iss.fail())
+              {
+                warn("Invalid legend position, will use (0,0).");
+              _netGraphicsParams.lPos.first = 0;
+              _netGraphicsParams.lPos.second = 0;
+              }
+              
+              else
+              {
+                _netGraphicsParams.lPos.first = x;
+                _netGraphicsParams.lPos.second = y;
+              }
+            }
+          }
+
+          else if (key == "lcolours")
+          {
+            if (_currentBlock != Network)
+              throw SeqParseError("LCols keyword only allowed in Network block.");
+            
+            vector<string> colours;
+            ParserTools::tokenise(colours, val, ",");
+            
+            _netGraphicsParams.lColours.assign(colours.begin(), colours.end());
           }
 
           else if (key == "transpose")
@@ -1397,6 +1585,109 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         ++worditer;
       }
       
+      break;
+    }
+    
+    case Vertices:
+    {
+      wordlist.clear();
+      ParserTools::tokenise(wordlist, line);
+      
+      if (ParserTools::lower(wordlist.front()) == "vertices")
+        break;
+        
+      
+      if (wordlist.size() != 3)
+        throw SeqParseError("Invalid vertex descriptor.");
+      
+      if (line.at(line.size() - 1) == ',')
+        line.erase(line.size() - 1);
+      
+      istringstream iss(line);
+      unsigned vid;
+      double x;
+      double y;
+      
+      iss >> vid;
+      iss >> x;
+      iss >> y;
+      
+      if (iss.fail())
+        throw SeqParseError("Invalid vertex format.");
+      
+      
+      // TODO check that vid > 0
+      if (_vertices.size() < vid)
+        _vertices.resize(vid, pair<double,double>(0,0));
+      
+      _vertices.at(vid - 1) = pair<double,double>(x,y);
+      
+      break;
+    }
+    
+    case Edges:
+    {
+      wordlist.clear();
+      ParserTools::tokenise(wordlist, line);
+      
+      if (ParserTools::lower(wordlist.front()) == "edges")
+        break;
+      
+      if (wordlist.size() != 3)
+        throw SeqParseError("Invalid edge descriptor.");
+      
+      if (line.at(line.size() - 1) == ',')
+        line.erase(line.size() - 1);
+      
+      istringstream iss(line);
+      unsigned eid;
+      unsigned from;
+      unsigned to;
+      
+      iss >> eid;
+      iss >> from;
+      iss >> to;
+      
+      if (iss.fail())
+        throw SeqParseError("Invalid edge format.");
+      
+      if (_edges.size() < eid)
+        _edges.resize(eid, pair<unsigned,unsigned>(0,0));
+      
+      _edges.at(eid - 1) = pair<unsigned,unsigned>(from,to);
+      break;
+    }
+    
+    case VLabels:
+    {
+      wordlist.clear();
+      ParserTools::tokenise(wordlist, line);
+
+      if (ParserTools::lower(wordlist.front()) == "vlabels")
+        break;
+      
+      if (wordlist.size() != 3)
+        throw SeqParseError("Invalid vertex label descriptor.");
+      
+      if (line.at(line.size() - 1) == ',')
+        line.erase(line.size() - 1);
+      
+      istringstream iss(line);
+      unsigned vid;
+      double x;
+      double y;
+      
+      iss >> vid;
+      iss >> x;
+      iss >> y;
+      
+      if (iss.fail())
+        throw SeqParseError("Invalid vertex label format.");
+      
+      if (_vLabels.size() < vid)
+        _vLabels.resize(vid, pair<double,double>(0,0));
+      
+      _vLabels.at(vid - 1) = pair<double,double>(x,y);
       break;
     }
 

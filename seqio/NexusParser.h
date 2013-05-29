@@ -9,6 +9,7 @@
 #define NEXUSPARSER_H_
 
 #include <fstream>
+#include <list>
 #include <map>
 #include <queue>
 #include <set>
@@ -63,6 +64,7 @@ private:
     //Ha
     Traits,
     GeoTags,
+    Network,
     Sets,
     Other
   } BlockType;
@@ -73,7 +75,11 @@ private:
     Begin,
     End,
     CharstateLabels,
+    ClustLabels,
+    ClustLongitude,
+    ClustLatitude,
     Dimensions,
+    Edges,
     Format,
     Matrix,
     TaxLabels,
@@ -81,27 +87,41 @@ private:
     TraitLabels,
     TraitLatitude,
     TraitLongitude,
-    ClustLabels,
-    ClustLongitude,
-    ClustLatitude,
     Translate,
     TreeKW,
-    Unknown
+    Unknown,
+    Vertices,
+    VLabels
   } KeyWord;
   
   typedef struct
   {
-    string name;
+    std::string name;
     float latitude;
     float longitude;
     unsigned nsamples;
     unsigned clusterID;
     
   } SeqGeoData;
+  
+  typedef struct
+  {
+    std::string font;
+    std::string legendFont;
+    std::string vColour;
+    std::string eColour;
+    std::string bgColour;
+    std::string eView;
+    double vSize;
+    std::pair<double,double> lPos;
+    std::list<std::string> lColours;
+  } GraphicsParams;
+  
 
   typedef std::map<std::string, BlockType, std::less<std::string> > strblockmap;
   typedef std::map<std::string, KeyWord, std::less<std::string> > strkwdmap;
 
+  void initGraphicsParams(GraphicsParams &);
   void setupMaps();
   void parseLine(std::string, Sequence &);
   bool cleanComment(std::string &, bool);
@@ -132,6 +152,8 @@ private:
   int _nclusts;
   unsigned _latCount;
   unsigned _lonCount;
+  unsigned _nverts;
+  unsigned _nedges;
   bool _hasGeoTags;
   bool _hasTraits;  
   const std::string *_keystr;
@@ -159,9 +181,17 @@ private:
   std::vector<std::pair<float,float> > _traitLocations;
   std::vector<SeqGeoData> _geoTags;
   std::vector<GeoTrait *> _geoTagTraits;
+  
+  std::vector<double> _plotRect;
+  GraphicsParams _netGraphicsParams;
+  std::vector<pair<double,double> > _vertices;
+  std::vector<pair<unsigned,unsigned> > _edges;
+  std::vector<pair<double,double> > _vLabels;
 
   //bool _geoDataSaved;
   static int _seqidx;
 };
 
+// TODO 
+// check whether lower-case font families can be parsed by QFont
 #endif /* NEXUSPARSER_H_ */

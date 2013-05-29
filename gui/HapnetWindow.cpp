@@ -1724,7 +1724,7 @@ ostream & HapnetWindow::writeNexusFile(ostream &out)
   out << "Format ";
   
   out << "Font=" << _netView->labelFont().toString().toStdString() << ' ';
-  out << "LabelFont=" << _netView->legendFont().toString().toStdString() << ' ';
+  out << "LegendFont=" << _netView->legendFont().toString().toStdString() << ' ';
   out << "VColour=" << _netView->vertexColour().name().toStdString() << ' ';
   out << "EColour=" << _netView->edgeColour().name().toStdString() << ' ';
   out << "BGColour=" << _netView->backgroundColour().name().toStdString() << ' ' ;
@@ -1747,7 +1747,7 @@ ostream & HapnetWindow::writeNexusFile(ostream &out)
   
   QPointF legendPos = _netView->legendPosition();
   out << "LPos=" << legendPos.x() << ',' << legendPos.y() << ' ';
-  out << "LCols=";
+  out << "LColours=";
   bool first = true;
   for (QList<QColor> legendCols = _netView->traitColours(); ! legendCols.isEmpty(); legendCols.pop_front())
   {
