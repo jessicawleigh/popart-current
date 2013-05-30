@@ -460,9 +460,9 @@ void NexusParser::parseLine(string line, Sequence &sequence)
                            
               while (geoTagIt != _geoTags.end())
               {
-                latitudes.at(geoTagIt->clusterID) += geoTagIt->latitude;
-                longitudes.at(geoTagIt->clusterID) += geoTagIt->longitude;
-                clustsizes.at(geoTagIt->clusterID) ++;
+                latitudes.at(geoTagIt->clusterID - 1) += geoTagIt->latitude;
+                longitudes.at(geoTagIt->clusterID - 1) += geoTagIt->longitude;
+                clustsizes.at(geoTagIt->clusterID - 1) ++;
                  
                 ++geoTagIt;
               }
@@ -485,7 +485,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             
             while (geoTagIt != _geoTags.end())
             {
-              GeoTrait *gt = _geoTagTraits.at(geoTagIt->clusterID);
+              GeoTrait *gt = _geoTagTraits.at(geoTagIt->clusterID - 1);
               gt->addSeq(pair<float,float>(geoTagIt->latitude, geoTagIt->longitude), geoTagIt->name, geoTagIt->nsamples);
               ++geoTagIt;
             }  
@@ -914,7 +914,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             if (_currentBlock != Network)
               throw SeqParseError("LPos keyword only allowed in Network block.");
             
-            unsigned commaPos = val.find_first_of(',');
+            int commaPos = val.find_first_of(',');
             
             if (commaPos == string::npos)
             {
@@ -1904,7 +1904,7 @@ void NexusParser::putSeq(ostream &output, const Sequence &sequence)
   {
     _headerWritten = true;
     _seqWriteCount = 0;
-    output << "#NEXUS\nBegin Data" << endl;
+    output << "#NEXUS\nBegin Data;" << endl;
     output << "    Dimensions ntax=" << nSeq();
     output << " nchar=" << nChar() << ";\n";
     output << "    Format datatype=";

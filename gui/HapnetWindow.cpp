@@ -193,6 +193,11 @@ void HapnetWindow::setupActions()
   _openAct->setStatusTip(tr("Open an existing alignment"));
   connect(_openAct, SIGNAL(triggered()), this, SLOT(openAlignment()));
   
+  _saveAsAct = new QAction(tr("Save& As..."), this);
+  _saveAsAct->setShortcut(QKeySequence::Save); // There's a SaveAs key sequence as well, but since I'm not using save...
+  _saveAsAct->setStatusTip(tr("Save network as a Nexus file."));
+  connect(_saveAsAct, SIGNAL(triggered()), this, SLOT(saveNexusFile()));
+
   _closeAct = new QAction(tr("&Close"), this);
   _closeAct->setShortcut(QKeySequence::Close);
   _closeAct->setStatusTip(tr("Close current alignment"));
@@ -305,6 +310,11 @@ void HapnetWindow::setupActions()
   _toggleViewAct->setStatusTip(tr("Toggle between network and map view"));
   connect(_toggleViewAct, SIGNAL(triggered()), this, SLOT(toggleView()));
 
+  _toggleTraitAct = new QAction(tr("Use GeoTags &groups"), this);
+  _toggleTraitAct->setStatusTip(tr("Toggle between groups defined by Traits and GeoTags"));
+  connect(_toggleTraitAct, SIGNAL(triggered()), this, SLOT(toggleActiveTraits()));
+  _toggleTraitAct->setEnabled(false);
+
   QActionGroup *viewActions = new QActionGroup(this);
   _dashViewAct = new QAction(tr("Show &hatch marks"), viewActions);
   _dashViewAct->setStatusTip(tr("Show mutations as hatch marks along edges"));
@@ -385,6 +395,7 @@ void HapnetWindow::setupMenus()
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
   fileMenu->addAction(_openAct);
   fileMenu->addAction(_closeAct);
+  fileMenu->addAction(_saveAsAct);
   fileMenu->addSeparator();
   
   QMenu *importMenu = fileMenu->addMenu(tr("Import..."));
@@ -432,6 +443,7 @@ void HapnetWindow::setupMenus()
   
   _viewMenu = menuBar()->addMenu(tr("&View"));
   _viewMenu->addAction(_toggleViewAct);
+  _viewMenu->addAction(_toggleTraitAct);
 
   _viewMenu->addSeparator();//->setText(tr("Network"));
   // Add maps: make a group for network vs. map view, and a setSeparator(true) for both, maybe
@@ -465,9 +477,13 @@ void HapnetWindow::setupTools()
   _nexusToolAct = toolbar->addAction(QIcon(QPixmap(xpm::nexus)), "Open Nexus file");
   connect(_nexusToolAct, SIGNAL(triggered()), this, SLOT(openAlignment()));
   
-  _exportToolAct = toolbar->addAction(toolstyle->standardIcon(QStyle::SP_DialogSaveButton), "Export network");
+  /*_exportToolAct = toolbar->addAction(toolstyle->standardIcon(QStyle::SP_DialogSaveButton), "Export network");
   connect(_exportToolAct, SIGNAL(triggered()), this, SLOT(exportNetwork()));
-  _exportToolAct->setEnabled(false);
+  _exportToolAct->setEnabled(false);*/
+
+  _saveToolAct = toolbar->addAction(toolstyle->standardIcon(QStyle::SP_DialogSaveButton), "Save network as Nexus file");
+  connect(_saveToolAct, SIGNAL(triggered()), this, SLOT(saveNexusFile()));
+  _saveToolAct->setEnabled(false);
   
   toolbar->addSeparator();
   
@@ -497,6 +513,9 @@ void HapnetWindow::setupTools()
   toolbar->addAction(_rotateLAct);
   toolbar->addAction(_rotateRAct);
   toolbar->addAction(_searchAct);
+
+  toolbar->addSeparator();
+
   toolbar->addAction(_taxBoxAct);
   toolbar->addAction(_barchartAct);
 }
@@ -550,6 +569,10 @@ void HapnetWindow::openAlignment()
     // TODO check whether these functions can produce traits exceptions that aren't caught
     bool success = loadAlignmentFromFile();
     bool traitsuccess = loadTraitsFromParser();
+    bool treesuccess = loadTreesFromParser(_treeVect);
+
+    if (! treesuccess)
+      closeTrees();
 
     if (success)
     {
@@ -915,21 +938,39 @@ bool HapnetWindow::loadTraitsFromParser()
         return false;
       
       if (buttonGroup->checkedId() == 0)
+      {
         _traitVect = parser->traitVector();
+        _activeTraits = Traits;
+        _toggleTraitAct->setText(tr("Use GeoTags &groups"));
+      }
+
       else
       {
         const vector<GeoTrait*> & gtv = parser->geoTraitVector();
         _traitVect.assign(gtv.begin(), gtv.end());
+        _activeTraits = GeoTags;
+        _toggleTraitAct->setText(tr("Use Traits &groups"));
+
       }
+
+      _toggleTraitAct->setEnabled(true);
     }
     
     else if (parser->hasTraits())
+    {
       _traitVect = parser->traitVector();
+      _activeTraits = Traits;
+      _toggleTraitAct->setText(tr("Use GeoTags &groups"));
+      _toggleTraitAct->setEnabled(false);
+    }
     
     else if (parser->hasGeoTags())
     {
       const vector<GeoTrait*> & gtv = parser->geoTraitVector();
       _traitVect.assign(gtv.begin(), gtv.end());
+      _activeTraits = GeoTags;
+      _toggleTraitAct->setText(tr("Use Traits &groups"));
+      _toggleTraitAct->setEnabled(false);
     }
     
     else
@@ -1054,7 +1095,18 @@ void HapnetWindow::closeAlignment()
     _stats = 0;
   }
   
+  if (! _treeVect.empty())
+    closeTrees();
+
 }
+
+void HapnetWindow::closeTrees()
+{
+  for (unsigned i = 0; i < _treeVect.size(); i++)
+    delete _treeVect.at(i);
+  _treeVect.clear();
+}
+
 
 void HapnetWindow::closeTraits()
 {
@@ -1202,6 +1254,8 @@ void HapnetWindow::importTraits()
     if (! _traitVect.empty())
       closeTraits();
 
+    _toggleTraitAct->setEnabled(false);
+
     _tp = new TableParser();
     bool success = loadTableFromFile(filename);
     if (success)
@@ -1319,6 +1373,7 @@ void HapnetWindow::importGeoTags()
     if (! _traitVect.empty())
       closeTraits();
 
+    _toggleTraitAct->setEnabled(false);
     _tp = new TableParser();
     bool success = loadTableFromFile(filename);
     
@@ -1696,12 +1751,311 @@ void HapnetWindow::setHasVHeader(bool hasVHeader)
 
 void HapnetWindow::saveNexusFile()
 {
-  writeNexusFile(cout);
+
+  QString defaultName(_filename);
+
+  if (! defaultName.endsWith(".nex", Qt::CaseInsensitive))
+    defaultName.append(".nex");
+
+  QString filename = QFileDialog::getSaveFileName(this, tr("Save Network"), tr("./%1").arg(defaultName), tr("Nexus files (*.nex *.mac)"));
+
+  if (! filename.isEmpty())
+  {
+    const char *cstr = filename.toLatin1().constData();
+
+    ofstream nexfile(cstr);
+
+    if (! writeNexusFile(nexfile))
+    {
+      statusBar()->showMessage("File not saved.");
+      showErrorDlg("Error saving Nexus file.");
+    }
+
+    nexfile.close();
+  }
 }
 
-ostream & HapnetWindow::writeNexusFile(ostream &out)
+bool HapnetWindow::writeNexusFile(ostream &nexfile)
 {
+  if (_alignment.size() <  1)  return false;
+
+  if (! writeNexusAlignment(nexfile))
+    return false;
+
+  if (! writeNexusTraits(nexfile))
+    return false;
+
+  if (! writeNexusTrees(nexfile))
+    return false;
+
+  if (! writeNexusNetwork(nexfile))
+    return false;
+
+  return true;
+}
+
+bool HapnetWindow::writeNexusAlignment(ostream &nexfile)
+{
+
+  SeqParser *sp = Sequence::parser();
+
+
+  NexusParser *nexParser = dynamic_cast<NexusParser*>(sp);
+  if (! nexParser)
+  {
+    nexParser = new NexusParser();
+    nexParser->setNchar(_alignment.at(0)->length());
+    nexParser->setNseq(_alignment.size());
+    switch (_datatype)
+    {
+      case Sequence::AAType:
+        nexParser->setCharType(SeqParser::AAType);
+        break;
+      case Sequence::DNAType:
+        nexParser->setCharType(SeqParser::DNAType);
+        break;
+      case Sequence::BinaryType:
+        nexParser->setCharType(SeqParser::StandardType);
+        break;
+      default:
+        return false;
+        break;
+    }
+
+    if (sp)
+      delete sp;
+  }
+
+  try
+  {
+    for (unsigned i = 0; i < _alignment.size(); i++)
+      nexfile << *(_alignment.at(i));
+  }
+  catch (SequenceError &)
+  {
+    return false;
+  }
+
+  nexfile << endl;
+
+  return true;
+}
+
+bool HapnetWindow::writeNexusTraits(ostream &nexfile)
+{
+  if (_traitVect.empty())
+    return true;
+
+  NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
+
+  if (! nexParser)
+    return false;
+
+  if (_activeTraits == Traits)
+  {
+
+    if (! writeTraitData(nexfile, _traitVect))
+      return false;
+
+
+    if (nexParser && nexParser->hasGeoTags())
+    {
+      const vector<GeoTrait*> & gtv = nexParser->geoTraitVector();
+      if (! writeGeoData(nexfile, gtv))
+        return false;
+    }
+  }
+
+  else
+  {
+
+    vector<GeoTrait*> gtv;
+
+    for (unsigned i = 0; i < _traitVect.size(); i++)
+    {
+      GeoTrait *gt = dynamic_cast<GeoTrait *>(_traitVect.at(i));
+      if (! gt)
+        return false;
+
+      gtv.push_back(gt);
+    }
+
+    if (! writeGeoData(nexfile, gtv))
+      return false;
+
+    if (nexParser && nexParser->hasTraits())
+      if (! writeTraitData(nexfile, nexParser->traitVector()))
+        return false;
+  }
+
+
+  return true;
+}
+
+bool HapnetWindow::writeTraitData(ostream &nexfile, const vector<Trait *> &traits)
+{
+  NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
+
+  if (! nexParser)
+    return false;
+
+  nexfile << "Begin Traits;" << endl;
+  nexfile << "Dimensions NTraits=" << traits.size() << ';' << endl;
+  nexfile << "Format labels=yes missing=? separator=Comma;" << endl;
+
+  vector<GeoTrait*> gtvect;
+
+  for (unsigned i = 0; i < traits.size(); i++)
+  {
+    GeoTrait *gt = dynamic_cast<GeoTrait*>(traits.at(i));
+    if (gt)
+      gtvect.push_back(gt);
+
+    else
+    {
+      gtvect.clear();
+      break;
+    }
+  }
+
+  if (! gtvect.empty())
+  {
+
+    nexfile << "TraitLatitude";
+    for (unsigned i = 0; i < gtvect.size(); i++)
+    {
+      nexfile << ' ' << gtvect.at(i)->latitude();
+    }
+    nexfile << ';' << endl;
+    nexfile << "TraitLongitude";
+    for (unsigned i = 0; i < gtvect.size(); i++)
+    {
+      nexfile << ' ' << gtvect.at(i)->latitude();
+    }
+    nexfile << ';' << endl;
+
+  }
+
+  // geo data
+  nexfile << "TraitLabels";
+
+  for (unsigned i = 0; i < traits.size(); i++)
+    nexfile << ' ' << traits.at(i)->name();
+
+  nexfile << ";\nMatrix" << endl;
+
+  for (unsigned i = 0; i < _alignment.size(); i++)
+  {
+    string seqname = _alignment.at(i)->name();
+    nexfile << seqname << ' ';
+    for (unsigned j = 0; j < traits.size(); j++)
+    {
+
+      if (j > 0)
+        nexfile << ',';
+
+      try
+      {
+        nexfile << traits.at(j)->seqCount(seqname);
+      }
+
+      catch (SequenceError &)
+      {
+        nexfile << 0;
+      }
+    }
+    nexfile << endl;
+  }
+  nexfile << "End;\n" << endl;
+
+  return true;
+}
+
+
+bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<GeoTrait *> &geotraits)
+{
+  NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
+
+  if (! nexParser)
+    return false;
+
+  nexfile << "Begin GeoTags;" << endl;
+  nexfile << "Dimensions NClusts=" << geotraits.size() << ';' << endl;
+  nexfile << "Format labels=yes missing=? separator=Comma;" << endl;
+
+  if (! geotraits.empty())
+  {
+
+    nexfile << "ClustLatitude";
+    for (unsigned i = 0; i < geotraits.size(); i++)
+    {
+      nexfile << ' ' << geotraits.at(i)->latitude();
+    }
+    nexfile << ';' << endl;
+    nexfile << "ClustLongitude";
+    for (unsigned i = 0; i < geotraits.size(); i++)
+    {
+      nexfile << ' ' << geotraits.at(i)->latitude();
+    }
+    nexfile << ';' << endl;
+
+  }
+
+  // geo data
+  nexfile << "ClustLabels";
+
+  for (unsigned i = 0; i < geotraits.size(); i++)
+    nexfile << ' ' << geotraits.at(i)->name();
+
+  nexfile << ";\nMatrix" << endl;
+
+
+
+  for (unsigned i = 0; i < _alignment.size(); i++)
+  {
+    string seqname = _alignment.at(i)->name();
+    for (unsigned j = 0; j < geotraits.size(); j++)
+    {
+      try
+      {
+        vector<unsigned> counts = geotraits.at(j)->seqCounts(seqname);
+        vector<pair<float,float> > locations = geotraits.at(j)->seqLocations(seqname);
+
+        if (counts.size() != locations.size())
+          return false;
+
+        for (unsigned k = 0; k < counts.size(); k++)
+        {
+          nexfile << seqname << ' ' << locations.at(k).first << ' ' << locations.at(k).second << ' ';
+          nexfile << counts.at(k) << ' ' << (j + 1) << ',' << endl;
+        }
+      }
+
+      catch (SequenceError &) // do nothing, but ignore trait
+      { }
+    }
+  }
+  nexfile << "End;\n" << endl;
+
+  return true;
+}
+
+bool HapnetWindow::writeNexusTrees(ostream &nexfile)
+{
+
+  if (_treeVect.empty())  return true;
+
+  nexfile << "Begin Trees;" << endl;
+  for (unsigned i = 0; i < _treeVect.size(); i++)
+    nexfile << "tree POPART_" << (i+1) << " = " << *(_treeVect.at(i)) << endl;
+
+  nexfile << "End;\n" << endl;
+
+  return true;
+}
   
+bool HapnetWindow::writeNexusNetwork(ostream &nexfile)
+{
   vector<string> vertLabels;
   
   
@@ -1714,91 +2068,91 @@ ostream & HapnetWindow::writeNexusFile(ostream &out)
   }
   
 
-  out << "Begin Network;" << endl;
-  out << "Dimensions ntax=" << vertLabels.size() << " nvertices=" << _g-> vertexCount() << " nedges=" << _g->edgeCount() << ' ';
+  nexfile << "Begin Network;" << endl;
+  nexfile << "Dimensions ntax=" << vertLabels.size() << " nvertices=" << _g-> vertexCount() << " nedges=" << _g->edgeCount() << ' ';
 
   QRectF plotRect = _netView->sceneRect();
-  out << "plotDim=" << plotRect.x() << ',' << plotRect.y() << ',' << plotRect.width() << ',' << plotRect.height();
-  out << ';' << endl;
-  //out << "DRAW to_scale;" << endl;
-  out << "Format ";
+  nexfile << "plotDim=" << plotRect.x() << ',' << plotRect.y() << ',' << plotRect.width() << ',' << plotRect.height();
+  nexfile << ';' << endl;
+  //nexfile << "DRAW to_scale;" << endl;
+  nexfile << "Format ";
   
-  out << "Font=" << _netView->labelFont().toString().toStdString() << ' ';
-  out << "LegendFont=" << _netView->legendFont().toString().toStdString() << ' ';
-  out << "VColour=" << _netView->vertexColour().name().toStdString() << ' ';
-  out << "EColour=" << _netView->edgeColour().name().toStdString() << ' ';
-  out << "BGColour=" << _netView->backgroundColour().name().toStdString() << ' ' ;
-  out << "VSize=" << _netView->vertexSize() << ' ';
-  out << "EView=";
+  nexfile << "Font=" << _netView->labelFont().toString().toStdString() << ' ';
+  nexfile << "LegendFont=" << _netView->legendFont().toString().toStdString() << ' ';
+  nexfile << "VColour=" << _netView->vertexColour().name().toStdString() << ' ';
+  nexfile << "EColour=" << _netView->edgeColour().name().toStdString() << ' ';
+  nexfile << "BGColour=" << _netView->backgroundColour().name().toStdString() << ' ' ;
+  nexfile << "VSize=" << _netView->vertexSize() << ' ';
+  nexfile << "EView=";
   
   switch (_netView->edgeMutationView())
   {
     case EdgeItem::ShowDashes:
-      out << "Dashes ";
+      nexfile << "Dashes ";
       break;
     case EdgeItem::ShowEllipses:
-      out << "Ellipses ";
+      nexfile << "Ellipses ";
       break;
     case EdgeItem::ShowNums:
     default:
-      out << "Numbers ";
+      nexfile << "Numbers ";
       break;
   }
   
   QPointF legendPos = _netView->legendPosition();
-  out << "LPos=" << legendPos.x() << ',' << legendPos.y() << ' ';
-  out << "LColours=";
+  nexfile << "LPos=" << legendPos.x() << ',' << legendPos.y() << ' ';
+  nexfile << "LColours=";
   bool first = true;
   for (QList<QColor> legendCols = _netView->traitColours(); ! legendCols.isEmpty(); legendCols.pop_front())
   {
     if (first)
       first = false;
     else
-      out << ',';
-    out << legendCols.front().name().toStdString();
+      nexfile << ',';
+    nexfile << legendCols.front().name().toStdString();
   }
   
-  out << ';' << endl;
+  nexfile << ';' << endl;
   
-  out << "Translate" << endl;
+  nexfile << "Translate" << endl;
   
   for (unsigned i = 0; i < vertLabels.size(); i++)
   {
-    out << (i + 1) << ' ' << vertLabels.at(i) << ',' << endl;
+    nexfile << (i + 1) << ' ' << vertLabels.at(i) << ',' << endl;
   }
   
-  out << ';' << endl;
+  nexfile << ';' << endl;
   
-  out << "Vertices" << endl;
+  nexfile << "Vertices" << endl;
   for (unsigned i = 0; i < _g->vertexCount(); i++)
   {
     QPointF vertPos = _netView->vertexPosition(i);
-    out << (i + 1) << ' ' << vertPos.x() << ' ' << vertPos.y() << ',' << endl;
+    nexfile << (i + 1) << ' ' << vertPos.x() << ' ' << vertPos.y() << ',' << endl;
   }
   
-  out << ';' << endl;
+  nexfile << ';' << endl;
   
-  out << "VLabels" << endl;
+  nexfile << "VLabels" << endl;
   for (unsigned i = 0; i < _g->vertexCount(); i++)
   {
     QPointF labPos = _netView->labelPosition(i);
-    out << (i + 1) << ' ' << labPos.x() << ' ' << labPos.y() << ',' << endl;
+    nexfile << (i + 1) << ' ' << labPos.x() << ' ' << labPos.y() << ',' << endl;
   }
   
-  out << ';' << endl;
+  nexfile << ';' << endl;
     
-  out << "Edges" << endl;
+  nexfile << "Edges" << endl;
   for (unsigned i = 0; i < _g->vertexCount(); i++)
   {
     const Edge *e = _g->edge(i);
-    out << (i + 1) << ' ' << e->from()->index() << ' ' << e->to()->index() << ',' << endl;
+    nexfile << (i + 1) << ' ' << e->from()->index() << ' ' << e->to()->index() << ',' << endl;
   } 
   
-  out << ';' << endl;
+  nexfile << ';' << endl;
   
-  out << "End;" << endl;
-           
-  return out;
+  nexfile << "End;" << endl;
+
+  return true;
 }
 
 void HapnetWindow::exportNetwork()
@@ -2026,13 +2380,8 @@ void HapnetWindow::buildAPN()
     if (result == QMessageBox::No)
       return;
   }
-  
-  for (unsigned i = 0; i < _treeVect.size(); i++)
-    delete _treeVect.at(i);
-  _treeVect.clear();
-  bool success = loadTreesFromParser(_treeVect);
     
-  if (success)
+  if (! _treeVect.empty())
   {
     QDialog dlg(this);
     QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
@@ -2291,7 +2640,7 @@ void HapnetWindow::displayNetwork()
 
       _netView->setModel(_netModel);
       
-      connect(_netView, SIGNAL(networkDrawn()), this, SLOT(saveNexusFile()));
+      //connect(_netView, SIGNAL(networkDrawn()), this, SLOT(saveNexusFile()));
     }
 
     catch (NetworkError &e)
@@ -2461,6 +2810,35 @@ void HapnetWindow::toggleView()
 
     _toggleViewAct->setText(tr("Switch to map view"));
     _view = Net;
+  }
+}
+
+void HapnetWindow::toggleActiveTraits()
+{
+
+  NexusParser *np = dynamic_cast<NexusParser *>(Sequence::parser());
+
+  if (! np)
+    showErrorDlg("Both Traits and GeoTags should be loaded from a Nexus file to enable toggling", "Please report this as a bug.");
+
+  if (_activeTraits == Traits)
+  {
+    _activeTraits = GeoTags;
+    _toggleViewAct->setText(tr("Switch to network view"));
+
+    closeTraits();
+
+    const vector<GeoTrait*> & gtv = np->geoTraitVector();
+    _traitVect.assign(gtv.begin(), gtv.end());
+
+  }
+
+  else
+  {
+    _activeTraits = Traits;
+    _toggleTraitAct->setText(tr("Use GeoTags &groups"));
+
+    _traitVect = np->traitVector();
   }
 }
 
@@ -2919,9 +3297,11 @@ void HapnetWindow::toggleAlignmentActions(bool enable)
 
 void HapnetWindow::toggleNetActions(bool enable)
 {
+  _saveAsAct->setEnabled(enable);
   _exportAct->setEnabled(enable);
   _saveGraphicsAct->setEnabled(enable);
-  _exportToolAct->setEnabled(enable);
+  //_exportToolAct->setEnabled(enable);
+  _saveToolAct->setEnabled(enable);
   _zoomInAct->setEnabled(enable);
   _zoomOutAct->setEnabled(enable);
   _rotateLAct->setEnabled(enable);

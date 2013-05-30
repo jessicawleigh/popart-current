@@ -101,9 +101,9 @@ private:
     float longitude;
     unsigned nsamples;
     unsigned clusterID;
-    
+
   } SeqGeoData;
-  
+
   typedef struct
   {
     std::string font;

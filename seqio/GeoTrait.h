@@ -26,6 +26,7 @@ public:
   virtual void addSeq(const std::string &, unsigned);
   virtual void addSeq(const std::pair<float,float> &, const std::string &, unsigned);
   std::vector<std::pair<float,float> > seqLocations(const std::string &) const;
+  std::vector<unsigned> seqCounts(const std::string &) const;
   
   static std::vector<GeoTrait> clusterSeqs(const std::vector<std::pair<float,float> >&,
       const std::vector<std::string> &,
@@ -46,6 +47,7 @@ private:
   
   std::pair<float,float> _location;
   std::multimap<std::string, std::pair<float,float> > _seqLocs;
+  std::multimap<std::string, unsigned> _seqCounts;
   
   static std::vector<std::pair<float,float> > _centroids;
   static std::vector<unsigned> _clusters;

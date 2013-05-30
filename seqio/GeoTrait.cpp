@@ -34,6 +34,7 @@ void GeoTrait::addSeq(const pair<float,float> &location, const string &seqname, 
   Trait::addSeq(seqname, seqcount);
   
   _seqLocs.insert(pair<string,pair<float,float> >(seqname, location));
+  _seqCounts.insert(pair<string,unsigned>(seqname, seqcount)); // import for accessing counts of individual sequences
   //_seqLocs[seqname] = location;
 }
 
@@ -54,6 +55,25 @@ std::vector<std::pair<float, float> > GeoTrait::seqLocations(const string &seqna
   }
 
   return locs;
+}
+
+std::vector<unsigned> GeoTrait::seqCounts(const string &seqname) const
+{
+  pair<multimap<string,unsigned>::const_iterator,multimap<string,unsigned>::const_iterator> itpair = _seqCounts.equal_range(seqname);
+
+  multimap<string,unsigned>::const_iterator traitIt = itpair.first;
+
+  if (traitIt == _seqCounts.end())  throw SequenceError("Sequence not associated with this trait.");
+
+  vector<unsigned> counts;
+
+  while (traitIt != itpair.second)
+  {
+    counts.push_back(traitIt->second);
+    ++traitIt;
+  }
+
+  return counts;
 }
 
 vector<GeoTrait> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLocations, const vector<string> &seqNames, const vector<unsigned> &seqCounts, unsigned nClusters, const vector<pair<float,float> > &clusterLocations, const vector<string> &clusterNames)

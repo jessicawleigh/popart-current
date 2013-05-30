@@ -23,6 +23,7 @@
 
 #include "AlignmentView.h"
 #include "AlignmentModel.h"
+#include "GeoTrait.h"
 #include "MapView.h"
 #include "NetworkView.h"
 #include "NetworkModel.h"
@@ -48,6 +49,7 @@ private:
   
   typedef enum {Msn, Mjn, Tcs, Tsw, Inj, Apn} HapnetType;
   typedef enum {Net, Map} ViewType;
+  typedef enum {Traits, GeoTags} TraitType;
   void setupActions();
   void setupMenus();
   void setupTools();
@@ -57,6 +59,13 @@ private:
   bool loadAlignmentFromFile(QString = QString());
   bool loadTreesFromParser(vector<ParsimonyTree *> &);
   bool loadTraitsFromParser();
+  bool writeNexusFile(ostream &);
+  bool writeNexusAlignment(ostream &);
+  bool writeNexusTrees(ostream &);
+  bool writeNexusNetwork(ostream &);
+  bool writeNexusTraits(ostream &);
+  bool writeGeoData(ostream &, const vector<GeoTrait *> &);
+  bool writeTraitData(ostream &, const vector<Trait *> &);
   bool loadTableFromFile(const QString &);
   void askAndCloseAlignment();
   void askAndCloseTraits();
@@ -70,6 +79,7 @@ private:
   bool _success;
   bool _hapnetRunning;
   ViewType _view;
+  TraitType _activeTraits;
   bool _mapTraitsSet;
   HapNet * _g;
   Sequence::CharType _datatype;
@@ -105,11 +115,13 @@ private:
   std::istream *_tabfile;
 
   QAction *_openAct;
+  QAction *_saveAsAct;
   QAction *_closeAct;
   QAction *_importAlignAct;
   QAction *_importTraitsAct;
   QAction *_importGeoTagsAct;
   QAction *_exportAct;
+
   QAction *_saveGraphicsAct;
   QAction *_quitAct;
   
@@ -133,6 +145,7 @@ private:
   QAction *_umpAct;
   
   QAction *_toggleViewAct;
+  QAction *_toggleTraitAct;
 
   QAction *_dashViewAct;
   QAction *_nodeViewAct;
@@ -146,7 +159,8 @@ private:
   QAction *_allStatsAct;
 
   QAction *_nexusToolAct;
-  QAction *_exportToolAct;
+  //QAction *_exportToolAct;
+  QAction *_saveToolAct;
   QAction *_colourAct;
   QAction *_zoomInAct;
   QAction *_zoomOutAct;
@@ -160,12 +174,10 @@ private:
   
   
 private slots:
-  
-  void saveNexusFile();
-  ostream & writeNexusFile(ostream &out);
-  
+
   void printprog(int);
   void openAlignment();
+  void saveNexusFile();
   void importAlignment();
   void importTraits();
   void importGeoTags();
@@ -174,6 +186,7 @@ private slots:
   void setHasHeader(bool);
   void setHasVHeader(bool);
   void closeAlignment();
+  void closeTrees();
   void closeTraits();
   void saveGraphics();
   void exportNetwork();
@@ -203,6 +216,7 @@ private slots:
   void changeEdgeColour();
   void changeEdgeMutationView(QAction*);
   void toggleView();
+  void toggleActiveTraits();
   void changeBackgroundColour();
   void changeLabelFont();
   void changeLegendFont();
