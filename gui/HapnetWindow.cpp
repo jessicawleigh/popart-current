@@ -41,6 +41,7 @@
 #include <QtCore>
 
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <set>
@@ -54,6 +55,7 @@ using namespace std;
 #include "MoveCommand.h"
 #include "GeoTrait.h"
 #include "XPM.h"
+#include "ConcreteHapNet.h"
 #include "Edge.h"
 #include "EdgeItem.h"
 #include "HapNet.h"
@@ -569,6 +571,7 @@ void HapnetWindow::openAlignment()
     // TODO check whether these functions can produce traits exceptions that aren't caught
     bool success = loadAlignmentFromFile();
     bool traitsuccess = loadTraitsFromParser();
+    bool netsuccess = loadNetFromParser();
     bool treesuccess = loadTreesFromParser(_treeVect);
 
     if (! treesuccess)
@@ -620,6 +623,12 @@ void HapnetWindow::openAlignment()
           else
             _mapTraitsSet = false;
         }
+
+        if (netsuccess)
+        {
+          displayNetwork();
+          loadNetAttributes();
+        }
       }
 
 
@@ -655,7 +664,7 @@ void HapnetWindow::openAlignment()
     }
   }
 
-  else 
+  else
   {
     _filename = oldname;
     statusBar()->showMessage(tr("No file selected"));
@@ -664,7 +673,7 @@ void HapnetWindow::openAlignment()
 
 bool HapnetWindow::loadAlignmentFromFile(QString filename)
 {
-  
+
   //int index = 0;
   if (filename.isEmpty())  filename = _filename;
 
@@ -673,14 +682,14 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
 
   // need a std::ifstream to deal with Sequence input
   ifstream seqfile(cstr);
-  
+
  // _networkArea->writeToConsole("Opened seqfile.");
 
   // Set null Parser so that appropriate parser will be chosen
   Sequence::setParser(0);
 
   if (!seqfile)  return false;
-  
+
   //_alignment = new vector<Sequence *>;
   Sequence *seqptr;
   int nseq = -1, seqcount = 0;
@@ -704,7 +713,7 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
     }
     //_progress->hide();
   }
-    
+
   catch (SeqParseError &spe)
   {
     _progress->hide();
@@ -717,16 +726,16 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
     error.setStandardButtons(QMessageBox::Ok);
     error.setDefaultButton(QMessageBox::Ok);
     error.exec();
-   
+
     return false;
   }
 
   seqfile.close();
-  
+
   SeqParser *parser = Sequence::parser();
-  
+
   QString msg = QString::fromStdString(parser->getWarning());
-  
+
   while (! msg.isEmpty())
   {
     QMessageBox warnBox;
@@ -736,10 +745,10 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
     warnBox.setStandardButtons(QMessageBox::Ok);
     warnBox.setDefaultButton(QMessageBox::Ok);
     warnBox.exec();
-    
+
     msg = QString::fromStdString(parser->getWarning());
   }
-  
+
 
   if (parser->charType() == SeqParser::AAType)
     _datatype = Sequence::AAType;
@@ -747,22 +756,22 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
     _datatype = Sequence::DNAType;
   else if (parser->charType() == SeqParser::StandardType)
     _datatype = Sequence::BinaryType;
-  
+
   /*if (_datatype == Sequence::BinaryType)
   else if (_datatype == Sequence::DNAType)
   else*/
   _progress->setLabelText("Detecting problem sites...");
   vector<unsigned> ambiguousCounts;
-  
+
   for (unsigned i = 0; i < _alignment.size(); i++)
   {
     _alignment.at(i)->setCharType(_datatype);
-    
+
     ambiguousCounts.push_back(0);
-    
+
     if (i == 0)
       _mask.resize(_alignment.at(i)->length(), true);
-    
+
     else  if (_mask.size() != _alignment.at(i)->length())
     {
       QMessageBox warnBox;
@@ -778,7 +787,7 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
         for (unsigned j = _alignment.at(i)->length(); j < _mask.size(); j++)
           _mask.at(j) = false;
     }
-    
+
     for (unsigned j = 0; j < _mask.size(); j++)
     {
       if (Sequence::isAmbiguousChar(_alignment.at(i)->at(j), _datatype))
@@ -788,14 +797,14 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
       }
     }
   }
-  
+
   unsigned totalAmbiguous = 0;
   for (unsigned i = 0; i < _mask.size(); i++)
     if (! _mask.at(i))  totalAmbiguous++;
-    
+
   if (totalAmbiguous * 100. / _mask.size() > 5)
   {
-    
+
     //_errorMessage.showMessage("Warning: more than 5% sites contain undefined states and will be masked.");
     //_errorMessage.
     QMessageBox warnBox;
@@ -804,24 +813,24 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
     warnBox.setStandardButtons(QMessageBox::Ok);
     warnBox.setDefaultButton(QMessageBox::Ok);
     warnBox.exec();
-    
+
     double mean = 0;
     for (unsigned i = 0; i < ambiguousCounts.size(); i++)
       mean += ambiguousCounts.at(i);
-    
+
     mean /= ambiguousCounts.size();
-    
+
     double stdev = 0;
-    
+
     for (unsigned i = 0; i < ambiguousCounts.size(); i++)
       stdev += qPow(ambiguousCounts.at(i) - mean, 2);
-    
+
     stdev = qSqrt(stdev / ambiguousCounts.size());
-    
+
     double outlierThreshold = mean + 0.5 * stdev;
-    
+
     QStringList problemSeqs;
-    
+
     for (unsigned i = 0; i < ambiguousCounts.size(); i++)
     {
       if (ambiguousCounts.at(i) > outlierThreshold)
@@ -830,50 +839,50 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
         _badSeqs.push_back(i);
       }
     }
-    
+
     _progress->setValue(100);
 
     if (! problemSeqs.isEmpty())
     {
-      
+
       QMessageBox message;
       message.setIcon(QMessageBox::Question);
       message.setText(tr("<b>Some sequences contain significantly more undefined states than others</b>"));
       message.setInformativeText(tr("Remove these sequences?"));
-      message.setDetailedText(problemSeqs.join(tr("\n"))); 
+      message.setDetailedText(problemSeqs.join(tr("\n")));
       message.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
       message.setDefaultButton(QMessageBox::No);
       int result = message.exec();
-      
+
       if (result == QMessageBox::No)
         _badSeqs.clear();
-      
+
       else
       {
-        
+
         unsigned badSeqIdx = 0;
         for (unsigned i = 0; i < _alignment.size(); i++)
-        {          
+        {
           if (i == 0)
             _mask.assign(_alignment.at(i)->length(), true);
-          
+
           if (badSeqIdx < _badSeqs.size() && _badSeqs.at(badSeqIdx) == i)
           {
             badSeqIdx++;
             continue;
           }
-          
+
           else
             _goodSeqs.push_back(_alignment.at(i));
-            
-          
+
+
           if (_mask.size() < _alignment.at(i)->length())
             _mask.resize(_alignment.at(i)->length(), false);
           else  if (_mask.size() > _alignment.at(i)->length())
             for (unsigned j = _alignment.at(i)->length(); j < _mask.size(); i++)
               _mask.at(j) = false;
-         
-          
+
+
           for (unsigned j = 0; j < _mask.size(); j++)
           {
             if (Sequence::isAmbiguousChar(_alignment.at(i)->at(j), _datatype))
@@ -885,12 +894,236 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
       }
     }
   }
-  
+
   if (_goodSeqs.empty())
     _goodSeqs.assign(_alignment.begin(), _alignment.end());
 
   //doStatsSetup();
   _progress->hide();
+  return true;
+}
+
+bool HapnetWindow::loadNetFromParser()
+{
+  
+  NexusParser *nexParser = dynamic_cast<NexusParser *>(Sequence::parser());
+
+  if (! nexParser)  return false;
+
+  // Do this in loadNetFromFile
+  Graph g;
+
+  const vector<pair<double,double> > & vertices = nexParser->netVertices();
+  const vector<pair<unsigned,unsigned> >  & edges = nexParser->netEdges();
+
+  if (vertices.size() < _alignment.size())
+    return false;
+
+  if (edges.empty())
+    return false;
+
+  for (unsigned i = 0; i < vertices.size(); i++)
+    g.newVertex("");
+
+
+  for (unsigned i = 0; i < edges.size(); i++)
+    g.newEdge(g.vertex(edges.at(i).first), g.vertex(edges.at(i).second));
+
+  delete _g;
+  _g = new ConcreteHapNet(g, _goodSeqs, _mask);
+  _g->setupGraph();
+
+  return true;
+
+}
+
+bool HapnetWindow::loadNetAttributes()
+{
+  NexusParser *nexParser = dynamic_cast<NexusParser *>(Sequence::parser());
+
+  const vector<pair<double,double> > & vertexPositions = nexParser->netVertices();
+  const vector<pair<double,double> > & labelPositions = nexParser->netVLabels();
+
+  bool allgood = true;
+
+  for (unsigned i = 0; i < vertexPositions.size(); i++)
+  {
+    try
+    {
+      _netView->setVertexPosition(i, vertexPositions.at(i).first, vertexPositions.at(i).second);
+    }
+    catch (HapAppError &)
+    {
+      allgood = false;
+    }
+  }
+
+  if (! allgood)
+    showWarnDlg("Error setting one or more vertex positions.");
+
+  allgood = true;
+
+  for (unsigned i = 0; i < labelPositions.size(); i++)
+  {
+    try
+    {
+      _netView->setLabelPosition(i, labelPositions.at(i).first, labelPositions.at(i).second);
+    }
+    catch (HapAppError &)
+    {
+      allgood = false;
+    }
+  }
+
+  if (! allgood)
+    showWarnDlg("Error setting one or more label positions.");
+
+  QFont font;
+  QString fontstr = QString::fromStdString(nexParser->netFont());
+  if (font.fromString(fontstr))
+    _netView->changeLabelFont(font);
+  else
+    showWarnDlg("Error setting label font", tr("Font string %1 could not be parsed").arg(fontstr));
+
+  fontstr = QString::fromStdString(nexParser->netLegendFont());
+  if (font.fromString(fontstr))
+    _netView->changeLegendFont(font);
+  else
+    showWarnDlg("Error setting legend font", tr("Font string %1 could not be parsed").arg(fontstr));
+
+
+  QColor col;
+  int alpha;
+  bool ok;
+  QString colstr = QString::fromStdString(nexParser->netVColour());
+
+  if (colstr.length() != 9)
+    ok = false;
+
+  else
+  {
+
+    col = QColor(colstr.right(7));
+    alpha = colstr.left(2).toInt(&ok, 16);
+
+    if (ok)
+    {
+      col.setAlpha(alpha);
+      _netView->setVertexColour(col);
+    }
+  }
+
+  if (! ok)
+    showWarnDlg("Error setting vertex colour.", tr("Colour string %1 could not be parsed").arg(colstr));
+
+  colstr = QString::fromStdString(nexParser->netEColour());
+  if (colstr.length() != 9)
+    ok = false;
+
+  else
+  {
+
+    col = QColor(colstr.right(7));
+    alpha = colstr.left(2).toInt(&ok, 16);
+
+    if (ok)
+    {
+      col.setAlpha(alpha);
+      _netView->setEdgeColour(col);
+    }
+  }
+
+  if (! ok)
+    showWarnDlg("Error setting edge colour.", tr("Colour string %1 could not be parsed").arg(colstr));
+
+  colstr = QString::fromStdString(nexParser->netBGColour());
+  if (colstr.length() != 9)
+    ok = false;
+
+  else
+  {
+
+    col = QColor(colstr.right(7));
+    alpha = colstr.left(2).toInt(&ok, 16);
+
+    if (ok)
+    {
+      col.setAlpha(alpha);
+      _netView->setBackgroundColour(col);
+    }
+  }
+
+  if (! ok)
+    showWarnDlg("Error setting background colour.", tr("Colour string %1 could not be parsed").arg(colstr));
+
+  string eview = nexParser->netEView();
+
+
+  if (eview == "Dashes")
+  {
+    _netView->setEdgeMutationView(EdgeItem::ShowDashes);
+    _dashViewAct->setChecked(true);
+  }
+
+  else if (eview == "Ellipses")
+  {
+    _netView->setEdgeMutationView(EdgeItem::ShowEllipses);
+    _nodeViewAct->setChecked(true);
+  }
+
+  else if (eview == "Numbers")
+  {
+    _netView->setEdgeMutationView(EdgeItem::ShowNums);
+    _dashViewAct->setChecked(true);
+  }
+
+  else
+    showWarnDlg("Error setting edge view.", tr("Edge view string %1 could not be parsed").arg(QString::fromStdString(eview)));
+
+
+  _netView->setVertexSize(nexParser->netVSize());
+
+  _netView->setLegendPosition(nexParser->netLPos().first, nexParser->netLPos().second);
+
+  const vector<double> & sceneRect = nexParser->netPlotDim();
+
+  if (sceneRect.size() != 4)
+    showWarnDlg("Error setting network plot dimensions.");
+  else
+    _netView->setSceneRect(sceneRect.at(0), sceneRect.at(1), sceneRect.at(2), sceneRect.at(3));
+
+
+
+  list<string>::const_iterator colIt = nexParser->netLColours().begin();
+  unsigned count = 0;
+  while (colIt != nexParser->netLColours().end())
+  {
+    colstr = QString::fromStdString(*colIt);
+    if (colstr.length() != 9)
+      ok = false;
+
+    else
+    {
+
+      col = QColor(colstr.right(7));
+      alpha = colstr.left(2).toInt(&ok, 16);
+
+      if (ok)
+      {
+        col.setAlpha(alpha);
+        _netView->setColour(count, col);
+      }
+    }
+
+    if (! ok)
+      showWarnDlg(tr("Error setting colour for trait %1.").arg(count), tr("Colour string %1 could not be parsed").arg(colstr));
+
+
+
+    ++colIt;
+    count++;
+  }
+
   return true;
 }
 
@@ -1966,7 +2199,7 @@ bool HapnetWindow::writeTraitData(ostream &nexfile, const vector<Trait *> &trait
     }
     nexfile << endl;
   }
-  nexfile << "End;\n" << endl;
+  nexfile << ";\nEnd;\n" << endl;
 
   return true;
 }
@@ -2035,7 +2268,7 @@ bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<GeoTrait *> &geot
       { }
     }
   }
-  nexfile << "End;\n" << endl;
+  nexfile << ";\nEnd;\n" << endl;
 
   return true;
 }
@@ -2079,9 +2312,12 @@ bool HapnetWindow::writeNexusNetwork(ostream &nexfile)
   
   nexfile << "Font=" << _netView->labelFont().toString().toStdString() << ' ';
   nexfile << "LegendFont=" << _netView->legendFont().toString().toStdString() << ' ';
-  nexfile << "VColour=" << _netView->vertexColour().name().toStdString() << ' ';
-  nexfile << "EColour=" << _netView->edgeColour().name().toStdString() << ' ';
-  nexfile << "BGColour=" << _netView->backgroundColour().name().toStdString() << ' ' ;
+  QColor col = _netView->vertexColour();
+  nexfile << "VColour=" << col.name().toStdString() << setfill('0') << setw(2) << setbase(16) << col.alpha() << ' ';
+  col = _netView->edgeColour();
+  nexfile << "EColour=" << col.name().toStdString() << setfill('0') << setw(2) << setbase(16) << col.alpha() << ' ';
+  col = _netView->backgroundColour();
+  nexfile << "BGColour=" << col.name().toStdString() << setfill('0') << setw(2) << setbase(16) << col.alpha() << ' ';
   nexfile << "VSize=" << _netView->vertexSize() << ' ';
   nexfile << "EView=";
   
@@ -2142,7 +2378,7 @@ bool HapnetWindow::writeNexusNetwork(ostream &nexfile)
   nexfile << ';' << endl;
     
   nexfile << "Edges" << endl;
-  for (unsigned i = 0; i < _g->vertexCount(); i++)
+  for (unsigned i = 0; i < _g->edgeCount(); i++)
   {
     const Edge *e = _g->edge(i);
     nexfile << (i + 1) << ' ' << e->from()->index() << ' ' << e->to()->index() << ',' << endl;

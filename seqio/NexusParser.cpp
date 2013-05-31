@@ -1036,7 +1036,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
               }
 
               seqname = line.substr(0, nameend);
-              traitstr = line.substr(nameend);
+              traitstr = line.substr(nameend + 1);
               //ParserTools::eraseChars(traitstr, ' ');
               //ParserTools::eraseChars(traitstr, '\t');
             }
@@ -1083,7 +1083,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             
             else
             {
-              iss.str(*worditer + ' ');
+              iss.clear();
+              iss.str(*worditer);// + ' ');
               iss >> nsamples;
             }
             
@@ -1134,7 +1135,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
               }
 
               seqname = line.substr(0, nameend);
-              geotagstr = line.substr(nameend);
+              geotagstr = line.substr(nameend + 1);
               //ParserTools::eraseChars(geotagstr, ' ');
               //ParserTools::eraseChars(geotagstr, '\t');
             }

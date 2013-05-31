@@ -27,10 +27,10 @@ ColourTheme::Theme NetworkView::_defaultTheme = ColourTheme::Greyscale;
 
 NetworkView::NetworkView(QWidget * parent)
   : QAbstractItemView(parent), 
-  _backgroundBrush(Qt::transparent), 
+  _vertexSections(),
+  _backgroundBrush(Qt::transparent),
   _foregroundBrush(Qt::black), 
-  _defaultVertBrush(Qt::black),
-  _vertexSections()
+  _defaultVertBrush(Qt::black)
 {  
   _layout = 0;
   _legend = 0;
@@ -664,6 +664,21 @@ QPointF NetworkView::vertexPosition(unsigned idx) const
   return _vertexItems.at(idx)->mapToScene(brPoint);
 }
 
+void NetworkView::setVertexPosition(unsigned idx, const QPointF &p)
+{
+  if (idx >= _vertexItems.size())
+    throw HapAppError("Vertex index out of range");
+
+  _vertexItems.at(idx)->setPos(p);
+}
+
+void NetworkView::setVertexPosition(unsigned idx, double x, double y)
+{
+  setVertexPosition(idx, QPointF(x,y));
+}
+
+
+
 QPointF NetworkView::labelPosition(unsigned idx) const
 {
   
@@ -675,6 +690,18 @@ QPointF NetworkView::labelPosition(unsigned idx) const
   return _labelItems.at(idx)->mapToScene(brPoint);
 }
 
+void NetworkView::setLabelPosition(unsigned idx, const QPointF &p)
+{
+  if (idx >= _labelItems.size())
+    throw HapAppError("Label index out of range");
+
+  _labelItems.at(idx)->setPos(p);
+}
+
+void NetworkView::setLabelPosition(unsigned idx, double x, double y)
+{
+  setLabelPosition(idx, QPointF(x,y));
+}
 
 QPointF NetworkView::legendPosition() const
 {
@@ -688,11 +715,31 @@ QPointF NetworkView::legendPosition() const
   return QPointF(-1,-1);
 }
 
+void NetworkView::setLegendPosition(const QPointF &p)
+{
+  _legend->setPos(p);
+}
+
+void NetworkView::setLegendPosition(double x, double y)
+{
+  setLegendPosition(QPointF(x,y));
+}
+
+
 QRectF NetworkView::sceneRect() const
 {
   return _theScene.sceneRect();
 }
 
+void NetworkView::setSceneRect(const QRectF &rect)
+{
+  _theScene.setSceneRect(rect);
+}
+
+void NetworkView::setSceneRect(double x, double y, double width, double height)
+{
+  setSceneRect(QRectF(x, y, width, height));
+}
 
 
 void NetworkView::clearModel()

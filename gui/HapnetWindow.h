@@ -57,6 +57,8 @@ private:
   void showWarnDlg(const QString &, const QString & = "", const QString & = "");
   void doStatsSetup();
   bool loadAlignmentFromFile(QString = QString());
+  bool loadNetFromParser();
+  bool loadNetAttributes();
   bool loadTreesFromParser(vector<ParsimonyTree *> &);
   bool loadTraitsFromParser();
   bool writeNexusFile(ostream &);

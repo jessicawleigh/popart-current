@@ -80,9 +80,17 @@ public:
   double vertexSize() const { return _vertRadUnit; };
   void setVertexSize(double);
   QPointF vertexPosition(unsigned) const;
+  void setVertexPosition(unsigned, const QPointF &);
+  void setVertexPosition(unsigned, double, double);
   QPointF labelPosition(unsigned) const;
+  void setLabelPosition(unsigned, const QPointF &);
+  void setLabelPosition(unsigned, double, double);
   QRectF sceneRect() const;
+  void setSceneRect(const QRectF &);
+  void setSceneRect(double, double, double, double);
   QPointF legendPosition() const;
+  void setLegendPosition(const QPointF &);
+  void setLegendPosition(double, double);
   
   const QFont & defaultFont() const { return _defaultFont; };
   void setDefaultFont(const QFont & font) { _defaultFont = font; };

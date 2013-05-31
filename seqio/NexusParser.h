@@ -38,6 +38,20 @@ public:
   const std::vector<GeoTrait *> & geoTraitVector() const;
   bool hasGeoTags() const { return _hasGeoTags; };
   bool hasTraits() const { return _hasTraits; };
+  const std::vector<std::pair<double,double> > & netVertices() {return _vertices; };
+  const std::vector<std::pair<double,double> > & netVLabels() {return _vLabels; };
+  const std::vector<std::pair<unsigned,unsigned> > & netEdges() { return _edges; }
+  const std::vector<double> & netPlotDim() { return _plotRect; };
+  const std::string & netFont() { return _netGraphicsParams.font; };
+  const std::string & netLegendFont() { return _netGraphicsParams.legendFont; };
+  const std::string & netVColour() { return _netGraphicsParams.vColour; };
+  const std::string & netEColour() { return _netGraphicsParams.eColour; };
+  const std::string & netBGColour() { return _netGraphicsParams.bgColour; };
+  const std::string & netEView() { return _netGraphicsParams.eView; };
+  double netVSize() { return _netGraphicsParams.vSize; };
+  const std::pair<double,double> & netLPos() { return _netGraphicsParams.lPos; };
+  const std::list<std::string> & netLColours() { return _netGraphicsParams.lColours; };
+
   
 protected:
   //void fixEquals(string &);
