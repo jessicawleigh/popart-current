@@ -38,10 +38,11 @@ using namespace std;
 const ColourTheme::Theme MapView::_defaultTheme = ColourTheme::Greyscale;
 
 MapView::MapView(QWidget *parent)
-  : QWidget(parent), _mapWidget(0), _hapLayer(0)
+  : QWidget(parent), _mapWidget(0), _hapLayer(0), _legendDlg(0)
 {
   _currentTheme = _defaultTheme;
   setColourTheme();
+  _externalLegend = false;
   _mapWidget = new MarbleWidget(this);
   setupWidget();
 }
@@ -116,11 +117,17 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
   connect(_hapLayer, SIGNAL(colourChangeTriggered(int)), this, SLOT(requestChangeSeqColour(int)));
   connect(_hapLayer, SIGNAL(entered(const QString &)), this, SLOT(setMapToolTip(const QString &)));
   connect(_hapLayer, SIGNAL(left(const QString &)), this, SLOT(resetMapToolTip(const QString &)));
+  connect(_hapLayer, SIGNAL(clickable(bool)), this, SLOT(setClickableCursor(bool)));
   _hapLayer->setColours(_colourTheme);
   _mapWidget->addLayer(_hapLayer);
   _hapLayer->setTarget(_mapWidget);
   _mapWidget->installEventFilter(_hapLayer);
   _mapWidget->update();
+  
+  _legendDlg = new MapLegendDialog(_locations, this);
+  _legendDlg->setColours(_colourTheme);
+
+  //_legendDlg->show();
   
 }
 
@@ -129,6 +136,27 @@ void MapView::updateDirtyRegion(const QRegion &region)
   //_mapWidget->repaint(region);
   //qDebug() << "updating dirty legend";
   // maybe just render the legend layer?
+  _mapWidget->update();
+}
+
+void MapView::setClickableCursor(bool clickable)
+{
+  if (clickable)
+    _mapWidget->setCursor(Qt::PointingHandCursor);
+
+  else
+    _mapWidget->setCursor(Qt::OpenHandCursor);
+}
+
+void MapView::setExternalLegend(bool external)
+{
+  _externalLegend = external;
+  _hapLayer->setDrawLegend(! external);
+  
+  if (external)
+    _legendDlg->show();
+  else
+    _legendDlg->hide();
   _mapWidget->update();
 }
 
@@ -321,6 +349,9 @@ void MapView::updateColours()
   
   if (_hapLayer)
     _hapLayer->setColours(_colourTheme);
+  
+  if (_legendDlg)
+    _legendDlg->setColours(_colourTheme);
   
   if (_mapWidget)
     _mapWidget->update();

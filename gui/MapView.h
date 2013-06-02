@@ -10,6 +10,7 @@
 
 #include "HapLayer.h"
 #include "HapLocation.h"
+#include "MapLegendDialog.h"
 #include "NetworkView.h"
 #include "Trait.h"
 
@@ -44,6 +45,8 @@ public slots:
   void setColourTheme(ColourTheme::Theme = _defaultTheme);
   const QColor & colour(int) const;
   void setColour(int, const QColor &);
+  void setClickableCursor(bool);
+  void setExternalLegend(bool);
   void savePDFFile(const QString &filename) const;
   void savePNGFile(const QString &filename) const;  
   void saveSVGFile(const QString &filename) const;
@@ -58,12 +61,14 @@ private:
   QVector<QBrush> _colourTheme;
   ColourTheme::Theme _currentTheme;
   static const ColourTheme::Theme _defaultTheme;
+  bool _externalLegend;
 
   QSlider *_zoomSlider;
   QString _geoPos;
 
   QVector<HapLocation *> _locations;
   HapLayer *_hapLayer;
+  MapLegendDialog *_legendDlg; 
 
 private slots:
   void updateGeoPosition(QString);

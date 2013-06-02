@@ -83,6 +83,7 @@ private:
   ViewType _view;
   TraitType _activeTraits;
   bool _mapTraitsSet;
+  bool _externalLegend;
   HapNet * _g;
   Sequence::CharType _datatype;
   QClipboard *_clipboard;
@@ -148,6 +149,7 @@ private:
   
   QAction *_toggleViewAct;
   QAction *_toggleTraitAct;
+  QAction *_toggleExternalLegendAct;
 
   QAction *_dashViewAct;
   QAction *_nodeViewAct;
@@ -219,6 +221,7 @@ private slots:
   void changeEdgeMutationView(QAction*);
   void toggleView();
   void toggleActiveTraits();
+  void toggleExternalLegend();
   void changeBackgroundColour();
   void changeLabelFont();
   void changeLegendFont();

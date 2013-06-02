@@ -112,6 +112,7 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _netView = new NetworkView(this);
   _netView->resize(width(), height() * 2/3);
   _view = Net;
+  _externalLegend = false;
   //setCentralWidget(_netView);
   _centralContainer->addWidget(_netView);
   connect(_netView, SIGNAL(itemsMoved(QList<QPair<QGraphicsItem *, QPointF> >)), this, SLOT(graphicsMove(QList<QPair<QGraphicsItem *, QPointF> > )));
@@ -316,6 +317,11 @@ void HapnetWindow::setupActions()
   _toggleTraitAct->setStatusTip(tr("Toggle between groups defined by Traits and GeoTags"));
   connect(_toggleTraitAct, SIGNAL(triggered()), this, SLOT(toggleActiveTraits()));
   _toggleTraitAct->setEnabled(false);
+  
+  _toggleExternalLegendAct = new QAction(tr("Show &legend window"), this);
+  _toggleExternalLegendAct->setStatusTip(tr("Show legend in external window"));
+  connect(_toggleExternalLegendAct, SIGNAL(triggered()), this, SLOT(toggleExternalLegend()));
+  _toggleExternalLegendAct->setEnabled(false);
 
   QActionGroup *viewActions = new QActionGroup(this);
   _dashViewAct = new QAction(tr("Show &hatch marks"), viewActions);
@@ -445,6 +451,7 @@ void HapnetWindow::setupMenus()
   
   _viewMenu = menuBar()->addMenu(tr("&View"));
   _viewMenu->addAction(_toggleViewAct);
+  _viewMenu->addAction(_toggleExternalLegendAct);
   _viewMenu->addAction(_toggleTraitAct);
 
   _viewMenu->addSeparator();//->setText(tr("Network"));
@@ -3144,6 +3151,7 @@ void HapnetWindow::toggleView()
     }
     _toggleViewAct->setText(tr("Switch to network view"));
     _view = Map;
+    _toggleExternalLegendAct->setEnabled(true);
   }
 
   else
@@ -3155,6 +3163,24 @@ void HapnetWindow::toggleView()
 
     _toggleViewAct->setText(tr("Switch to map view"));
     _view = Net;
+    _toggleExternalLegendAct->setEnabled(false);
+  }
+}
+
+void HapnetWindow::toggleExternalLegend()
+{
+  if (_externalLegend)
+  {
+    _externalLegend = false;    
+    _mapView->setExternalLegend(false);
+    _toggleExternalLegendAct->setText(tr("Show &legend window"));
+  }
+  
+  else
+  {
+    _externalLegend = true;
+    _mapView->setExternalLegend(true);
+    _toggleExternalLegendAct->setText(tr("Show &legend on map"));
   }
 }
 

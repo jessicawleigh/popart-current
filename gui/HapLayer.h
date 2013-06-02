@@ -35,6 +35,8 @@ public:
   const QFont & defaultFont() const { return _defaultFont; };
   const QFont & smallFont() const { return _smallFont; };
   const QFont & legendFont() const { return _legendFont; };
+  
+  void setDrawLegend(bool draw) { _drawLegend = draw; };
 
   void setTarget(const Marble::MarbleWidget *target) { _target = target; };
 
@@ -56,6 +58,7 @@ private:
   QPoint _legendStart;
   QVector<QRegion> _legendKeys;
 
+  bool _drawLegend;
   bool _clickedInLegend;
   int _clickedInKey;
   QPoint _mouseDownPos;
@@ -69,6 +72,7 @@ signals:
   void colourChangeTriggered(int);
   void entered(const QString &);
   void left(const QString &);
+  void clickable(bool);
 };
 
 /*class HapLayerFilter : public QObject
