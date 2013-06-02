@@ -55,7 +55,7 @@ public:
   //typedef enum {Greyscale, Camo, Pastelle, Vibrant, Spring, Summer, Autumn, Winter}  ColourTheme;
   virtual QModelIndex indexAt(const QPoint &) const;
   virtual void scrollTo(const QModelIndex &, ScrollHint = EnsureVisible);
-  virtual void setModel(QAbstractItemModel *);
+  virtual void setModel(QAbstractItemModel *, bool=false);
   void clearModel();
 
   unsigned defaultIterations() const { return _defaultIterations; };
@@ -149,6 +149,7 @@ private:
   virtual void drawLayout();
   void drawLegend();
   virtual void createLayout(int = -1);
+  void createEmptyLayout();
   void optimiseLayout();//NetworkLayout*);
   virtual void updateColours();
   QPointF computeLegendPos();

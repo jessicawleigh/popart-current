@@ -626,8 +626,22 @@ void HapnetWindow::openAlignment()
 
         if (netsuccess)
         {
-          displayNetwork();
-          loadNetAttributes();
+          //displayNetwork();
+          
+          try
+          {
+            _g->associateTraits(_traitVect);
+            _netModel = new NetworkModel(_g); 
+            _netView->setModel(_netModel, true);
+            loadNetAttributes();
+            toggleNetActions(true);      
+          }
+          catch (NetworkError &ne)
+          {
+            toggleNetActions(false);
+            showErrorDlg("<b>Error finalising network</b>", ne.what());
+          }
+
         }
       }
 
@@ -668,7 +682,7 @@ void HapnetWindow::openAlignment()
   {
     _filename = oldname;
     statusBar()->showMessage(tr("No file selected"));
-  }
+  }  
 }
 
 bool HapnetWindow::loadAlignmentFromFile(QString filename)
@@ -719,13 +733,15 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
     _progress->hide();
     //cerr << spe.what() << endl;
     //_errorMessage.showMessage("Error parsing sequence data.");
-    QMessageBox error;
+    
+    showErrorDlg(tr("<b>Error parsing sequence data</b>"), spe.what());
+   /* QMessageBox error;
     error.setIcon(QMessageBox::Critical);
     error.setText(tr("<b>Error parsing sequence data</b>"));
     error.setDetailedText(spe.what());
     error.setStandardButtons(QMessageBox::Ok);
     error.setDefaultButton(QMessageBox::Ok);
-    error.exec();
+    error.exec();*/
 
     return false;
   }
@@ -916,7 +932,7 @@ bool HapnetWindow::loadNetFromParser()
   const vector<pair<double,double> > & vertices = nexParser->netVertices();
   const vector<pair<unsigned,unsigned> >  & edges = nexParser->netEdges();
 
-  if (vertices.size() < _alignment.size())
+  if (vertices.empty())
     return false;
 
   if (edges.empty())
@@ -929,9 +945,18 @@ bool HapnetWindow::loadNetFromParser()
   for (unsigned i = 0; i < edges.size(); i++)
     g.newEdge(g.vertex(edges.at(i).first), g.vertex(edges.at(i).second));
 
-  delete _g;
-  _g = new ConcreteHapNet(g, _goodSeqs, _mask);
-  _g->setupGraph();
+  if (_g)  delete _g;
+  try
+  {
+    _g = new ConcreteHapNet(g, _goodSeqs, _mask);
+    _g->setupGraph();
+  }
+  
+  catch (NetworkError &ne)
+  {
+    showErrorDlg("<b>Error rebuilding network</b>", ne.what());
+    return false;
+  }
 
   return true;
 
@@ -940,7 +965,7 @@ bool HapnetWindow::loadNetFromParser()
 bool HapnetWindow::loadNetAttributes()
 {
   NexusParser *nexParser = dynamic_cast<NexusParser *>(Sequence::parser());
-
+  
   const vector<pair<double,double> > & vertexPositions = nexParser->netVertices();
   const vector<pair<double,double> > & labelPositions = nexParser->netVLabels();
 
@@ -959,7 +984,7 @@ bool HapnetWindow::loadNetAttributes()
   }
 
   if (! allgood)
-    showWarnDlg("Error setting one or more vertex positions.");
+    showWarnDlg("<b>Error setting one or more vertex positions.</b>");
 
   allgood = true;
 
@@ -967,7 +992,7 @@ bool HapnetWindow::loadNetAttributes()
   {
     try
     {
-      _netView->setLabelPosition(i, labelPositions.at(i).first, labelPositions.at(i).second);
+      _netView->setLabelPosition(i,labelPositions.at(i).first, labelPositions.at(i).second);
     }
     catch (HapAppError &)
     {
@@ -976,35 +1001,53 @@ bool HapnetWindow::loadNetAttributes()
   }
 
   if (! allgood)
-    showWarnDlg("Error setting one or more label positions.");
+    showWarnDlg("<b>Error setting one or more label positions.</b>");
 
   QFont font;
   QString fontstr = QString::fromStdString(nexParser->netFont());
+
   if (font.fromString(fontstr))
     _netView->changeLabelFont(font);
+
   else
-    showWarnDlg("Error setting label font", tr("Font string %1 could not be parsed").arg(fontstr));
+    showWarnDlg("<b>Error setting label font.</b>", tr("Font string %1 could not be parsed").arg(fontstr));
 
   fontstr = QString::fromStdString(nexParser->netLegendFont());
+
   if (font.fromString(fontstr))
     _netView->changeLegendFont(font);
+
   else
-    showWarnDlg("Error setting legend font", tr("Font string %1 could not be parsed").arg(fontstr));
+    showWarnDlg("<b>Error setting legend font.</b>", tr("Font string %1 could not be parsed").arg(fontstr));
 
 
   QColor col;
   int alpha;
-  bool ok;
+  bool hasalpha;
+  bool ok = true;
   QString colstr = QString::fromStdString(nexParser->netVColour());
 
-  if (colstr.length() != 9)
+  if (colstr.length() == 9)
+    hasalpha = true;
+  else if (colstr.length() == 7)
+    hasalpha = false;
+  else
     ok = false;
 
-  else
+  if (ok)
   {
 
-    col = QColor(colstr.right(7));
-    alpha = colstr.left(2).toInt(&ok, 16);
+    if (hasalpha)
+    {
+      col = QColor(colstr.left(7));
+      alpha = colstr.right(2).toInt(&ok, 16);
+    }
+    
+    else
+    {
+      col = QColor(colstr);
+      alpha = 255;
+    }
 
     if (ok)
     {
@@ -1014,17 +1057,32 @@ bool HapnetWindow::loadNetAttributes()
   }
 
   if (! ok)
-    showWarnDlg("Error setting vertex colour.", tr("Colour string %1 could not be parsed").arg(colstr));
+    showWarnDlg("<b>Error setting vertex colour.</b>", tr("Colour string %1 could not be parsed").arg(colstr));
 
   colstr = QString::fromStdString(nexParser->netEColour());
-  if (colstr.length() != 9)
+  ok = true;
+
+  if (colstr.length() == 9)
+    hasalpha = true;
+  else if (colstr.length() == 7)
+    hasalpha = false;
+  else
     ok = false;
 
-  else
+  if (ok)
   {
 
-    col = QColor(colstr.right(7));
-    alpha = colstr.left(2).toInt(&ok, 16);
+    if (hasalpha)
+    {
+      col = QColor(colstr.left(7));
+      alpha = colstr.right(2).toInt(&ok, 16);
+    }
+    
+    else
+    {
+      col = QColor(colstr);
+      alpha = 255;
+    }
 
     if (ok)
     {
@@ -1034,17 +1092,32 @@ bool HapnetWindow::loadNetAttributes()
   }
 
   if (! ok)
-    showWarnDlg("Error setting edge colour.", tr("Colour string %1 could not be parsed").arg(colstr));
+    showWarnDlg("<b>Error setting edge colour.</b>", tr("Colour string %1 could not be parsed").arg(colstr));
 
   colstr = QString::fromStdString(nexParser->netBGColour());
-  if (colstr.length() != 9)
+  ok = true;
+
+  if (colstr.length() == 9)
+    hasalpha = true;
+  else if (colstr.length() == 7)
+    hasalpha = false;
+  else
     ok = false;
 
-  else
+  if (ok)
   {
 
-    col = QColor(colstr.right(7));
-    alpha = colstr.left(2).toInt(&ok, 16);
+    if (hasalpha)
+    {
+      col = QColor(colstr.left(7));
+      alpha = colstr.right(2).toInt(&ok, 16);
+    }
+    
+    else
+    {
+      col = QColor(colstr);
+      alpha = 255;
+    }
 
     if (ok)
     {
@@ -1054,44 +1127,40 @@ bool HapnetWindow::loadNetAttributes()
   }
 
   if (! ok)
-    showWarnDlg("Error setting background colour.", tr("Colour string %1 could not be parsed").arg(colstr));
+    showWarnDlg("<b>Error setting background colour.</b>", tr("Colour string %1 could not be parsed").arg(colstr));
 
   string eview = nexParser->netEView();
 
 
-  if (eview == "Dashes")
+  if (eview == "dashes")
   {
     _netView->setEdgeMutationView(EdgeItem::ShowDashes);
     _dashViewAct->setChecked(true);
   }
 
-  else if (eview == "Ellipses")
+  else if (eview == "ellipses")
   {
     _netView->setEdgeMutationView(EdgeItem::ShowEllipses);
     _nodeViewAct->setChecked(true);
   }
 
-  else if (eview == "Numbers")
+  else if (eview == "numbers")
   {
     _netView->setEdgeMutationView(EdgeItem::ShowNums);
     _dashViewAct->setChecked(true);
   }
 
   else
-    showWarnDlg("Error setting edge view.", tr("Edge view string %1 could not be parsed").arg(QString::fromStdString(eview)));
+    showWarnDlg("<b>Error setting edge view.</b>", tr("Edge view string %1 could not be parsed").arg(QString::fromStdString(eview)));
 
 
   _netView->setVertexSize(nexParser->netVSize());
 
-  _netView->setLegendPosition(nexParser->netLPos().first, nexParser->netLPos().second);
-
-  const vector<double> & sceneRect = nexParser->netPlotDim();
-
-  if (sceneRect.size() != 4)
-    showWarnDlg("Error setting network plot dimensions.");
-  else
-    _netView->setSceneRect(sceneRect.at(0), sceneRect.at(1), sceneRect.at(2), sceneRect.at(3));
-
+  QPointF legPos(nexParser->netLPos().first, nexParser->netLPos().second);
+  
+  // I'm using -1,-1 to indicate no legend, dumb
+  if (legPos.x() >= 0 || legPos.y() >= 0);
+    _netView->setLegendPosition(legPos);
 
 
   list<string>::const_iterator colIt = nexParser->netLColours().begin();
@@ -1099,15 +1168,33 @@ bool HapnetWindow::loadNetAttributes()
   while (colIt != nexParser->netLColours().end())
   {
     colstr = QString::fromStdString(*colIt);
-    if (colstr.length() != 9)
+    
+    ok = true;
+
+    if (colstr.length() == 9)
+      hasalpha = true;
+    else if (colstr.length() == 7)
+      hasalpha = false;
+    else
       ok = false;
 
-    else
+    if (ok)
     {
 
-      col = QColor(colstr.right(7));
-      alpha = colstr.left(2).toInt(&ok, 16);
-
+      if (hasalpha)
+      {
+        col = QColor(colstr.left(7));
+        string colstdstr = colstr.toStdString();
+        alpha = colstr.right(2).toInt(&ok, 16);
+      }
+      
+      else
+      {
+        col = QColor(colstr);
+      string colstdstr = colstr.toStdString();
+        alpha = 255;
+      }
+      
       if (ok)
       {
         col.setAlpha(alpha);
@@ -1116,13 +1203,21 @@ bool HapnetWindow::loadNetAttributes()
     }
 
     if (! ok)
-      showWarnDlg(tr("Error setting colour for trait %1.").arg(count), tr("Colour string %1 could not be parsed").arg(colstr));
+      showWarnDlg(tr("<b>Error setting colour for trait %1.</b>").arg(count), tr("Colour string %1 could not be parsed").arg(colstr));
 
 
 
     ++colIt;
     count++;
   }
+  
+  const vector<double> & sceneRect = nexParser->netPlotDim();
+
+  if (sceneRect.size() != 4)
+    showWarnDlg("<b>Error setting network plot dimensions.</b>");
+  else
+    _netView->setSceneRect(sceneRect.at(0), sceneRect.at(1), sceneRect.at(2), sceneRect.at(3));
+
 
   return true;
 }
@@ -2032,7 +2127,6 @@ bool HapnetWindow::writeNexusAlignment(ostream &nexfile)
 
   SeqParser *sp = Sequence::parser();
 
-
   NexusParser *nexParser = dynamic_cast<NexusParser*>(sp);
   if (! nexParser)
   {
@@ -2214,7 +2308,7 @@ bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<GeoTrait *> &geot
 
   nexfile << "Begin GeoTags;" << endl;
   nexfile << "Dimensions NClusts=" << geotraits.size() << ';' << endl;
-  nexfile << "Format labels=yes missing=? separator=Comma;" << endl;
+  nexfile << "Format labels=yes separator=Comma;" << endl;
 
   if (! geotraits.empty())
   {
@@ -2313,11 +2407,17 @@ bool HapnetWindow::writeNexusNetwork(ostream &nexfile)
   nexfile << "Font=" << _netView->labelFont().toString().toStdString() << ' ';
   nexfile << "LegendFont=" << _netView->legendFont().toString().toStdString() << ' ';
   QColor col = _netView->vertexColour();
-  nexfile << "VColour=" << col.name().toStdString() << setfill('0') << setw(2) << setbase(16) << col.alpha() << ' ';
+  nexfile << setfill('0');
+  nexfile << setbase(16);
+  nexfile << "VColour=" << col.name().toStdString() << setw(2) << col.alpha() << ' ';
   col = _netView->edgeColour();
-  nexfile << "EColour=" << col.name().toStdString() << setfill('0') << setw(2) << setbase(16) << col.alpha() << ' ';
+  nexfile << "EColour=" << col.name().toStdString() << setw(2) << col.alpha() << ' ';
   col = _netView->backgroundColour();
-  nexfile << "BGColour=" << col.name().toStdString() << setfill('0') << setw(2) << setbase(16) << col.alpha() << ' ';
+  nexfile << "BGColour=" << col.name().toStdString() << setw(2) << col.alpha() << ' ';
+  
+  nexfile << setfill(' ');
+  nexfile << setbase(10);
+  
   nexfile << "VSize=" << _netView->vertexSize() << ' ';
   nexfile << "EView=";
   
@@ -2335,6 +2435,10 @@ bool HapnetWindow::writeNexusNetwork(ostream &nexfile)
       break;
   }
   
+   
+  nexfile << setfill('0');
+  nexfile << setbase(16);
+  
   QPointF legendPos = _netView->legendPosition();
   nexfile << "LPos=" << legendPos.x() << ',' << legendPos.y() << ' ';
   nexfile << "LColours=";
@@ -2346,9 +2450,14 @@ bool HapnetWindow::writeNexusNetwork(ostream &nexfile)
     else
       nexfile << ',';
     nexfile << legendCols.front().name().toStdString();
+    nexfile << setw(2) << legendCols.front().alpha();
   }
   
   nexfile << ';' << endl;
+   
+  nexfile << setfill(' ');
+  nexfile << setbase(10);
+
   
   nexfile << "Translate" << endl;
   

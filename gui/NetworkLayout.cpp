@@ -76,6 +76,21 @@ void NetworkLayout::shuffleVertices()
   centreVertices();
 }
 
+void NetworkLayout::zeroVertices()
+{
+  for (unsigned i = 0; i < _vertexPositions.size(); i++)
+  {
+    
+      _vertexPositions[i].setX(0);
+      _vertexPositions[i].setY(0);
+  }
+  
+  _northWest.setX(0);
+  _northWest.setY(0);
+  _southEast.setX(0);
+  _southEast.setY(0);
+}
+
 void NetworkLayout::centreVertices()
 {
   //QPointF northWest(_vertexPositions.at(0));

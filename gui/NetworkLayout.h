@@ -39,6 +39,7 @@ public:
   const QPointF & northWest() const { return _northWest; };
   const QPointF & southEast() const { return _southEast; };
   void centreVertices();
+  void zeroVertices();
   void translateVertices(const QPointF & );
   
   double howGood() { return _howGood; };

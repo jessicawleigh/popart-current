@@ -583,9 +583,12 @@ void NexusParser::parseLine(string line, Sequence &sequence)
               int nseq;
               if (_currentBlock == Characters)  throw SeqParseError("ntax only allowed in characters block along with newtaxa!");
 
-              iss >> nseq;
-              setNseq(nseq);
-              _seqSeqVect.resize(nseq);
+              if (nSeq() == 0 || nSeq() != _seqSeqVect.size())
+              {
+                iss >> nseq;
+                setNseq(nseq);
+                _seqSeqVect.resize(nseq);
+              }
             }
           }
 
@@ -763,8 +766,9 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           {
             if (val.empty())  throw SeqParseError("No value given for 'missing' char.");
             if (_currentBlock == GeoTags)
-              throw SeqParseError("'Missing' directive not allowed in GeoTag block."); 
-            iss >> _missing;
+              warn("'Missing' directive not allowed in GeoTag block."); 
+            else
+              iss >> _missing;
           }
 
           else if (key == "gap")
@@ -1513,6 +1517,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     case TraitLatitude:
     case ClustLatitude:
     {
+     unsigned nitems = _currentKeyWord == TraitLatitude ? _ntraits : _nclusts;
+      
       wordlist.clear();
       ParserTools::tokenise(wordlist, line);
       
@@ -1524,8 +1530,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       ParserTools::lower(word = (*worditer));
       if (word == "traitlatitude" || word == "clustlatitude")  ++worditer;
       
-      if (_traitLocations.empty())
-        _traitLocations.resize(_ntraits, pair<float,float>(0,0));
+       if (_traitLocations.empty())
+        _traitLocations.resize(nitems, pair<float,float>(0,0));
 
 
       float lat;
@@ -1535,10 +1541,13 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         if (word.at(word.length() - 1) == ';')  word.erase(word.length() - 1);
         if (! word.empty()) 
         {
-          if (_currentKeyWord == TraitLatitude && _latCount >= _ntraits)
-            throw SeqParseError("Too many trait latitudes read.");
-          else if (_currentKeyWord == ClustLatitude && _latCount >= _nclusts)
-            throw SeqParseError("Too many geotag cluster latitudes read.");
+          if (_latCount >= nitems)
+          {
+            if (_currentKeyWord == TraitLatitude)
+              throw SeqParseError("Too many trait latitudes read.");
+            else 
+              throw SeqParseError("Too many geotag cluster latitudes read.");
+          }
           
           istringstream iss(word);
           iss >> lat;
@@ -1552,7 +1561,9 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     case TraitLongitude:
     case ClustLongitude:
     {
-      wordlist.clear();
+      unsigned nitems = _currentKeyWord == TraitLongitude ? _ntraits : _nclusts;
+      
+     wordlist.clear();
       ParserTools::tokenise(wordlist, line);
       
       worditer = wordlist.begin();
@@ -1564,16 +1575,19 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       if (word == "traitlongitude" || word == "clustlongitude")  ++worditer;
       
       if (_traitLocations.empty())
-        _traitLocations.resize(_ntraits, pair<float,float>(0,0));
+        _traitLocations.resize(nitems, pair<float,float>(0,0));
 
 
       float lon;
       while (worditer != wordlist.end())
       {
-         if (_currentKeyWord == TraitLongitude && _lonCount >= _ntraits)
-           throw SeqParseError("Too many trait longitudes read.");
-         else if (_currentKeyWord == ClustLongitude && _lonCount >= _nclusts)
-           throw SeqParseError("Too many geotag cluster longitudes read.");
+         if (_lonCount >= nitems)
+         {
+           if (_currentKeyWord == TraitLongitude)
+             throw SeqParseError("Too many trait longitudes read.");
+           else
+             throw SeqParseError("Too many geotag cluster longitudes read.");
+         }
          
         word = *worditer;
         if (word.at(word.length() - 1) == ';')  word.erase(word.length() - 1);

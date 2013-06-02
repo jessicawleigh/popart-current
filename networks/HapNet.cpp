@@ -17,6 +17,9 @@ using namespace std;
 
 #ifdef NET_QT
 #include <QThread>
+#include <QApplication>
+#include <QDebug>
+
 #endif
 
 const vector<unsigned> HapNet::_emptyTraits;
@@ -304,7 +307,9 @@ void HapNet::setupGraph()
     emit caughtException(_errorMsg);
   }
 
-  thread()->exit();
+  
+  if (thread() != QApplication::instance()->thread())
+    thread()->exit();
 #else
   catch (exception)
   {

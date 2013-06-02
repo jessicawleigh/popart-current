@@ -59,7 +59,8 @@ NetworkView::NetworkView(QWidget * parent)
   _theView.setDragMode(QGraphicsView::RubberBandDrag);
   _theView.setRenderHint(QPainter::Antialiasing);
   _theView.setTransformationAnchor(QGraphicsView::AnchorViewCenter);
-  _theScene.setSceneRect(0, 0, _theView.width(), _theView.height());  
+  _graphRect = QRectF(0, 0, _theView.width(), _theView.height());
+  _theScene.setSceneRect(_graphRect);  
 
   _theView.setScene(&_theScene); 
   
@@ -134,7 +135,7 @@ QItemSelectionModel::SelectionFlags NetworkView::selectionCommand(const QModelIn
   return QItemSelectionModel::NoUpdate;
 }
 
-void NetworkView::setModel(QAbstractItemModel *themodel)
+void NetworkView::setModel(QAbstractItemModel *themodel, bool skipLayout)
 {
   QAbstractItemModel *oldmodel = model();
   clearModel();
@@ -144,8 +145,14 @@ void NetworkView::setModel(QAbstractItemModel *themodel)
   QAbstractItemView::setModel(themodel);
   
   _defaultIterations = 10 * themodel->rowCount();
-    
-  createLayout();
+
+  if (skipLayout)
+  {
+    createEmptyLayout();
+  }
+  
+  else
+    createLayout();
 }
 
 void NetworkView::createLayout(int iterations)
@@ -178,6 +185,17 @@ void NetworkView::createLayout(int iterations)
   _layoutThread->start();
 
   // TODO check cancelled each iteration?
+}
+
+void NetworkView::createEmptyLayout()
+{
+  NetworkModel *nModel = dynamic_cast<NetworkModel *>(model());
+  double wdth = _theScene.width();
+  double hght = _theScene.height();
+  
+  _layout = new NetworkLayout(nModel, wdth, hght);
+  _layout->zeroVertices();
+  drawLayout();
 }
 
 void NetworkView::adjustAndDraw()
@@ -315,6 +333,8 @@ void NetworkView::drawLayout()
     if (traits.empty())
     {
       vItem = new VertexItem(vCentre.x(), vCentre.y(), diametre, diametre);
+      //vItem = new VertexItem(0, 0, diametre, diametre);
+      //vItem->setPos(vCentre.x(), vCentre.y());
       
       vItem->setPen(outlinePen());
       vItem->setBrush(vertBrush());
@@ -340,8 +360,10 @@ void NetworkView::drawLayout()
       
       QList<QVariant>::const_iterator trit = traits.constBegin();
     
-      // vItem that's transparent to anchor sections
+      //vItem that's transparent to anchor sections
       vItem = new VertexItem(vCentre.x(), vCentre.y(), diametre, diametre);
+      //vItem = new VertexItem(0, 0, diametre, diametre);
+      //vItem->setPos(vCentre.x(), vCentre.y());
 
       vItem->setPen(invisiblePen());
       vItem->setBrush(Qt::transparent);
@@ -440,7 +462,6 @@ void NetworkView::drawLayout()
 
 void NetworkView::drawLegend()
 {
-  
   QFontMetricsF metric(legendFont());
   QFontMetricsF smallMetric(smallFont());
   double maxwidth = 0;
@@ -475,7 +496,6 @@ void NetworkView::drawLegend()
   
   //_theScene.setSceneRect(_graphRect.x(), _graphRect.y(), _graphRect.width() + legendWidth, _graphRect.height())
   
-
 
   _theScene.setSceneRect(computeSceneRect());
   _theScene.addItem(_legend);
@@ -524,6 +544,11 @@ void NetworkView::drawLegend()
   textX = _vertRadUnit + 2 * MARGIN;
   keyX = MARGIN;
   
+  //_legendKeys.resize(model()->columnCount());
+  
+  // cout << "new size for legendLabels: " << _legendKeys.size() << endl;
+  
+  
   for (unsigned i = 0; i < model()->columnCount(); i++)
   {
     LegendItem *legkey = new LegendItem(0, 0, _vertRadUnit, _vertRadUnit, _legend);
@@ -535,6 +560,7 @@ void NetworkView::drawLegend()
     connect(legkey, SIGNAL(colourChangeTriggered(LegendItem *)), this, SLOT(legendItemClicked(LegendItem *)));
     connect(legkey, SIGNAL(clickable(bool)), this, SLOT(setClickableCursor(bool)));
     _legendKeys.push_back(legkey);
+    //_legendKeys[i] = legkey;
     
     legendLabel = new QGraphicsSimpleTextItem(model()->headerData(i, Qt::Vertical).toString(), _legend);
     legendLabel->setData(0, -1);
@@ -572,9 +598,12 @@ void NetworkView::changeLegendFont(const QFont &font)
   
   _legendKeys.clear();
   _legendLabels.clear();
-  _theScene.removeItem(_legend);
-  delete _legend;
-  _legend = 0;
+  if (_legend)
+  {
+    _theScene.removeItem(_legend);
+    delete _legend;
+    _legend = 0;
+  }
 
   drawLegend();
   _border->updateRect();
@@ -659,17 +688,21 @@ QPointF NetworkView::vertexPosition(unsigned idx) const
   if (idx >= _vertexItems.size())
     throw HapAppError("Vertex index out of range");
   
-  QPointF brPoint = _vertexItems.at(idx)->mapToScene(_vertexItems.at(idx)->boundingRect().topLeft());
+  QRectF vertRect = _vertexItems.at(idx)->boundingRect();
   
-  return _vertexItems.at(idx)->mapToScene(brPoint);
+  return _vertexItems.at(idx)->mapToScene(vertRect.topLeft());
 }
 
 void NetworkView::setVertexPosition(unsigned idx, const QPointF &p)
 {
   if (idx >= _vertexItems.size())
     throw HapAppError("Vertex index out of range");
-
-  _vertexItems.at(idx)->setPos(p);
+  
+  // in case vertex has been moved, move back to its origin before mapping
+  _vertexItems.at(idx)->setPos(0,0);
+  
+  QPointF newPos = _vertexItems.at(idx)->mapFromScene(p);  
+  _vertexItems.at(idx)->setPos(newPos);
 }
 
 void NetworkView::setVertexPosition(unsigned idx, double x, double y)
@@ -685,17 +718,25 @@ QPointF NetworkView::labelPosition(unsigned idx) const
   if (idx >= _labelItems.size())
     throw HapAppError("Label index out of range");
   
-  QPointF brPoint = _labelItems.at(idx)->mapToScene(_labelItems.at(idx)->boundingRect().topLeft()); 
+  QRectF labelRect = _labelItems.at(idx)->boundingRect();
   
-  return _labelItems.at(idx)->mapToScene(brPoint);
+  QPointF vertPos = vertexPosition(idx);
+  QPointF labelPos = _labelItems.at(idx)->pos();
+  QPointF toParent = _labelItems.at(idx)->mapToParent(labelRect.topLeft());
+  
+
+  return _labelItems.at(idx)->mapToScene(labelRect.topLeft());
+
 }
 
 void NetworkView::setLabelPosition(unsigned idx, const QPointF &p)
 {
   if (idx >= _labelItems.size())
     throw HapAppError("Label index out of range");
-
-  _labelItems.at(idx)->setPos(p);
+  
+  // need to map from scene because it will have already moved with parent (vertex) position
+  QPointF newPos = _labelItems.at(idx)->mapFromScene(p);
+  _labelItems.at(idx)->setPos(newPos);
 }
 
 void NetworkView::setLabelPosition(unsigned idx, double x, double y)
@@ -717,7 +758,14 @@ QPointF NetworkView::legendPosition() const
 
 void NetworkView::setLegendPosition(const QPointF &p)
 {
-  _legend->setPos(p);
+  if (! _legend)
+    throw HapAppError("No legend available");
+  
+  // In case legend has moved, move back to its origin before mapping
+  _legend->setPos(0,0);
+  
+  QPointF newPos = _legend->mapFromScene(p);
+  _legend->setPos(newPos);
 }
 
 void NetworkView::setLegendPosition(double x, double y)
@@ -734,6 +782,7 @@ QRectF NetworkView::sceneRect() const
 void NetworkView::setSceneRect(const QRectF &rect)
 {
   _theScene.setSceneRect(rect);
+  _border->updateRect();  
 }
 
 void NetworkView::setSceneRect(double x, double y, double width, double height)
@@ -1074,16 +1123,19 @@ void NetworkView::setVertexSize(double rad)
 {
   _vertRadUnit = rad;
   EdgeItem::setVertexSize(rad);
-  clearScene();
-  adjustAndDraw();
+  //clearScene();
+  //adjustAndDraw();
+  _theScene.update(0, 0, _theScene.width(), _theScene.height());
 }
 
 void NetworkView::setLabelFont(const QFont & font)
 {
   _labelFont = font;
   EdgeItem::setFont(_labelFont);
-  clearScene();
-  adjustAndDraw();
+  //clearScene();
+  //adjustAndDraw();
+  
+  _theScene.update(0, 0, _theScene.width(), _theScene.height());
 
 }
 
