@@ -213,6 +213,16 @@ void HapNet::condenseSitePats()
 void HapNet::associateTraits(const vector<Trait *> & traitVect)
 {
   
+  if (_traits)
+  {
+    for (unsigned i = 0; i < _nseqs; i++)
+      _traits[i].empty();
+      //if (_traits[i])  delete [] _traits[i];
+
+    delete [] _traits;
+  }
+  
+  _traitNames.clear();
     
   map<string, unsigned> name2origIdx;
   _traits = new vector<unsigned>[_nseqs];//unsigned*[_nseqs];
@@ -271,6 +281,10 @@ void HapNet::associateTraits(const vector<Trait *> & traitVect)
     throw NetworkError("This shouldn't happen, but the traits count is wrong.");
   
   }
+  
+#ifdef NET_QT
+  emit traitsChanged();
+#endif
   // 
  // _freqs[_orig2cond[i]]++;
   // For each trait, 

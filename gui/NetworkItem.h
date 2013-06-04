@@ -35,6 +35,7 @@ public:
   NetworkItem(const Vertex *, unsigned, const std::vector<unsigned> &, const std::vector<std::string> & = std::vector<std::string>()); // parent
   virtual ~NetworkItem() {};
   QVariant data(int = Qt::DisplayRole) const;
+  void setData(const QVariant &, int = Qt::DisplayRole);
   
   NetworkItem * child(int);
   

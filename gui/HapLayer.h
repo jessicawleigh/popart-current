@@ -30,11 +30,14 @@ public:
   virtual bool eventFilter(QObject *, QEvent *);
 
   void setColours(const QVector<QBrush> &colours) { _colours = colours; };
-
+  
   const QBrush & hapBrush(int) const;
   const QFont & defaultFont() const { return _defaultFont; };
   const QFont & smallFont() const { return _smallFont; };
+  void setSmallFont(const QFont & font) { _smallFont = font; };
   const QFont & legendFont() const { return _legendFont; };
+  void setLegendFont(const QFont & font) { _legendFont = font; };
+  void changeLegendFont(const QFont & font);
   
   void setDrawLegend(bool draw) { _drawLegend = draw; };
 
@@ -61,15 +64,18 @@ private:
   bool _drawLegend;
   bool _clickedInLegend;
   int _clickedInKey;
+  int _clickedInCluster;
   QPoint _mouseDownPos;
   QPoint _enteredPos;
 
 private slots:
   void changeColour();
+  void changeCoordinates();
 
 signals:
   void dirtyRegion(const QRegion &);
   void colourChangeTriggered(int);
+  void coordinateChangeTriggered(int);
   void entered(const QString &);
   void left(const QString &);
   void clickable(bool);

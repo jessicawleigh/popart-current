@@ -35,13 +35,18 @@ public:
   virtual QModelIndex parent(const QModelIndex &) const;
   virtual int rowCount(const QModelIndex & = QModelIndex()) const;
   virtual QVariant headerData(int, Qt::Orientation, int = Qt::DisplayRole) const;
-
+  
 private:
   const HapNet *_graph;
   QVector<NetworkItem *> _vertexItems;
   QVector<QString> _traitText;
   /*QVector<const Vertex*> _vertices;
   QVector<const Edge*> _edges;*/
+private slots:
+  void updateTraits();
+  
+signals:
+  void traitsUpdated();
 };
 
 #endif /* NETWORKMODEL_H_ */

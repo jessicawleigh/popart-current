@@ -153,6 +153,8 @@ void NetworkView::setModel(QAbstractItemModel *themodel, bool skipLayout)
   
   else
     createLayout();
+  
+  connect(themodel, SIGNAL(traitsUpdated()), this, SLOT(updateTraits()));
 }
 
 void NetworkView::createLayout(int iterations)
@@ -583,6 +585,85 @@ void NetworkView::changeLabelFont(const QFont &font)
     label->setFont(labelFont());
     label->update(label->boundingRect());
   }
+}
+
+void NetworkView::updateTraits()
+{
+  
+  for (unsigned i = 0; i < _vertexSections.size(); i++)
+  {
+    QList<QGraphicsEllipseItem*>::iterator pieIt = _vertexSections[i].begin();
+    
+    while (pieIt != _vertexSections[i].end())
+    {
+      _theScene.removeItem(*pieIt);
+      ++pieIt;
+    }
+    
+    _vertexSections[i].clear();
+    
+    QPointF p = vertexPosition(i);
+    p -= _vertexItems.at(i)->pos();
+    
+    
+    QList<QVariant> traits = model()->index(i,0).data(NetworkItem::TraitRole).toList();
+    
+    
+    if (! traits.empty())
+    {
+      double diametre = _vertexItems.at(i)->rect().width();
+      unsigned counter = 0;
+      unsigned total = 0;
+      unsigned startAngle = 0;
+      unsigned spanAngle;
+      bool done = false;
+      unsigned freq = model()->index(i, 0).data(NetworkItem::SizeRole).toUInt();
+      
+      QList<QVariant>::const_iterator trit = traits.constBegin();
+      while (trit != traits.constEnd() && ! done)
+      {
+        total += (*trit).toUInt(); 
+        
+        if (total == freq)  
+        {
+          done = true; 
+          spanAngle = PIESEGMENTS - startAngle;           
+        } 
+        
+        else  spanAngle = PIESEGMENTS * (*trit).toUInt()/freq;
+        
+        QGraphicsEllipseItem *vSection = new QGraphicsEllipseItem(p.x(), p.y(), diametre, diametre);
+        
+        // If there is a single trait associated with a node, no need to set angles
+        if (startAngle > 0 || spanAngle < PIESEGMENTS)
+        {
+          vSection->setStartAngle(startAngle);
+          vSection->setSpanAngle(spanAngle);
+        }
+        
+        vSection->setPen(outlinePen());
+        vSection->setBrush(vertBrush(counter));
+        
+        vSection->setParentItem(_vertexItems.at(i));
+        vSection->setData(0, i);
+        vSection->setData(1, counter);
+        _vertexSections[i].push_back(vSection);
+        
+        startAngle += spanAngle;
+        counter++;
+        ++trit;    
+      }
+    }
+  }
+  
+  if (_legend)
+  {
+    _theScene.removeItem(_legend);
+    delete _legend;
+    _legend = 0;
+  }
+  
+  drawLegend();
 }
 
 void NetworkView::changeLegendFont(const QFont &font)

@@ -2,11 +2,6 @@
 
 #include <QLayout>
 #include <QScrollArea>
-#include <QLabel>
-#include <QPalette>
-#include <QTextEdit>
-
-#include <QDebug>
 
 MapLegendDialog::MapLegendDialog(QVector<HapLocation*> locations, QWidget * parent, Qt::WindowFlags flags)
  : QDialog(parent, flags)
@@ -20,23 +15,19 @@ MapLegendDialog::MapLegendDialog(QVector<HapLocation*> locations, QWidget * pare
   QScrollArea *scrollArea = new QScrollArea;//(this);
   scrollArea->setWidget(viewport);
   scrollArea->setWidgetResizable(true);
-  
-  //QTextEdit *text = new QTextEdit("This is some text", this);
-  //layout->addWidget(text);
+
   _legend = new MapLegendWidget(locations, this);
+  
+  connect(_legend, SIGNAL(colourChangeTriggered(int)), this, SLOT(changeColour(int)));
   layout->addWidget(_legend);
   
   
   mainLayout->addWidget(scrollArea);
   
-  
-  //scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-  //scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-  //resize(scrollArea->width(), scrollArea->height());
-  //setGeometry(QRect(0,0,400,400));
-  
-  //resize(legend->width(), legend->height());
-  
-  qDebug() << "scroll area size:" << scrollArea->width() << "," << scrollArea->height();
-  qDebug() << "dialog size:" << width() << "," << height();
+
+}
+
+void MapLegendDialog::changeColour(int key)
+{
+  emit colourChangeRequested(key);
 }

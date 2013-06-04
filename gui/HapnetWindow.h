@@ -91,6 +91,7 @@ private:
   QThread *_netThread;
   //QThread *_drawThread;
   QThread *_statThread;
+  QThread *_clusterThread;
   QProgressDialog *_progress;
   QStackedWidget *_centralContainer;
   NetworkView *_netView;
@@ -204,6 +205,7 @@ private slots:
   void buildUMP();
   void displayNetwork();
   void finaliseDisplay();
+  void finaliseClustering();
   void showNetError(const QString &);
   void showIdenticalSeqs();
   void showNucleotideDiversity();
@@ -222,6 +224,7 @@ private slots:
   void toggleView();
   void toggleActiveTraits();
   void toggleExternalLegend();
+  void updateTraitLocation(unsigned, std::pair<float,float>);
   void changeBackgroundColour();
   void changeLabelFont();
   void changeLegendFont();

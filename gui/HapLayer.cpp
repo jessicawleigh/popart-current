@@ -277,12 +277,31 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
           QAction *a = menu.addAction(tr("Change sequence colour"));
           connect(a, SIGNAL(triggered()), this, SLOT(changeColour()));
           //a = menu.addAction(tr("Change sequence label"));
-          a = menu.exec(_target->mapToGlobal(cEvent->pos()));
+          menu.exec(_target->mapToGlobal(cEvent->pos()));
+          break;
+        }
+      }
+      returnVal = true;
+    }
+    
+    else
+    {
+      for(unsigned i = 0; i < _clusters.size(); i++)
+      {
+        const QRegion &clust = _clusters.at(i);
+        if (clust.contains(cEvent->pos()))
+        {
+          QMenu menu;
+          _clickedInCluster = i;
+          QAction *a = menu.addAction(tr("Change coordinates"));
+          connect(a, SIGNAL(triggered()), this, SLOT(changeCoordinates()));
+          
+          menu.exec(_target->mapToGlobal(cEvent->pos()));
+          returnVal = true;
           break;
         }
       }
     }
-    returnVal = true;
     break;
   case QEvent::MouseButtonPress:
 
@@ -404,9 +423,27 @@ const QBrush & HapLayer::hapBrush(int hapID) const
   return _colours.at(hapID % _colours.size());
 }
 
+void HapLayer::changeLegendFont(const QFont &font)
+{
+  //_legendFont = font;
+  //_smallFont = font;
+  setLegendFont(font);
+
+  int smallerPointSize = _legendFont.pointSize() * 0.6 + 0.5; 
+  QFont smaller(font);
+  smaller.setPointSize(smallerPointSize);
+  setSmallFont(smaller);
+}
+
+
 void HapLayer::changeColour()
 {
   emit colourChangeTriggered(_clickedInKey);
+}
+
+void HapLayer::changeCoordinates()
+{
+  emit coordinateChangeTriggered(_clickedInCluster);
 }
 
 

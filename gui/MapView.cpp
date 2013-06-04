@@ -8,15 +8,19 @@
 #include "MapView.h"
 
 #include <QtAlgorithms>
+#include <QButtonGroup>
 #include <QComboBox>
 #include <QDebug>
+#include <QDoubleSpinBox>
 #include <QDialog>
 #include <QImage>
+#include <QLabel>
 #include <QLayout>
 #include <QMessageBox>
 #include <QPainter>
 #include <QPrinter>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QSvgGenerator>
 
 #include <marble/GeoDataDocument.h>
@@ -107,7 +111,13 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
     HapLocation *loc = new HapLocation(traits.at(i));
 
     if (! loc->locationSet())
+    {
+      
       lookupLocation(loc);
+      float lat = (float)(loc->location().latitude());
+      float lon = (float)(loc->location().longitude());
+      emit locationSet(i, pair<float,float>(lat,lon));
+    }
 
     _locations.push_back(loc);
   }
@@ -115,8 +125,9 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
   _hapLayer = new HapLayer(_locations, this);
   connect(_hapLayer, SIGNAL(dirtyRegion(const QRegion &)), this, SLOT(updateDirtyRegion(const QRegion &)));
   connect(_hapLayer, SIGNAL(colourChangeTriggered(int)), this, SLOT(requestChangeSeqColour(int)));
-  connect(_hapLayer, SIGNAL(entered(const QString &)), this, SLOT(setMapToolTip(const QString &)));
-  connect(_hapLayer, SIGNAL(left(const QString &)), this, SLOT(resetMapToolTip(const QString &)));
+  connect(_hapLayer, SIGNAL(coordinateChangeTriggered(int)), this, SLOT(changeCoordinate(int)));
+  /*connect(_hapLayer, SIGNAL(entered(const QString &)), this, SLOT(setMapToolTip(const QString &)));
+  connect(_hapLayer, SIGNAL(left(const QString &)), this, SLOT(resetMapToolTip(const QString &)));*/
   connect(_hapLayer, SIGNAL(clickable(bool)), this, SLOT(setClickableCursor(bool)));
   _hapLayer->setColours(_colourTheme);
   _mapWidget->addLayer(_hapLayer);
@@ -126,6 +137,7 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
   
   _legendDlg = new MapLegendDialog(_locations, this);
   _legendDlg->setColours(_colourTheme);
+  connect(_legendDlg, SIGNAL(colourChangeRequested(int)), this, SLOT(requestChangeSeqColour(int)));
 
   //_legendDlg->show();
   
@@ -344,6 +356,8 @@ void  MapView::setColourTheme(ColourTheme::Theme theme)
   updateColours();
 }
 
+
+
 void MapView::updateColours()
 {
   
@@ -357,6 +371,27 @@ void MapView::updateColours()
     _mapWidget->update();
 }
 
+void MapView::changeLegendFont(const QFont & font) 
+{ 
+  if (_hapLayer)
+    _hapLayer->changeLegendFont(font);
+  if (_legendDlg)
+    _legendDlg->changeLegendFont(font);
+}
+
+const QFont & MapView::legendFont() const 
+{ 
+  
+  if (_hapLayer)
+    return _hapLayer->legendFont(); 
+  
+  else if (_legendDlg)
+    return _legendDlg->legendFont();
+ 
+  else
+    return emptyFont;
+}
+
 void MapView::updateGeoPosition(QString pos)
 {
   _geoPos = pos;
@@ -368,6 +403,122 @@ void MapView::updateGeoPosition(QString pos)
 void MapView::requestChangeSeqColour(int seqID)
 {
   emit seqColourChangeRequested(seqID);
+}
+
+void MapView::changeCoordinate(int clusterID)
+{
+  
+  if (clusterID < 0 || clusterID >= _locations.size())
+    return;
+  
+  QDialog dlg(this);
+  
+  GeoDataCoordinates coords = _locations[clusterID]->location();
+
+  
+  QVBoxLayout *vlayout = new QVBoxLayout(&dlg);  
+  QHBoxLayout *hlayout = new QHBoxLayout;
+  QVBoxLayout *vlayout2 = new QVBoxLayout;
+  
+  QDoubleSpinBox *spinbox = new QDoubleSpinBox(this);
+  spinbox->setDecimals(2);
+  spinbox->setRange(0, 90);
+  spinbox->setSingleStep(1);
+  
+  hlayout->addWidget(spinbox);
+  
+  hlayout->addWidget(new QLabel("Latitude"));
+  
+  
+  QButtonGroup *buttonGroup = new QButtonGroup(this);
+  int idCount = 0;
+  QRadioButton *button1 = new QRadioButton("North", &dlg);
+  buttonGroup->addButton(button1, idCount++);
+  vlayout2->addWidget(button1);
+  
+  QRadioButton *button2 = new QRadioButton("South", &dlg);
+  buttonGroup->addButton(button2, idCount++);
+  vlayout2->addWidget(button2);
+  
+  if (coords.latitude(GeoDataCoordinates::Degree) < 0)
+  {
+    spinbox->setValue(- coords.latitude(GeoDataCoordinates::Degree));
+    button2->setChecked(true);
+  }
+  
+  else
+  {
+    spinbox->setValue(coords.latitude(GeoDataCoordinates::Degree));
+    button1->setChecked(true);
+  }
+  
+  hlayout->addLayout(vlayout2);
+  
+  vlayout2 = new QVBoxLayout;
+  
+  QDoubleSpinBox *spinbox2 = new QDoubleSpinBox(this);
+  spinbox2->setDecimals(2);
+  spinbox2->setRange(0, 180);
+  spinbox2->setSingleStep(1);
+  
+  hlayout->addWidget(spinbox2);
+  
+  hlayout->addWidget(new QLabel("Longitude"));  
+  
+  QButtonGroup *buttonGroup2 = new QButtonGroup(this);
+  idCount = 0;
+  button1 = new QRadioButton("East", &dlg);
+  buttonGroup2->addButton(button1, idCount++);
+  vlayout2->addWidget(button1);
+  
+  button2 = new QRadioButton("West", &dlg);
+  buttonGroup2->addButton(button2, idCount++);
+  vlayout2->addWidget(button2);
+  
+  if (coords.longitude(GeoDataCoordinates::Degree) < 0)
+  {
+    spinbox2->setValue(- coords.longitude(GeoDataCoordinates::Degree));
+    button2->setChecked(true);
+  }
+  
+  else
+  {
+    spinbox2->setValue(coords.longitude(GeoDataCoordinates::Degree));
+    button1->setChecked(true);
+  }
+
+  
+  hlayout->addLayout(vlayout2);
+  vlayout->addLayout(hlayout);
+  
+  hlayout = new QHBoxLayout;
+  
+  QPushButton *okButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogOkButton), "OK", &dlg);
+  connect(okButton, SIGNAL(clicked()), &dlg, SLOT(accept()));
+  hlayout->addWidget(okButton, 0, Qt::AlignRight);
+  QPushButton *cancelButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogCancelButton), "Cancel", &dlg);
+  connect(cancelButton, SIGNAL(clicked()), &dlg, SLOT(reject()));
+  hlayout->addWidget(cancelButton, 0, Qt::AlignRight);
+  
+  vlayout->addLayout(hlayout);      
+  
+  int result = dlg.exec();
+  
+  if (result == QDialog::Rejected)
+    return;
+  
+  float lat = spinbox->value();
+  float lon = spinbox2->value();
+  
+  if (buttonGroup->checkedId() == 1)
+    lat *= -1;
+  
+  if (buttonGroup2->checkedId() == 2)
+    lon *= -1;
+  
+  _locations[clusterID]->setLocation(GeoDataCoordinates(lon, lat, 0, GeoDataCoordinates::Degree));
+  
+  emit locationSet(clusterID, pair<float,float>(lat,lon));
 }
 
 const QColor & MapView::colour(int seqID) const

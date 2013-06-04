@@ -355,6 +355,18 @@ const vector<GeoTrait *> & NexusParser::geoTraitVector() const
   return _geoTagTraits;
 }
 
+void NexusParser::setTraitLocation(unsigned idx, std::pair<float,float> coords)
+{
+  GeoTrait *gt = new GeoTrait(coords, *(_traits.at(idx)));
+  delete _traits.at(idx);
+  _traits.at(idx) = gt;
+}
+
+void NexusParser::setGeoTraitLocation(unsigned idx, std::pair<float,float> coords)
+{
+  _geoTagTraits.at(idx)->setLocation(coords);
+}
+
 void NexusParser::parseLine(string line, Sequence &sequence)
 {
 
@@ -445,59 +457,61 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         {
           
           vector<pair<float,float> > clustCoords;
-          if (_traitNames.empty())
+          
+          vector<SeqGeoData>::const_iterator geoTagIt;
+          if (_traitLocations.empty()) // need to find centroids
           {
-            vector<SeqGeoData>::const_iterator geoTagIt;
-            if (_traitLocations.empty()) // need to find centroids
-            {
-              vector<float> latitudes(_nclusts, 0);
-              vector<float> longitudes(_nclusts, 0);
-              vector<unsigned> clustsizes(_nclusts, 0);
-
-
-              geoTagIt = _geoTags.begin();
-              
-                           
-              while (geoTagIt != _geoTags.end())
-              {
-                latitudes.at(geoTagIt->clusterID - 1) += geoTagIt->latitude;
-                longitudes.at(geoTagIt->clusterID - 1) += geoTagIt->longitude;
-                clustsizes.at(geoTagIt->clusterID - 1) ++;
-                 
-                ++geoTagIt;
-              }
-              
-              for (unsigned i = 0; i < _nclusts; i++)
-                clustCoords.push_back(pair<float,float>(latitudes.at(i)/clustsizes.at(i), longitudes.at(i)/clustsizes.at(i)));
-            }
+            vector<float> latitudes(_nclusts, 0);
+            vector<float> longitudes(_nclusts, 0);
+            vector<unsigned> clustsizes(_nclusts, 0);
             
-            else // cluster "centroids" read from file input             
-              clustCoords.assign(_traitLocations.begin(), _traitLocations.end());
-            
-            for (unsigned i = 0; i < _nclusts; i++)
-            {
-              ostringstream oss;
-              oss << "cluster" << (i+1);
-              _geoTagTraits.push_back(new GeoTrait(clustCoords.at(i), oss.str()));
-            }
             
             geoTagIt = _geoTags.begin();
             
+            
             while (geoTagIt != _geoTags.end())
             {
-              GeoTrait *gt = _geoTagTraits.at(geoTagIt->clusterID - 1);
-              gt->addSeq(pair<float,float>(geoTagIt->latitude, geoTagIt->longitude), geoTagIt->name, geoTagIt->nsamples);
+              latitudes.at(geoTagIt->clusterID - 1) += geoTagIt->latitude;
+              longitudes.at(geoTagIt->clusterID - 1) += geoTagIt->longitude;
+              clustsizes.at(geoTagIt->clusterID - 1) ++;
+              
               ++geoTagIt;
-            }  
+            }
+            
+            for (unsigned i = 0; i < _nclusts; i++)
+              clustCoords.push_back(pair<float,float>(latitudes.at(i)/clustsizes.at(i), longitudes.at(i)/clustsizes.at(i)));
           }
+          
+          else // cluster "centroids" read from file input             
+            clustCoords.assign(_traitLocations.begin(), _traitLocations.end());
+          
+          for (unsigned i = 0; i < _nclusts; i++)
+          {
+            ostringstream oss;
+            if (_traitNames.empty())
+              oss << "cluster" << (i+1);
+            else
+              oss << _traitNames.at(i);
+            _geoTagTraits.push_back(new GeoTrait(clustCoords.at(i), oss.str()));
+          }
+          
+          geoTagIt = _geoTags.begin();
+          
+          
+          while (geoTagIt != _geoTags.end())
+          {
+            GeoTrait *gt = _geoTagTraits.at(geoTagIt->clusterID - 1);
+            gt->addSeq(pair<float,float>(geoTagIt->latitude, geoTagIt->longitude), geoTagIt->name, geoTagIt->nsamples);
+            ++geoTagIt;
+          }           
         }
         
         else
         {
-          vector<GeoTrait> geoTraitRefs =  GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts, _nclusts, _traitLocations, _traitNames);
+          _geoTagTraits =  GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts, _nclusts, _traitLocations, _traitNames);
           
-          for (unsigned i = 0; i < geoTraitRefs.size(); i++)
-            _geoTagTraits.push_back(new GeoTrait(geoTraitRefs.at(i)));
+          /*for (unsigned i = 0; i < geoTraitRefs.size(); i++)
+            _geoTagTraits.push_back(new GeoTrait(geoTraitRefs.at(i)));*/
           
           /*if (_traitLocations.empty())
             _geoTagTraits = GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts, nclusts);

@@ -233,6 +233,7 @@ private slots:
   void setGrabbableCursor(bool);
   void setGrabbingCursor(bool);
   void setClickableCursor(bool);
+  void updateTraits();
   
 signals:
   void networkDrawn();

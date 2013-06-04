@@ -168,6 +168,7 @@ private:
 signals:
   void progressUpdated(int);
   void caughtException(const QString &);
+  void traitsChanged();
 #endif
 };
 

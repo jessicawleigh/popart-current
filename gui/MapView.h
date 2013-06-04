@@ -20,12 +20,14 @@
 
 #include <QBrush>
 #include <QContextMenuEvent>
+#include <QFont>
 #include <QLabel>
 #include <QSlider>
 #include <QString>
 #include <QVector>
 #include <QWidget>
 
+#include <utility>
 #include <vector>
 
 class HapMapWidget;
@@ -40,9 +42,12 @@ public:
   void addHapLocations(const std::vector<Trait *> &);
   ColourTheme::Theme colourTheme() const { return _currentTheme; };
   static ColourTheme::Theme defaultColourTheme() { return _defaultTheme; };
-  
+  const QFont & legendFont() const;
+  void changeLegendFont(const QFont &);
+
 public slots:
   void setColourTheme(ColourTheme::Theme = _defaultTheme);
+  
   const QColor & colour(int) const;
   void setColour(int, const QColor &);
   void setClickableCursor(bool);
@@ -69,17 +74,20 @@ private:
   QVector<HapLocation *> _locations;
   HapLayer *_hapLayer;
   MapLegendDialog *_legendDlg; 
+  QFont emptyFont;
 
 private slots:
   void updateGeoPosition(QString);
   void updateDirtyRegion(const QRegion &);
   void requestChangeSeqColour(int);
+  void changeCoordinate(int);
   void setMapToolTip(const QString &);
   void resetMapToolTip(const QString &);
 
 signals:
   void positionChanged(const QString &);
   void seqColourChangeRequested(int);
+  void locationSet(unsigned, std::pair<float,float>);
 
 };
 

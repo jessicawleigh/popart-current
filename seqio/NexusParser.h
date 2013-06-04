@@ -36,6 +36,8 @@ public:
   const std::vector<Tree *> & treeVector() const;
   const std::vector<Trait *> & traitVector() const;
   const std::vector<GeoTrait *> & geoTraitVector() const;
+  void setTraitLocation(unsigned, std::pair<float,float>);
+  void setGeoTraitLocation(unsigned, std::pair<float,float>);
   bool hasGeoTags() const { return _hasGeoTags; };
   bool hasTraits() const { return _hasTraits; };
   const std::vector<std::pair<double,double> > & netVertices() {return _vertices; };

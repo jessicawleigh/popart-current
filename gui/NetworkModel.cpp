@@ -35,6 +35,40 @@ NetworkModel::NetworkModel(const HapNet *g, QObject * parent)
     _traitText.push_back(QString::fromStdString(*trIt));  
     ++trIt;
   }
+  
+  connect(_graph, SIGNAL(traitsChanged()), this, SLOT(updateTraits()));
+}
+
+void NetworkModel::updateTraits()
+{
+  _traitText.clear();
+  vector<string>::const_iterator trIt = _graph->traitNames().begin();
+  
+  while (trIt != _graph->traitNames().end())
+  {
+    _traitText.push_back(QString::fromStdString(*trIt));  
+    ++trIt;
+  }  
+  
+  for (unsigned i = 0; i < _vertexItems.size(); i++)
+  {
+    
+    const vector<unsigned> &traits = _graph->traits(i);
+    vector<unsigned>::const_iterator traitIt = traits.begin();
+    
+    QList<QVariant> traitlist;
+    
+    while (traitIt != traits.end())
+    {
+      traitlist.append(*traitIt);
+      ++traitIt;
+    }
+    
+    
+    _vertexItems[i]->setData(traitlist, NetworkItem::TraitRole);
+  }
+  
+  emit traitsUpdated();
 }
 
 NetworkModel::~NetworkModel()

@@ -1,15 +1,19 @@
 #include "MapLegendWidget.h"
 #include "NetworkItem.h"
 
+#include <QAction>
 #include <QBrush>
 #include <QColor>
 #include <QFontMetrics>
 #include <QMap>
+#include <QMenu>
 #include <QPainter>
 #include <QPen>
 #include <QRect>
 #include <QSize>
 #include <QString>
+
+#include <QDebug>
 
 MapLegendWidget::MapLegendWidget(QVector<HapLocation*> locations, QWidget *parent)
  : QWidget(parent), _hapLocations(locations), _defaultBrush(Qt::black)
@@ -125,7 +129,7 @@ MapLegendWidget::MapLegendWidget(QVector<HapLocation*> locations, QWidget *paren
    return QSize(400,400);
  }
  
- void MapLegendWidget::changeLegendFont(const QFont &font)
+void MapLegendWidget::changeLegendFont(const QFont &font)
 {
   //_legendFont = font;
   //_smallFont = font;
@@ -150,3 +154,40 @@ void MapLegendWidget::setColours(const QVector<QBrush> &colours)
   _colours = colours; 
   
 }
+
+void MapLegendWidget::mouseMoveEvent(QMouseEvent *event)
+{
+  
+  QWidget::mouseMoveEvent(event);
+}
+
+void MapLegendWidget::contextMenuEvent(QContextMenuEvent *event)
+{
+  
+  bool keyClicked = false;
+  for (unsigned i = 0; i < _legendKeys.size(); i++)
+  {
+    if (_legendKeys.at(i).contains(event->pos()))
+    {
+      
+      _clickedInKey = i;
+      QMenu menu;
+      QAction *a = menu.addAction(tr("Change sequence colour"));
+      connect(a, SIGNAL(triggered()), this, SLOT(changeColour()));
+      //a = menu.addAction(tr("Change sequence label"));
+      menu.exec(mapToGlobal(event->pos()));
+
+      keyClicked = true;
+      break;
+    }
+  }
+  
+  if (! keyClicked)
+    QWidget::contextMenuEvent(event);
+}
+
+void MapLegendWidget::changeColour()
+{
+  emit colourChangeTriggered(_clickedInKey);
+}
+

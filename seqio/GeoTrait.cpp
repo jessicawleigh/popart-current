@@ -2,6 +2,12 @@
 #include "ParserTools.h"
 #include "SequenceError.h"
 
+#ifdef NET_QT
+#include <QApplication>
+#include <QThread>
+#include <QDebug>
+#endif
+
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
@@ -11,6 +17,39 @@ using namespace std;
 
 vector<pair<float,float> > GeoTrait::_centroids;
 vector<unsigned> GeoTrait::_clusters;
+
+vector<pair<float,float> > GeoTrait::_statCoords;
+vector<string> GeoTrait::_statSeqNames;
+vector<unsigned> GeoTrait::_statSeqCounts;
+vector<pair<float,float> > GeoTrait::_statClustCoords;
+vector<string> GeoTrait::_statClustNames;
+unsigned GeoTrait::_statNClusts = 0;
+vector<GeoTrait *> GeoTrait::_statGeoTraits;
+
+GeoTrait *GeoTrait::statTrait = new GeoTrait(pair<float,float>(0,0), "static");
+
+#ifdef NET_QT
+GeoTrait::GeoTrait(const pair<float,float> &location, const string &name, QObject *parent)
+ : QObject(parent), Trait(name)
+{
+  _location = location;
+}
+
+GeoTrait::GeoTrait(const std::pair<float,float> &location, const Trait &trait, QObject *parent)
+ : QObject(parent), Trait(trait)
+{
+  _location = location;
+}
+
+GeoTrait::GeoTrait(const GeoTrait &other, QObject *parent)
+  : QObject(parent), Trait(other)
+{
+  _location = other._location;
+  _seqLocs = other._seqLocs;
+  _seqCounts = other._seqCounts;
+}
+
+#else
 
 GeoTrait::GeoTrait(const pair<float,float> &location, const string &name)
  : Trait(name)
@@ -23,6 +62,8 @@ GeoTrait::GeoTrait(const std::pair<float,float> &location, const Trait &trait)
 {
   _location = location;
 }
+
+#endif
 
 void GeoTrait::addSeq(const string &seqname, unsigned seqcount)
 {
@@ -76,7 +117,37 @@ std::vector<unsigned> GeoTrait::seqCounts(const string &seqname) const
   return counts;
 }
 
-vector<GeoTrait> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLocations, const vector<string> &seqNames, const vector<unsigned> &seqCounts, unsigned nClusters, const vector<pair<float,float> > &clusterLocations, const vector<string> &clusterNames)
+void GeoTrait::updateProgress(int progress)
+{
+#ifdef NET_QT
+  emit progressUpdated(progress);
+#else
+  cout << "clustering progress: " << progress << '%' << endl;
+#endif
+}
+
+void GeoTrait::setupStaticData(const vector<pair<float,float> >& seqLocations, const vector<string> &seqNames, const vector<unsigned> &seqCounts, unsigned nClusters, const vector<pair<float,float> > &clusterLocations, const vector<string> &clusterNames)
+{
+  _statCoords = seqLocations;
+  _statSeqNames = seqNames;
+  _statSeqCounts = seqCounts;
+  _statNClusts = nClusters;
+  _statClustCoords = clusterLocations;
+  _statClustNames = clusterNames;
+}
+
+void GeoTrait::processClustering()
+{
+  _statGeoTraits = clusterSeqs(_statCoords, _statSeqNames, _statSeqCounts, _statNClusts, _statClustCoords, _statClustNames);
+  
+}
+
+const vector<GeoTrait*> & GeoTrait::getClusterResult() const
+{
+  return _statGeoTraits;
+}
+
+vector<GeoTrait*> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLocations, const vector<string> &seqNames, const vector<unsigned> &seqCounts, unsigned nClusters, const vector<pair<float,float> > &clusterLocations, const vector<string> &clusterNames)
 {
   _centroids.clear();
   _clusters.resize(seqLocations.size(), 0);
@@ -94,27 +165,6 @@ vector<GeoTrait> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLoca
   if (clusterLocations.empty() && ! clusterNames.empty())
     throw SequenceError("Cluster names are meaningless without associated locations.");
   
-  
-  if (nClusters > 0)
-  {
-    if (clusterLocations.empty())
-    {
-      kmeans(nClusters, seqLocations);
-    }
-    
-    else
-    {
-      _centroids.assign(clusterLocations.begin(), clusterLocations.end());
-      optimiseClusters(seqLocations); 
-    }
-  }
-  
-  else
-  {
-    double bestScore = 0;
-    vector<unsigned> bestClusters;
-    vector<pair<float,float> > bestCentroids;
-    
     double *distances = new double[seqLocations.size() * seqLocations.size()];
     
     for (unsigned i = 0; i < seqLocations.size(); i++)
@@ -126,50 +176,51 @@ vector<GeoTrait> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLoca
         distances[j * seqLocations.size() + i] = d;
       }
     }
+  
+  if (nClusters > 0)
+  {
+    if (clusterLocations.empty())
+      iterativeKmeans(nClusters, seqLocations, distances, ITERATIONS, true);
+      //kmeans(nClusters, seqLocations);
+    
+    else
+    {
+      _centroids.assign(clusterLocations.begin(), clusterLocations.end());
+      optimiseClusters(seqLocations); 
+      statTrait->updateProgress(100);
+    }
+  }
+  
+  else
+  {
+    double bestScore = 0;
+    vector<unsigned> bestClusters;
+    vector<pair<float,float> > bestCentroids;
+    
     
     //cout << "K\tCH" << endl;//\tSSW\tSSB" << endl;
     
+    double progPerIter = 1./(seqLocations.size() - 2);
+    double prog = 0;
+    
     for (unsigned i = 2; i < seqLocations.size(); i++)
     {
-      double ssw;// = sumSqWithin(seqLocations);
-      double ssb;// = sumSqBetween(seqLocations);
-      double score;
-      
-      double bestSSWk;
-      double bestScoreK;
-      vector<unsigned> bestClustersK;
-      vector<pair<float,float> > bestCentroidsK;
-      
-      
-      // choose clustering with minimal ssw for a given n
       //cout << i << '\t';
-      for (unsigned j = 0; j < ITERATIONS; j++)
-      {
-        kmeans(i, seqLocations);
-        score = chIndex(seqLocations, distances, &ssw, &ssb);
-        if (j == 0 || ssw < (bestSSWk - SMALL))
-        {
-          bestSSWk = ssw;
-          bestScoreK = score;
-          //bestClustersK.clear();
-          bestClustersK.assign(_clusters.begin(), _clusters.end());
-          //bestCentroidsK.clear();
-          bestCentroidsK.assign(_centroids.begin(), _centroids.end());
-        } 
-      }
+      double bestScoreK = iterativeKmeans(i, seqLocations, distances, ITERATIONS);
       //cout << bestScoreK;// << '\t' << bestSSWk << '\t' << ssb;
+      
       
       if (bestScoreK > bestScore)
       {
         bestScore = bestScoreK;
-        //bestClusters.clear();
-        bestClusters.assign(bestClustersK.begin(), bestClustersK.end());
-        //bestCentroids.clear();
-        bestCentroids.assign(bestCentroidsK.begin(), bestCentroidsK.end());
+        bestClusters.assign(_clusters.begin(), _clusters.end());
+        bestCentroids.assign(_centroids.begin(), _centroids.end());
         //cout << "*";
       }
       
       //cout << endl;
+      prog += progPerIter;
+      statTrait->updateProgress((int)(prog * 100 + 0.5));
     }
     
     if (bestCentroids.size() == seqLocations.size())
@@ -177,24 +228,14 @@ vector<GeoTrait> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLoca
       cerr << "Warning, CH index is inconclusive for estimating number of clusters." << endl;
     }
     
-    //_centroids.clear();
     _centroids.assign(bestCentroids.begin(), bestCentroids.end());
-    
-    //_clusters.clear();
     _clusters.assign(bestClusters.begin(), bestClusters.end());
-    
-    /*for (unsigned i = 0; i < _clusters.size(); i++)
-      cout << ' ' << _clusters.at(i);
-    cout << endl;
-    
-    for (unsigned i = 0; i < _centroids.size(); i++)
-      cout << _centroids.at(i).first << "," << _centroids.at(i).second << endl;*/
     
     delete [] distances;
     
   }
   
-  vector<GeoTrait> geoTraits;
+  vector<GeoTrait *> geoTraits;
   
   for (unsigned i = 0; i < _centroids.size(); i++)
   {
@@ -204,7 +245,7 @@ vector<GeoTrait> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLoca
     else
       oss << clusterNames.at(i);
     
-    geoTraits.push_back(GeoTrait(_centroids.at(i), oss.str()));
+    geoTraits.push_back(new GeoTrait(_centroids.at(i), oss.str()));
   }
   
   for (unsigned i = 0; i < _clusters.size(); i++)
@@ -212,10 +253,54 @@ vector<GeoTrait> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLoca
     unsigned count = 1;
     if (! seqCounts.empty())
       count = seqCounts.at(i);
-    geoTraits.at(_clusters.at(i)).addSeq(seqLocations.at(i), seqNames.at(i), count);
+    geoTraits.at(_clusters.at(i))->addSeq(seqLocations.at(i), seqNames.at(i), count);
+  }
+
+#ifdef NET_QT
+  if (statTrait->thread() != QApplication::instance()->thread())
+    statTrait->thread()->exit();
+#endif
+
+  return geoTraits;
+}
+
+double GeoTrait::iterativeKmeans(unsigned nClusts, const vector<pair<float,float> >& seqLocations, double *distances, unsigned iterations, bool showProgress)
+{
+  double ssw;
+  double ssb;
+  double score;
+  double bestSSW;
+  double bestScore;
+  vector<unsigned> bestClusters;
+  vector<pair<float,float> > bestCentroids;
+  
+  double progPerIter = 1./iterations;
+  double prog = 0;
+  
+  for (unsigned j = 0; j < iterations; j++)
+  {
+    kmeans(nClusts, seqLocations);
+    score = chIndex(seqLocations, distances, &ssw, &ssb);
+    if (j == 0 || ssw < (bestSSW - SMALL))
+    {
+      bestSSW = ssw;
+      bestScore = score;
+      bestClusters.assign(_clusters.begin(), _clusters.end());
+      bestCentroids.assign(_centroids.begin(), _centroids.end());
+    } 
+    
+    prog += progPerIter;
+    if (showProgress)
+      statTrait->updateProgress(prog * 100 + 0.5);
   }
   
-  return geoTraits;
+  _clusters.assign(bestClusters.begin(), bestClusters.end());
+  _centroids.assign(bestCentroids.begin(), bestCentroids.end());
+  
+  if (showProgress)
+    statTrait->updateProgress(prog * 100 + 0.5);
+  
+  return bestScore;
 }
 
 // a single round of k-means

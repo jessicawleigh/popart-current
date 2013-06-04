@@ -137,6 +137,56 @@ QVariant NetworkItem::data(int role) const
   // TODO remember to deal with EmptyType
 }
 
+
+void NetworkItem::setData(const QVariant &data, int role)
+{
+  bool ok;
+  
+  if (_type == VertexType)
+  {
+    //cout << "VertexType" << endl;
+    if (role == Qt::DisplayRole || role == SizeRole)
+    {
+      unsigned intVariant = data.toUInt(&ok);
+      if (ok)
+        _size = intVariant;
+    }
+    
+    else if (role == LabelRole)
+    { 
+      
+      QString strVariant = data.toString();
+      if (! strVariant.isEmpty())
+        _label = strVariant;
+    }
+    
+    else if (role == TraitRole)
+    {
+      QList<QVariant> listVariant = data.toList();
+      if (! listVariant.isEmpty())
+        _traits = listVariant;
+    }
+    
+    else if (role == TaxaRole)
+    {
+      QList<QVariant> listVariant = data.toList();
+      if (! listVariant.isEmpty())
+        _taxa = listVariant;
+    }
+  }
+  
+  else if (_type == EdgeType)
+  {
+    //cout << "returning from/to data for edge: " << _e << endl;
+    if (role == Qt::DisplayRole || role == SizeRole)
+    {
+      double dVariant = data.toDouble(&ok);
+      if (ok)
+        _dsize = dVariant;
+    }
+  }
+}
+
 NetworkItem * NetworkItem::parent()
 {
   return _parentItem;

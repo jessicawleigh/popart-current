@@ -85,8 +85,10 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _netThread = new QThread(this);
   connect(_netThread, SIGNAL(finished()), this, SLOT(displayNetwork()));
 
-
   _statThread = new QThread(this);
+  
+  _clusterThread = new QThread(this);
+  connect(_clusterThread, SIGNAL(finished()), this, SLOT(finaliseClustering()));
 
   //_drawThread = new QThread(this);
   //connect(_drawThread, SIGNAL(finished()), this, SLOT(finaliseDisplay()));
@@ -132,6 +134,7 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
    _mapTraitsSet = false;
    connect(_mapView, SIGNAL(positionChanged(const QString &)), sbar, SLOT(showMessage(const QString &)));
    connect(_mapView, SIGNAL(seqColourChangeRequested(int)), this, SLOT(changeColour(int)));
+   connect(_mapView, SIGNAL(locationSet(unsigned, std::pair<float,float>)), this, SLOT(updateTraitLocation(unsigned, std::pair<float,float>)));
 
   _stats = 0;
   _alModel = 0;
@@ -662,7 +665,6 @@ void HapnetWindow::openAlignment()
         if (traitsuccess)
         {
           _tModel = new TraitModel(_traitVect);
-          // Do this differently: only on switch to map view
           _tView->setModel(_tModel);
           if (_view == Map)
           {
@@ -1166,7 +1168,7 @@ bool HapnetWindow::loadNetAttributes()
   QPointF legPos(nexParser->netLPos().first, nexParser->netLPos().second);
   
   // I'm using -1,-1 to indicate no legend, dumb
-  if (legPos.x() >= 0 || legPos.y() >= 0);
+  if (legPos.x() >= 0 || legPos.y() >= 0)
     _netView->setLegendPosition(legPos);
 
 
@@ -1274,7 +1276,17 @@ bool HapnetWindow::loadTraitsFromParser()
       
       if (buttonGroup->checkedId() == 0)
       {
-        _traitVect = parser->traitVector();
+
+        const vector<Trait*> &traits = parser->traitVector();
+        for (unsigned i = 0; i < traits.size(); i++)
+        {
+          GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
+          if (gt)
+            _traitVect.push_back(new GeoTrait(*gt));
+          else
+            _traitVect.push_back(new Trait(*(traits.at(i))));
+        }
+        
         _activeTraits = Traits;
         _toggleTraitAct->setText(tr("Use GeoTags &groups"));
       }
@@ -1282,8 +1294,11 @@ bool HapnetWindow::loadTraitsFromParser()
       else
       {
         const vector<GeoTrait*> & gtv = parser->geoTraitVector();
-        _traitVect.assign(gtv.begin(), gtv.end());
-        _activeTraits = GeoTags;
+
+        for (unsigned i = 0; i < gtv.size(); i++)
+          _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
+
+          _activeTraits = GeoTags;
         _toggleTraitAct->setText(tr("Use Traits &groups"));
 
       }
@@ -1293,7 +1308,17 @@ bool HapnetWindow::loadTraitsFromParser()
     
     else if (parser->hasTraits())
     {
-      _traitVect = parser->traitVector();
+
+      const vector<Trait*> &traits = parser->traitVector();
+      for (unsigned i = 0; i < traits.size(); i++)
+      {
+        GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
+        if (gt)
+          _traitVect.push_back(new GeoTrait(*gt));
+        else
+          _traitVect.push_back(new Trait(*(traits.at(i))));
+      }
+      
       _activeTraits = Traits;
       _toggleTraitAct->setText(tr("Use GeoTags &groups"));
       _toggleTraitAct->setEnabled(false);
@@ -1302,7 +1327,9 @@ bool HapnetWindow::loadTraitsFromParser()
     else if (parser->hasGeoTags())
     {
       const vector<GeoTrait*> & gtv = parser->geoTraitVector();
-      _traitVect.assign(gtv.begin(), gtv.end());
+      for (unsigned i = 0; i < gtv.size(); i++)
+        _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
+
       _activeTraits = GeoTags;
       _toggleTraitAct->setText(tr("Use Traits &groups"));
       _toggleTraitAct->setEnabled(false);
@@ -1712,15 +1739,6 @@ void HapnetWindow::importGeoTags()
     _tp = new TableParser();
     bool success = loadTableFromFile(filename);
     
-    // check that sequence names match alignment
-    // note that sequences can appear more than once, at different locations
-    // TODO (also: check this when importing alignment)
-    // get lat,long pair for each sequence
-    // check for header: if longitude latitude or long lat, treat as backwards
-    // dump sequence names into a vector, coordinate pair into another
-    // or maybe a geoseq? sequence with coordinates?
-    // run kmeans, get a set of GeoTraits? This could even be a GeoTrait static method
-    // think about extending Trait to GeoTrait (cluster centroid, can be given a name)
     if (success)
     { 
       //cout << "columns: " << _tp->columns() << endl;
@@ -1818,40 +1836,21 @@ void HapnetWindow::importGeoTags()
       
       unsigned nclusts = spinBox->value();
       
+      //vector<GeoTrait*> geoTraits = GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts, nclusts);
       
-      vector<GeoTrait> geoTraits = GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts, nclusts);
+      GeoTrait::statTrait->setupStaticData(coordinates, seqnames, seqcounts, nclusts);
       
-      for (unsigned i = 0; i < geoTraits.size(); i++)
-        _traitVect.push_back(new GeoTrait(geoTraits.at(i)));
       
-      //_traitVect.assign(geoTraits.begin(), geoTraits.end());
+      connect(GeoTrait::statTrait, SIGNAL(progressUpdated(int)), _progress, SLOT(setValue(int)));
+      connect(_clusterThread, SIGNAL(started()), GeoTrait::statTrait, SLOT(processClustering()));
+      _progress->setValue(0);
+      _progress->setLabelText("Clustering...");
+      _progress->show();
       
- 
-      QAbstractItemModel *tmpModel = _tView->model();
-      _tModel = new TraitModel(_traitVect);
-      _tView->setModel(_tModel);
-      delete tmpModel;
-
-      if (_view == Map)
-      {
-        _mapView->addHapLocations(_traitVect);
-        _mapTraitsSet = true;
-      }
-
-      else
-        _mapTraitsSet = false;
-
-    _dataWidget->setCurrentWidget(_tView);
-
-    delete _tp;
-     
-      
-      // TODO Add progress meter if number of traits estimated
-      // add geo option to Traits block in Nexus
-      // create GeoTags block
-      // work on save network (and parsing)
-
+      GeoTrait::statTrait->moveToThread(_clusterThread);
+      _clusterThread->start();
     }
+
   }
   
   else 
@@ -1859,6 +1858,59 @@ void HapnetWindow::importGeoTags()
     statusBar()->showMessage(tr("No file selected"));
   }
 }
+
+void HapnetWindow::updateTraitLocation(unsigned traitIdx, pair<float,float> location)
+{
+  GeoTrait *gt = dynamic_cast<GeoTrait *>(_traitVect.at(traitIdx));
+  
+  if (gt)
+    gt->setLocation(location);
+  else
+  {
+    gt = new GeoTrait(location, *(_traitVect.at(traitIdx)));
+    delete _traitVect.at(traitIdx);
+    _traitVect.at(traitIdx) = gt;
+  }
+  
+  // update location in parser
+  NexusParser * parser = dynamic_cast<NexusParser *>(Sequence::parser());
+  
+  if (parser)
+  {
+    if (_activeTraits == Traits)
+      parser->setTraitLocation(traitIdx, location);
+    
+    else
+      parser->setGeoTraitLocation(traitIdx, location);
+  }
+}
+
+void HapnetWindow::finaliseClustering()
+{   
+  const vector<GeoTrait*> & geoTraits = GeoTrait::statTrait->getClusterResult();
+  
+  _traitVect.assign(geoTraits.begin(), geoTraits.end());
+  
+  
+  QAbstractItemModel *tmpModel = _tView->model();
+  _tModel = new TraitModel(_traitVect);
+  _tView->setModel(_tModel);
+  delete tmpModel;
+  
+  if (_view == Map)
+  {
+    _mapView->addHapLocations(_traitVect);
+    _mapTraitsSet = true;
+  }
+  
+  else
+    _mapTraitsSet = false;
+  
+  _dataWidget->setCurrentWidget(_tView);
+  
+  delete _tp;
+}
+
 
 bool HapnetWindow::loadTableFromFile(const QString &filename)
 {
@@ -2243,7 +2295,7 @@ bool HapnetWindow::writeTraitData(ostream &nexfile, const vector<Trait *> &trait
   {
     GeoTrait *gt = dynamic_cast<GeoTrait*>(traits.at(i));
     if (gt)
-      gtvect.push_back(gt);
+      gtvect.push_back(new GeoTrait(*gt));
 
     else
     {
@@ -2264,7 +2316,7 @@ bool HapnetWindow::writeTraitData(ostream &nexfile, const vector<Trait *> &trait
     nexfile << "TraitLongitude";
     for (unsigned i = 0; i < gtvect.size(); i++)
     {
-      nexfile << ' ' << gtvect.at(i)->latitude();
+      nexfile << ' ' << gtvect.at(i)->longitude();
     }
     nexfile << ';' << endl;
 
@@ -2329,7 +2381,7 @@ bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<GeoTrait *> &geot
     nexfile << "ClustLongitude";
     for (unsigned i = 0; i < geotraits.size(); i++)
     {
-      nexfile << ' ' << geotraits.at(i)->latitude();
+      nexfile << ' ' << geotraits.at(i)->longitude();
     }
     nexfile << ';' << endl;
 
@@ -2360,8 +2412,8 @@ bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<GeoTrait *> &geot
 
         for (unsigned k = 0; k < counts.size(); k++)
         {
-          nexfile << seqname << ' ' << locations.at(k).first << ' ' << locations.at(k).second << ' ';
-          nexfile << counts.at(k) << ' ' << (j + 1) << ',' << endl;
+          nexfile << seqname << '\t' << locations.at(k).first << ',' << locations.at(k).second << ',';
+          nexfile << counts.at(k) << ',' << (j + 1) << endl;
         }
       }
 
@@ -2919,23 +2971,7 @@ void HapnetWindow::inferNetwork(HapnetWindow::HapnetType netType, QVariant argum
       break;
 
   }
-  //_g->setupGraph();
-  //_g->associateTraits(_traitVect);
-  
-  /*catch (NetworkError ne)
-  {    
-    _msgText = tr("<b>%1</b>").arg(errorText);
-    _msgDetail = tr(ne.what());
-    return;
-  }
-  
-  catch (TreeError te)
-  {
-    _msgText = tr("<b>%1</b>").arg(errorText);
-    _msgDetail = tr(te.what());
-    return;
-  }*/
-  
+
   _success = true;
   // set error message in case of exception
   _msgText = tr("<b>%1</b>").arg(errorText);
@@ -3195,12 +3231,14 @@ void HapnetWindow::toggleActiveTraits()
   if (_activeTraits == Traits)
   {
     _activeTraits = GeoTags;
-    _toggleViewAct->setText(tr("Switch to network view"));
+    _toggleTraitAct->setText(tr("Use Traits &groups"));
 
     closeTraits();
 
     const vector<GeoTrait*> & gtv = np->geoTraitVector();
-    _traitVect.assign(gtv.begin(), gtv.end());
+    
+    for (unsigned i = 0; i < gtv.size(); i++)
+      _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
 
   }
 
@@ -3208,9 +3246,38 @@ void HapnetWindow::toggleActiveTraits()
   {
     _activeTraits = Traits;
     _toggleTraitAct->setText(tr("Use GeoTags &groups"));
+    
+    closeTraits();
 
-    _traitVect = np->traitVector();
+    const vector<Trait*> &traits = np->traitVector();
+    for (unsigned i = 0; i < traits.size(); i++)
+    {
+      GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
+      if (gt)
+        _traitVect.push_back(new GeoTrait(*gt));
+      else
+        _traitVect.push_back(new Trait(*(traits.at(i))));
+    }
   }
+  
+  if (_g)
+    _g->associateTraits(_traitVect);
+  
+  QAbstractItemModel *tmpModel = _tView->model();
+  _tModel = new TraitModel(_traitVect);
+  _tView->setModel(_tModel); 
+  delete tmpModel;
+  
+  if (_view == Map)
+  {
+    _mapView->addHapLocations(_traitVect);
+    _mapTraitsSet = true;
+  }
+  
+  else
+    _mapTraitsSet = false;
+  
+  
 }
 
 void HapnetWindow::changeBackgroundColour()
@@ -3235,12 +3302,21 @@ void HapnetWindow::changeLabelFont()
 
 void HapnetWindow::changeLegendFont()
 {
-  const QFont & oldFont = _netView->legendFont();
+  QFont oldFont;
+  
+  if (_view == Net)
+    oldFont = _netView->legendFont();
+  else
+    oldFont = _mapView->legendFont();
   
   bool ok;
   QFont newFont = QFontDialog::getFont(&ok, oldFont, this, tr("Choose a new legend font"));
   
-  _netView->changeLegendFont(newFont);
+  if (_view == Net)
+    _netView->changeLegendFont(newFont);
+  
+  else
+    _mapView->changeLegendFont(newFont);
 }
 
 void HapnetWindow::redrawNetwork()

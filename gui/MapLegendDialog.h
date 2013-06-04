@@ -23,6 +23,12 @@ public:
 private:
   
   MapLegendWidget *_legend;
+  
+private slots:
+  void changeColour(int);
+  
+signals:
+  void colourChangeRequested(int);
 };
 
 

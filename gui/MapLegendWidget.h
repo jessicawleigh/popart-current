@@ -3,7 +3,9 @@
 
 #include <QBrush>
 #include <QColor>
+#include <QContextMenuEvent>
 #include <QFont>
+#include <QMouseEvent>
 #include <QPaintEvent>
 #include <QRegion>
 #include <QVector>
@@ -27,6 +29,9 @@ public:
   
 protected:
   virtual void paintEvent(QPaintEvent *);
+  virtual void mouseMoveEvent(QMouseEvent *);
+  virtual void contextMenuEvent(QContextMenuEvent *);
+
 
 private:
   QVector<HapLocation*> _hapLocations;
@@ -36,6 +41,14 @@ private:
   QFont _smallFont;
   QFont _legendFont;
   QVector<QRegion> _legendKeys;
+  
+  int _clickedInKey;
+  
+private slots:
+  void changeColour();
+  
+signals:
+  void colourChangeTriggered(int);
  
 };
 
