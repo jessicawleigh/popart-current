@@ -250,6 +250,12 @@ void Statistics::setFreqsFromTraits(const vector<Trait *> & traitVect)
   if (traitVect.empty())  return;
   
   _nseqs = 0;
+  
+  _traitMat.clear();
+  
+  for (unsigned i = 0; i < _distances.size(); i++)
+    _traitMat.push_back(vector<unsigned>(traitVect.size(), 0));
+  //_traitMat.resize(_distances.size());
 
   
   map<string, unsigned>::iterator countIt = _seqCounts.begin();
@@ -260,23 +266,29 @@ void Statistics::setFreqsFromTraits(const vector<Trait *> & traitVect)
     ++countIt;
   }
   
-  vector<Trait *>::const_iterator traitIt = traitVect.begin();
+  /*vector<Trait *>::const_iterator traitIt = traitVect.begin();
   
   while (traitIt != traitVect.end())
   {
 
-    const vector<string> & seqNames = (*traitIt)->seqNames();
-    for (unsigned i = 0; i < seqNames.size(); i++)
+    const vector<string> & seqNames = (*traitIt)->seqNames();*/
+  for (unsigned i = 0; i < traitVect.size(); i++)
+  {
+    const vector<string> & seqNames = traitVect.at(i)->seqNames();
+    
+    for (unsigned j = 0; j < seqNames.size(); j++)
     {
-      unsigned count = (*traitIt)->seqCount(seqNames.at(i));
+      unsigned count = traitVect.at(i)->seqCount(seqNames.at(j));
+      //(*traitIt)->seqCount(seqNames.at(j));
       _nseqs += count;
-      unsigned idx = _name2idx[seqNames.at(i)];
+      unsigned idx = _name2idx[seqNames.at(j)];
+      _traitMat.at(idx).at(i) = count;
       
       string & label = _idx2name.at(_orig2condidx[idx]);
       _seqCounts[label] += count;
     }
         
-    ++traitIt;
+    //++traitIt;
   }  
 }
 
@@ -486,9 +498,122 @@ double Statistics::betaCF(double a, double b, double x)
   }
       
   if (m >= MAXIT)
-    cerr << "betaCF not convergin: a or b too big, or MAXIT too small." << endl;
+    cerr << "betaCF not converging: a or b too big, or MAXIT too small." << endl;
     
   return h;
+}
+
+Statistics::stat Statistics::amova() const
+{
+  double sswt = 0;
+  double ssbt = 0;
+  unsigned n = _distances.size();
+  double dnsites = (double)_nsites;
+  
+  if (_traitMat.empty())
+    throw StatsError("Traits must be associated prior to AMOVA calculation.");
+  unsigned k = _traitMat.at(0).size();
+
+  double x2t, xt, xct, te;
+  int nc, ng;
+
+  double Wk = 0.;
+  double Bk = 0.;
+
+  for (unsigned i = 0; i < n; i++)
+  {
+    x2t = xt = ssbt = sswt = 0;
+    ng = 0; // number of sequences
+
+    for (unsigned c = 0; c < k; c++)
+    {
+      xct = 0;
+      nc = 0;
+      
+      for (unsigned j = 0; j < n; j++)
+      {
+        if (_traitMat.at(j).at(c) > 0 && _distances.at(i).at(j) > 0)
+        {
+          unsigned dist = _distances.at(i).at(j);// / dnsites;
+          x2t += _traitMat.at(j).at(c) * pow(dist, 2);
+          xct += _traitMat.at(j).at(c) * dist;
+          nc += _traitMat.at(j).at(c);
+          ng += _traitMat.at(j).at(c);
+        }
+      }
+      
+      
+      if (nc)
+      {
+        xt += xct;
+        te = (xct * xct)/nc;
+        ssbt += te;
+        sswt -= te;
+      }
+    }
+    ssbt -= (xt * xt)/ng;
+    sswt += x2t;
+    
+    Wk += sswt;
+    Bk += ssbt;
+  }
+  
+  double msw = Wk/(n - k);
+  double msb = Bk/(k - 1);
+  cout << "Wk: " << Wk << " Bk: " << Bk << endl;
+  
+  /*
+   * for each pair of sequences,
+   *   for each cluster, 
+   *     if both seqs have non-zero entries,
+   *       increment Wk
+   *     else if one has a non-zero entry,
+   *       increment Bk
+   */
+  
+  Wk = 0;
+  Bk = 0;
+  double Tk;
+  
+  unsigned totalN = 0;
+  
+  for (unsigned i = 0; i < n; i++)
+  {
+    unsigned ni = 0;
+    for (unsigned c = 0; c < k; c++)      
+      ni += _traitMat.at(i).at(c);
+    totalN += ni;
+    
+    for (unsigned j = 0; j < i; j++)
+    {
+      unsigned nj = 0;
+      double dist = _distances.at(i).at(j);// / dnsites;
+      
+      for (unsigned c = 0; c < k; c++)
+      {
+        if (_traitMat.at(i).at(c) > 0 && _traitMat.at(j).at(c) > 0)
+          Wk += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist;
+       
+        nj += _traitMat.at(j).at(c);
+      }
+      Tk += ni * nj * dist;
+    }
+  }
+  
+  Bk = Tk - Wk;
+  cout << "Wk: " << Wk << " Bk: " << Bk << endl;
+  
+  msw = Wk / (double)(totalN - k);
+  msb = Bk / (double)(k - 1);
+
+  double pamova = 0; // figure this out
+  double Famova = msb / msw;
+
+  stat amovaStat;
+  amovaStat.value = Famova;
+  amovaStat.prob = pamova;
+
+  return amovaStat;
 }
 
 // Phi test

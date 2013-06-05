@@ -3532,6 +3532,8 @@ void HapnetWindow::doStatsSetup()
 
   _statThread->wait();
   if (! _traitVect.empty())  _stats->setFreqsFromTraits(_traitVect);
+  
+  Statistics::stat amovastat = _stats->amova();
 }
 
 void HapnetWindow::showNucleotideDiversity()

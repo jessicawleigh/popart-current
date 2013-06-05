@@ -24,6 +24,7 @@ public:
   unsigned nSegSites() const { return _nSegSites; };
   unsigned nParsimonyInformative() const { return _nParsimonyInformative; };
   stat TajimaD() const ;
+  stat amova() const;
 
 #ifdef NET_QT
 public slots:
@@ -63,6 +64,7 @@ private:
   std::vector<std::string> _idx2name;
   std::vector<unsigned> _orig2condidx;
   std::vector<std::vector<unsigned> > _distances;
+  std::vector<std::vector<unsigned> > _traitMat;
 #ifdef NET_QT
   QTime _executionTimer;
 signals:
