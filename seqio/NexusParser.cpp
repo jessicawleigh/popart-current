@@ -1193,7 +1193,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           if (iss.fail())
             throw SeqParseError("Error reading coordinates for sequence.");         
           iss >> latHemi;
-          if (isdigit(latHemi))
+          if (isdigit(latHemi) || latHemi == '-')
             iss.putback(latHemi);
           else
           {
@@ -1207,7 +1207,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           
           iss >> lonstr;
           lonHemi = tolower(lonstr.at(lonstr.size() - 1));
-          if (isdigit(lonHemi) || lonHemi == 'w')
+          if (isdigit(lonHemi) || lonHemi == '-' || lonHemi == 'w')
           {
             istringstream iss2(lonstr);
             iss2 >> lon;

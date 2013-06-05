@@ -114,8 +114,8 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
     {
       
       lookupLocation(loc);
-      float lat = (float)(loc->location().latitude());
-      float lon = (float)(loc->location().longitude());
+      float lat = (float)(loc->location().latitude(GeoDataCoordinates::Degree));
+      float lon = (float)(loc->location().longitude(GeoDataCoordinates::Degree));
       emit locationSet(i, pair<float,float>(lat,lon));
     }
 
@@ -513,11 +513,12 @@ void MapView::changeCoordinate(int clusterID)
   if (buttonGroup->checkedId() == 1)
     lat *= -1;
   
-  if (buttonGroup2->checkedId() == 2)
+  if (buttonGroup2->checkedId() == 1)
     lon *= -1;
   
   _locations[clusterID]->setLocation(GeoDataCoordinates(lon, lat, 0, GeoDataCoordinates::Degree));
   
+  _mapWidget->update();
   emit locationSet(clusterID, pair<float,float>(lat,lon));
 }
 
