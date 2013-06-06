@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 using namespace std;
 
@@ -406,7 +407,7 @@ Statistics::stat Statistics::TajimaD() const
 
   double pTajima = betaI(alpha, beta, Dprime);
   
-  tajimaStat.prob = pTajima;
+  tajimaStat.prob = 1 - pTajima;
   
   return tajimaStat;
 }
@@ -505,75 +506,14 @@ double Statistics::betaCF(double a, double b, double x)
 
 Statistics::stat Statistics::amova() const
 {
-  double sswt = 0;
-  double ssbt = 0;
-  unsigned n = _distances.size();
-  double dnsites = (double)_nsites;
-  
   if (_traitMat.empty())
     throw StatsError("Traits must be associated prior to AMOVA calculation.");
+  unsigned n = _distances.size();  
   unsigned k = _traitMat.at(0).size();
 
-  double x2t, xt, xct, te;
-  int nc, ng;
-
   double Wk = 0.;
-  double Bk = 0.;
-
-  for (unsigned i = 0; i < n; i++)
-  {
-    x2t = xt = ssbt = sswt = 0;
-    ng = 0; // number of sequences
-
-    for (unsigned c = 0; c < k; c++)
-    {
-      xct = 0;
-      nc = 0;
-      
-      for (unsigned j = 0; j < n; j++)
-      {
-        if (_traitMat.at(j).at(c) > 0 && _distances.at(i).at(j) > 0)
-        {
-          unsigned dist = _distances.at(i).at(j);// / dnsites;
-          x2t += _traitMat.at(j).at(c) * pow((double)dist, 2);
-          xct += _traitMat.at(j).at(c) * dist;
-          nc += _traitMat.at(j).at(c);
-          ng += _traitMat.at(j).at(c);
-        }
-      }
-      
-      
-      if (nc)
-      {
-        xt += xct;
-        te = (xct * xct)/nc;
-        ssbt += te;
-        sswt -= te;
-      }
-    }
-    ssbt -= (xt * xt)/ng;
-    sswt += x2t;
-    
-    Wk += sswt;
-    Bk += ssbt;
-  }
-  
-  double msw = Wk/(n - k);
-  double msb = Bk/(k - 1);
-  cout << "Wk: " << Wk << " Bk: " << Bk << endl;
-  
-  /*
-   * for each pair of sequences,
-   *   for each cluster, 
-   *     if both seqs have non-zero entries,
-   *       increment Wk
-   *     else if one has a non-zero entry,
-   *       increment Bk
-   */
-  
-  Wk = 0;
-  Bk = 0;
-  double Tk;
+  double Bk = 0.;  
+  double Tk;      
   
   unsigned totalN = 0;
   vector<unsigned> clusterSizes(k, 0);
@@ -589,40 +529,56 @@ Statistics::stat Statistics::amova() const
     }
     totalN += ni;
     
-    for (unsigned j = 0; j < i; j++)
+    for (unsigned j = 0; j < n; j++)
     {
       unsigned nj = 0;
-      double dist = _distances.at(i).at(j);// / dnsites;
+      double dist2 = pow((double)(_distances.at(i).at(j)), 2);// / dnsites;
       
       for (unsigned c = 0; c < k; c++)
       {
         if (_traitMat.at(i).at(c) > 0 && _traitMat.at(j).at(c) > 0)
-          clusterSSW.at(c) += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * pow(dist,2);
+        {
+          clusterSSW.at(c) += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist2;
+
+        }
           //Wk += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist;
        
         nj += _traitMat.at(j).at(c);
       }
-      Tk += ni * nj * pow(dist, 2);
+      Tk += ni * nj * dist2;
     }
   }
   
-
-  Tk /= totalN;
+  
+  Tk /= (2 * totalN);  
+  
   for (unsigned c = 0; c < k; c++)
-    Wk += clusterSSW.at(c)/clusterSizes.at(c);
+  {
+    //cout << "Wk " << c << ": " <<  clusterSSW.at(c) << endl;
+    Wk += clusterSSW.at(c)/(2 * clusterSizes.at(c));
+  }
+  
+  
 
   Bk = Tk - Wk;
   cout << "Wk: " << Wk << " Bk: " << Bk << endl;
-  
-  msw = Wk / (double)(totalN - k);
-  msb = Bk / (double)(k - 1);
 
-  double pamova = 0; // figure this out
+  double msw = Wk / (totalN - k);
+  double msb = Bk / (k - 1);
+  cout << "msw: " << msw << " msb: " << msb << endl;
+  
   double Famova = msb / msw;
+  
+  unsigned df1 = k - 1;
+  unsigned df2 = totalN - k;
+  double x = df1 * Famova / (df1 * Famova + df2);
+  double pamova = betaI(df1/2.0, df2/2.0, x);
+  
+  cout << "F: " << Famova << " p: " << setprecision(10) << pamova << endl;
 
   stat amovaStat;
   amovaStat.value = Famova;
-  amovaStat.prob = pamova;
+  amovaStat.prob = 1 - pamova;
 
   vector<unsigned> countvect;
 
