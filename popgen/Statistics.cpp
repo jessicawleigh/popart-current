@@ -535,7 +535,7 @@ Statistics::stat Statistics::amova() const
         if (_traitMat.at(j).at(c) > 0 && _distances.at(i).at(j) > 0)
         {
           unsigned dist = _distances.at(i).at(j);// / dnsites;
-          x2t += _traitMat.at(j).at(c) * pow(dist, 2);
+          x2t += _traitMat.at(j).at(c) * pow((double)dist, 2);
           xct += _traitMat.at(j).at(c) * dist;
           nc += _traitMat.at(j).at(c);
           ng += _traitMat.at(j).at(c);
@@ -576,12 +576,17 @@ Statistics::stat Statistics::amova() const
   double Tk;
   
   unsigned totalN = 0;
+  vector<unsigned> clusterSizes(k, 0);
+  vector<double> clusterSSW(k, 0);
   
   for (unsigned i = 0; i < n; i++)
   {
     unsigned ni = 0;
-    for (unsigned c = 0; c < k; c++)      
+    for (unsigned c = 0; c < k; c++)
+    {
       ni += _traitMat.at(i).at(c);
+      clusterSizes.at(c) += _traitMat.at(i).at(c);
+    }
     totalN += ni;
     
     for (unsigned j = 0; j < i; j++)
@@ -592,14 +597,20 @@ Statistics::stat Statistics::amova() const
       for (unsigned c = 0; c < k; c++)
       {
         if (_traitMat.at(i).at(c) > 0 && _traitMat.at(j).at(c) > 0)
-          Wk += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist;
+          clusterSSW.at(c) += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * pow(dist,2);
+          //Wk += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist;
        
         nj += _traitMat.at(j).at(c);
       }
-      Tk += ni * nj * dist;
+      Tk += ni * nj * pow(dist, 2);
     }
   }
   
+
+  Tk /= totalN;
+  for (unsigned c = 0; c < k; c++)
+    Wk += clusterSSW.at(c)/clusterSizes.at(c);
+
   Bk = Tk - Wk;
   cout << "Wk: " << Wk << " Bk: " << Bk << endl;
   
@@ -612,6 +623,37 @@ Statistics::stat Statistics::amova() const
   stat amovaStat;
   amovaStat.value = Famova;
   amovaStat.prob = pamova;
+
+  vector<unsigned> countvect;
+
+  for (unsigned i = 0; i < n; i++)
+  {
+    countvect.push_back(0);
+    for (unsigned c = 0; c < k; c++)
+      countvect.at(i) += _traitMat.at(i).at(c);
+
+    cout << "countvect " << i << ": " << countvect.at(i) << endl;
+  }
+
+  Tk = 0;
+  totalN = 0;
+  for (unsigned i = 0; i < n; i++)
+  {
+    for (unsigned x = 0; x < countvect.at(i); x++)
+    {
+      totalN++;
+
+      for (unsigned j = 0; j < i; j++)
+      {
+        unsigned dist2 = pow((double)(_distances.at(i).at(j)), 2);
+        for (unsigned y = 0; y < countvect.at(j); y++)
+          Tk += dist2;
+      }
+    }
+  }
+
+  cout << "Tk: " << Tk << " totalN: " << totalN << endl;
+  cout << "after dividing by totalN: " << ((double)Tk/(double)totalN) << endl;
 
   return amovaStat;
 }
