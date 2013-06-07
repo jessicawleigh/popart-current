@@ -52,6 +52,7 @@ public slots:
   void setColour(int, const QColor &);
   void setClickableCursor(bool);
   void setExternalLegend(bool);
+  void setTheme(const QString &);
   void savePDFFile(const QString &filename) const;
   void savePNGFile(const QString &filename) const;  
   void saveSVGFile(const QString &filename) const;

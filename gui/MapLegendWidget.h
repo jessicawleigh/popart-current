@@ -7,6 +7,7 @@
 #include <QFont>
 #include <QMouseEvent>
 #include <QPaintEvent>
+#include <QPoint>
 #include <QRegion>
 #include <QVector>
 #include <QWidget>
@@ -41,6 +42,7 @@ private:
   QFont _smallFont;
   QFont _legendFont;
   QVector<QRegion> _legendKeys;
+  QPoint _enteredPos;
   
   int _clickedInKey;
   

@@ -138,6 +138,14 @@ private:
   QAction *_backgroundColourAct;
   QAction *_labelFontAct;
   QAction *_legendFontAct;
+  
+  QAction *_plainMapAct;
+  QAction *_blueMarbleMapAct;
+  QAction *_atlasMapAct;
+  QAction *_osvMapAct;
+  QAction *_cityLightsMapAct;
+  QAction *_oldMapAct;
+  
   QAction *_redrawAct;
   
   QAction *_msnAct;
@@ -161,6 +169,7 @@ private:
   QAction *_nSegSitesAct;
   QAction *_nParsimonyAct;
   QAction *_tajimaAct;
+  QAction *_amovaAct;
   QAction *_allStatsAct;
 
   QAction *_nexusToolAct;
@@ -212,6 +221,7 @@ private slots:
   void showSegSites();
   void showParsimonySites();
   void showTajimaD();
+  void showAmova();
   void showAllStats();
   void search();
   void changeColourTheme(); 
@@ -228,6 +238,7 @@ private slots:
   void changeBackgroundColour();
   void changeLabelFont();
   void changeLegendFont();
+  void changeMapTheme(QAction *);
   void redrawNetwork();
   void toggleNetActions(bool);
   void toggleAlignmentActions(bool);

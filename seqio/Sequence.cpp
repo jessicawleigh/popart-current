@@ -200,12 +200,13 @@ void Sequence::setParser(SeqParser *parser)
 void Sequence::setParser(istream &input)
 {
   if (input.eof())  throw SequenceError("Cannot guess sequence format from an empty file!");
-  char c = input.peek();
   char eol = ParserTools::getEOLchar(input);
   
   /*if (c == '>')  setParser(new FastaSeqParser());
 
   else */
+  char c = input.peek();
+
   if (c == '#')  //setParser(new NexusSeqParser());
   {
     string line;

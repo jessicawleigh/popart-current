@@ -278,6 +278,22 @@ void HapnetWindow::setupActions()
   _labelFontAct->setEnabled(false);
   connect(_labelFontAct, SIGNAL(triggered()), this, SLOT(changeLabelFont()));
   
+  QActionGroup *mapThemeActions = new QActionGroup(this);
+  _plainMapAct = new QAction(tr("Plain"), mapThemeActions);
+  _plainMapAct->setCheckable(true);
+  _plainMapAct->setChecked(true);
+  _blueMarbleMapAct = new QAction(tr("Blue marble"), mapThemeActions);
+  _blueMarbleMapAct->setCheckable(true);
+  _atlasMapAct = new QAction(tr("Atlas"), mapThemeActions);
+  _atlasMapAct->setCheckable(true);
+  _osvMapAct = new QAction(tr("Open Streetmap"), mapThemeActions);
+  _osvMapAct->setCheckable(true);
+  _cityLightsMapAct = new QAction(tr("Nighttime"), mapThemeActions);
+  _cityLightsMapAct->setCheckable(true);
+  _oldMapAct = new QAction(tr("Old map (1689)"), mapThemeActions);
+  _oldMapAct->setCheckable(true);
+  connect(mapThemeActions, SIGNAL(triggered(QAction*)), this, SLOT(changeMapTheme(QAction*)));
+  
   _redrawAct = new QAction(tr("Re&draw network"), this);
   _redrawAct->setStatusTip(tr("Redraw the current network"));
   _redrawAct->setEnabled(false);
@@ -359,6 +375,10 @@ void HapnetWindow::setupActions()
   _tajimaAct->setStatusTip(tr("Compute Tajima's D statsitic"));
   connect(_tajimaAct, SIGNAL(triggered()), this, SLOT(showTajimaD()));
   
+  _amovaAct = new QAction(tr("A&MOVA"), this);
+  _amovaAct->setStatusTip(tr("Perform analysis of molecular variance"));
+  connect(_amovaAct, SIGNAL(triggered()), this, SLOT(showAmova()));
+  
   _allStatsAct = new QAction(tr("&All stats"), this);
   _allStatsAct->setStatusTip(tr("Compute all statistics"));
   connect(_allStatsAct, SIGNAL(triggered()), this, SLOT(showAllStats()));
@@ -439,6 +459,15 @@ void HapnetWindow::setupMenus()
   editMenu->addAction(_labelFontAct);
   editMenu->addAction(_legendFontAct);
   editMenu->addSeparator();
+  QMenu *mapThemeMenu = editMenu->addMenu(tr("Map theme..."));
+  mapThemeMenu->addAction(_plainMapAct); 
+  mapThemeMenu->addAction(_blueMarbleMapAct);
+  mapThemeMenu->addAction(_atlasMapAct); // strm
+  mapThemeMenu->addAction(_osvMapAct);
+  mapThemeMenu->addAction(_cityLightsMapAct);
+  mapThemeMenu->addAction(_oldMapAct);
+  
+  editMenu->addSeparator();
   editMenu->addAction(_redrawAct);
   
   
@@ -473,6 +502,8 @@ void HapnetWindow::setupMenus()
   _statsMenu->addAction(_nSegSitesAct);
   _statsMenu->addAction(_nParsimonyAct);
   _statsMenu->addAction(_tajimaAct);
+  _statsMenu->addAction(_amovaAct);
+  _statsMenu->addSeparator();  
   _statsMenu->addAction(_allStatsAct);
   
   QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
@@ -753,6 +784,11 @@ bool HapnetWindow::loadAlignmentFromFile(QString filename)
     error.exec();*/
 
     return false;
+  }
+  
+  catch (SequenceError &se)
+  {
+    showErrorDlg(tr("<b>Error parsing sequence data</b>"), se.what());
   }
 
   seqfile.close();
@@ -1633,7 +1669,15 @@ void HapnetWindow::importTraits()
 
       for (unsigned i = 0; i < _tp->columns(); i++)
       {
-        _traitVect.push_back(new Trait(_tp->headerData().at(i)));
+        if(_tp->headerData().empty())
+        {
+          ostringstream oss;
+          oss << "trait" << (i+1);
+          _traitVect.push_back(new Trait(oss.str()));
+        }
+        else
+          _traitVect.push_back(new Trait(_tp->headerData().at(i)));
+        
         // set data type to integer for trait data
         _tp->setDataType(i, 'd');
       }
@@ -1694,6 +1738,7 @@ void HapnetWindow::importTraits()
         }
       }
       
+      _activeTraits = Traits;
 
       QAbstractItemModel *tmpModel = _tView->model();
       _tModel = new TraitModel(_traitVect);
@@ -1891,6 +1936,7 @@ void HapnetWindow::finaliseClustering()
   
   _traitVect.assign(geoTraits.begin(), geoTraits.end());
   
+  _activeTraits = GeoTags;
   
   QAbstractItemModel *tmpModel = _tView->model();
   _tModel = new TraitModel(_traitVect);
@@ -2209,7 +2255,10 @@ bool HapnetWindow::writeNexusAlignment(ostream &nexfile)
     }
 
     if (sp)
+    {
       delete sp;
+      Sequence::setParser(nexParser);
+    }
   }
 
   try
@@ -2235,7 +2284,24 @@ bool HapnetWindow::writeNexusTraits(ostream &nexfile)
   NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
 
   if (! nexParser)
-    return false;
+  {
+    //return false;
+    GeoTrait *gt = dynamic_cast<GeoTrait*>(_traitVect.at(0));
+    
+    if (gt)
+    {
+      vector<GeoTrait *> gtv;
+      
+      for (unsigned i = 0; i < _traitVect.size(); i++)
+        gtv.push_back(dynamic_cast<GeoTrait *>(_traitVect.at(i)));
+      
+      writeGeoData(nexfile, gtv);
+    }
+    
+    else
+      writeTraitData(nexfile, _traitVect);
+    
+  }
 
   if (_activeTraits == Traits)
   {
@@ -2280,10 +2346,10 @@ bool HapnetWindow::writeNexusTraits(ostream &nexfile)
 
 bool HapnetWindow::writeTraitData(ostream &nexfile, const vector<Trait *> &traits)
 {
-  NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
+  /*NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
 
   if (! nexParser)
-    return false;
+    return false;*/
 
   nexfile << "Begin Traits;" << endl;
   nexfile << "Dimensions NTraits=" << traits.size() << ';' << endl;
@@ -2360,10 +2426,10 @@ bool HapnetWindow::writeTraitData(ostream &nexfile, const vector<Trait *> &trait
 
 bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<GeoTrait *> &geotraits)
 {
-  NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
+  /*NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
 
   if (! nexParser)
-    return false;
+    return false;*/
 
   nexfile << "Begin GeoTags;" << endl;
   nexfile << "Dimensions NClusts=" << geotraits.size() << ';' << endl;
@@ -3319,6 +3385,28 @@ void HapnetWindow::changeLegendFont()
     _mapView->changeLegendFont(newFont);
 }
 
+void HapnetWindow::changeMapTheme(QAction *mapAction)
+{
+  
+  if (mapAction == _plainMapAct)
+    _mapView->setTheme("plain");
+  
+  else if (mapAction == _blueMarbleMapAct)
+    _mapView->setTheme("bluemarble");
+  
+  else if (mapAction == _atlasMapAct)
+    _mapView->setTheme("srtm");
+  
+  else if (mapAction == _osvMapAct)
+    _mapView->setTheme("openstreetmap");
+  
+  else if (mapAction == _cityLightsMapAct)
+    _mapView->setTheme("citylights");
+  
+  else if (mapAction == _oldMapAct)
+    _mapView->setTheme("schagen1689");
+}
+
 void HapnetWindow::redrawNetwork()
 {
   toggleNetActions(false);
@@ -3531,9 +3619,7 @@ void HapnetWindow::doStatsSetup()
   _statThread->start();
 
   _statThread->wait();
-  if (! _traitVect.empty())  _stats->setFreqsFromTraits(_traitVect);
-  
-  Statistics::stat amovastat = _stats->amova();
+  if (! _traitVect.empty())  _stats->setFreqsFromTraits(_traitVect);  
 }
 
 void HapnetWindow::showNucleotideDiversity()
@@ -3607,6 +3693,30 @@ void HapnetWindow::showTajimaD()
   message.exec(); 
 }
 
+void HapnetWindow::showAmova()
+{
+  if (_traitVect.empty())
+  {
+    showErrorDlg("<b>Sequences must have associated traits to perform analysis of molecular variance.<b>");
+    return;
+  }
+
+  if (! _stats)
+    doStatsSetup();
+  
+  Statistics::stat amovaStat = _stats->amova();
+  
+  QMessageBox message;
+  message.setIcon(QMessageBox::Information);
+  message.setText(tr("<b>Analysis of molecular variance</b>"));
+  QString infText(tr("F = %1<br>p(F %2 %1) = %3").arg(amovaStat.value).arg(QChar(0x2265)).arg(amovaStat.prob));
+  message.setInformativeText(infText);
+  message.setStandardButtons(QMessageBox::Ok); 
+  message.setDefaultButton(QMessageBox::Ok);
+
+  message.exec(); 
+}
+
 void HapnetWindow::showAllStats()
 {
   if (! _stats)
@@ -3616,6 +3726,7 @@ void HapnetWindow::showAllStats()
   unsigned segsites = _stats->nSegSites();
   unsigned psites = _stats->nParsimonyInformative();
   Statistics::stat tajimaStat = _stats->TajimaD();
+  Statistics::stat amovaStat = _stats->amova();
   
   QDialog dlg(this);
   QVBoxLayout *vlayout = new QVBoxLayout(&dlg);  
@@ -3625,12 +3736,30 @@ void HapnetWindow::showAllStats()
   
   QString ssText(tr("<b>Number of segregating sites:</b> %1").arg(segsites));
   vlayout->addWidget(new QLabel(ssText, &dlg));
-  
+
   QString psText(tr("<b>Number of parsimony-informative sites:</b> %1").arg(psites));
   vlayout->addWidget(new QLabel(psText, &dlg));
   
-  QString tajimaText(tr("<b>Tajima's D:</b> %1<br>p(D %2 %1) = %3").arg(tajimaStat.value).arg(QChar(0x2265)).arg(tajimaStat.prob));
+  
+  double tajimaPval;
+  QChar inequal;
+  if (tajimaStat.prob < 0.5)
+  {
+    tajimaPval = 2 * tajimaStat.prob;
+    inequal = QChar(0x2265);
+  }
+  
+  else
+  {
+    tajimaPval = 2 * (1 - tajimaStat.prob);
+    inequal = QChar(0x2264);
+  }
+  
+  QString tajimaText = (tr("<b>Tajima's D:</b> %1<br>p(D %2 %1) = %3").arg(tajimaStat.value).arg(inequal).arg(tajimaPval));
   vlayout->addWidget(new QLabel(tajimaText, &dlg));
+  
+  QString amovaText(tr("<b>AMOVA F:</b> %1<br>p(F %2 %1) = %3").arg(amovaStat.value).arg(QChar(0x2265)).arg(amovaStat.prob));
+  vlayout->addWidget(new QLabel(amovaText, &dlg));
   
   vlayout->addWidget(new QLabel("Log to file?", this));
 
@@ -3673,6 +3802,8 @@ void HapnetWindow::showAllStats()
   out << "Number of parsimony-informative sites:\t" << psites << endl;
   out << "Tajima's D statistic:\tD = " << tajimaStat.value << endl;
   out << "\tp (D >= " << tajimaStat.value << ") = " << tajimaStat.prob << endl;
+  out << "Analysis of molecular variance:\tF = " << amovaStat.value << endl;
+  out << "\tp (D >= " << amovaStat.value << ") = " << amovaStat.prob << endl;
   
   file.close();
 

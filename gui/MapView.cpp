@@ -172,6 +172,21 @@ void MapView::setExternalLegend(bool external)
   _mapWidget->update();
 }
 
+void MapView::setTheme(const QString &theme)
+{
+  _mapWidget->setMapThemeId(QString("earth/%1/%1.dgml").arg(theme));
+  _mapWidget->setShowOverviewMap(false);
+  _mapWidget->setShowScaleBar(false);
+  _mapWidget->setShowCompass(false);
+  
+  if (theme == "bluemarble")
+  {
+    _mapWidget->setShowClouds(true);
+    _mapWidget->setShowBorders(true);
+  }
+  
+}
+
 void MapView::savePDFFile(const QString &filename) const
 {
   double width = _mapWidget->width();

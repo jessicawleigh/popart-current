@@ -404,10 +404,11 @@ Statistics::stat Statistics::TajimaD() const
   
   double alpha = - (1 + Dmin * Dmax) * Dmax / (Dmax - Dmin);
   double beta = (1 + Dmin * Dmax) * Dmin / (Dmax - Dmin);
+  //cout << "alpha: " << alpha << " beta: " << beta << " Dprime: " << Dprime << endl;
 
   double pTajima = betaI(alpha, beta, Dprime);
   
-  tajimaStat.prob = 1 - pTajima;
+  tajimaStat.prob = pTajima;
   
   return tajimaStat;
 }
@@ -553,19 +554,12 @@ Statistics::stat Statistics::amova() const
   Tk /= (2 * totalN);  
   
   for (unsigned c = 0; c < k; c++)
-  {
-    //cout << "Wk " << c << ": " <<  clusterSSW.at(c) << endl;
     Wk += clusterSSW.at(c)/(2 * clusterSizes.at(c));
-  }
-  
-  
 
   Bk = Tk - Wk;
-  cout << "Wk: " << Wk << " Bk: " << Bk << endl;
 
   double msw = Wk / (totalN - k);
   double msb = Bk / (k - 1);
-  cout << "msw: " << msw << " msb: " << msb << endl;
   
   double Famova = msb / msw;
   
@@ -574,46 +568,15 @@ Statistics::stat Statistics::amova() const
   double x = df1 * Famova / (df1 * Famova + df2);
   double pamova = betaI(df1/2.0, df2/2.0, x);
   
-  cout << "F: " << Famova << " p: " << setprecision(10) << pamova << endl;
+  //cout << "F: " << Famova << " p: " << setprecision(10) << pamova << endl;
 
   stat amovaStat;
   amovaStat.value = Famova;
   amovaStat.prob = 1 - pamova;
 
-  vector<unsigned> countvect;
-
-  for (unsigned i = 0; i < n; i++)
-  {
-    countvect.push_back(0);
-    for (unsigned c = 0; c < k; c++)
-      countvect.at(i) += _traitMat.at(i).at(c);
-
-    cout << "countvect " << i << ": " << countvect.at(i) << endl;
-  }
-
-  Tk = 0;
-  totalN = 0;
-  for (unsigned i = 0; i < n; i++)
-  {
-    for (unsigned x = 0; x < countvect.at(i); x++)
-    {
-      totalN++;
-
-      for (unsigned j = 0; j < i; j++)
-      {
-        unsigned dist2 = pow((double)(_distances.at(i).at(j)), 2);
-        for (unsigned y = 0; y < countvect.at(j); y++)
-          Tk += dist2;
-      }
-    }
-  }
-
-  cout << "Tk: " << Tk << " totalN: " << totalN << endl;
-  cout << "after dividing by totalN: " << ((double)Tk/(double)totalN) << endl;
 
   return amovaStat;
 }
 
 // Phi test
-// log all stats to file
 

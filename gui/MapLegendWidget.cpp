@@ -18,7 +18,6 @@
 MapLegendWidget::MapLegendWidget(QVector<HapLocation*> locations, QWidget *parent)
  : QWidget(parent), _hapLocations(locations), _defaultBrush(Qt::black)
  {
-   
    setMinimumSize(400, 400);
    setGeometry(QRect(0,0,400,400)); // Get rid of this?
 
@@ -31,6 +30,9 @@ MapLegendWidget::MapLegendWidget(QVector<HapLocation*> locations, QWidget *paren
   
   _colours = QVector<QBrush>();
 
+   setMouseTracking(true); 
+  _enteredPos.setX(-1);
+  _enteredPos.setY(-1);
    
 }
  
@@ -158,7 +160,30 @@ void MapLegendWidget::setColours(const QVector<QBrush> &colours)
 void MapLegendWidget::mouseMoveEvent(QMouseEvent *event)
 {
   
-  QWidget::mouseMoveEvent(event);
+  bool passToQWidget = true;
+  
+  for (unsigned i = 0; i < _legendKeys.size(); i++)
+  {
+    if (_legendKeys.at(i).contains(event->pos()) && _enteredPos.x() < 0)
+    {
+      _enteredPos = event->pos();
+      setCursor(Qt::PointingHandCursor);
+      passToQWidget = true;
+      break;
+    }
+    
+    else if (_enteredPos.x() > 0 && _legendKeys.at(i).contains(_enteredPos))
+    {
+      setCursor(Qt::ArrowCursor);
+      _enteredPos.setX(-1);
+      passToQWidget = false;
+      break;
+    }
+  }
+  
+  
+  if (passToQWidget)
+    QWidget::mouseMoveEvent(event);
 }
 
 void MapLegendWidget::contextMenuEvent(QContextMenuEvent *event)
