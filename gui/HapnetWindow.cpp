@@ -70,6 +70,7 @@ using namespace std;
 #include "NexusParser.h"
 #include "SeqParseError.h"
 #include "SequenceError.h"
+#include "StatsError.h"
 #include "TreeError.h"
 
 // TODO Features to add for user input:
@@ -3501,6 +3502,9 @@ void HapnetWindow::showIdenticalSeqs()
 {
   if (! _stats)
     doStatsSetup();
+  
+  if (! _stats)
+    return;
 
   const map<Sequence, list<Sequence> > & identical = _stats->mapIdenticalSeqs();//_goodSeqs, _mask);
     
@@ -3608,18 +3612,36 @@ void HapnetWindow::showIdenticalSeqs()
 
 void HapnetWindow::doStatsSetup()
 {
-  _stats = new Statistics(_goodSeqs, _mask, _datatype);
-
-  _progress->setLabelText("Setting up stats...");
-  connect(_statThread, SIGNAL(started()), _stats, SLOT(setupStats()));
-  connect(_stats, SIGNAL(progressUpdated(int)), _progress, SLOT(setValue(int)));
-  _progress->show();
-
-  _stats->moveToThread(_statThread);
-  _statThread->start();
-
-  _statThread->wait();
-  if (! _traitVect.empty())  _stats->setFreqsFromTraits(_traitVect);  
+  try
+  {
+    _stats = new Statistics(_goodSeqs, _mask, _datatype);
+    
+    /*_progress->setLabelText("Setting up stats...");
+    connect(_statThread, SIGNAL(started()), _stats, SLOT(setupStats()));
+    connect(_stats, SIGNAL(progressUpdated(int)), _progress, SLOT(setValue(int)));
+    _progress->show();
+    
+    _stats->moveToThread(_statThread);
+    _statThread->start();
+    
+    _statThread->wait();*/
+    _stats->setupStats();
+    if (! _traitVect.empty())  _stats->setFreqsFromTraits(_traitVect); 
+  }
+  
+  catch (StatsError &ste)
+  {
+    showErrorDlg("<b>Error setting up statistics</b>", ste.what());
+    delete _stats;
+    _stats = 0;
+  }
+  
+  catch (exception &e)
+  {
+    showErrorDlg("<b>Unknown error in statistics</b>", e.what());
+    delete _stats;
+    _stats = 0;
+  }
 }
 
 void HapnetWindow::showNucleotideDiversity()
@@ -3627,6 +3649,8 @@ void HapnetWindow::showNucleotideDiversity()
   if (! _stats)
     doStatsSetup();
         
+  if (! _stats)
+    return;
   double diversity = _stats->nucleotideDiversity();
   
   QMessageBox message;
@@ -3645,7 +3669,10 @@ void HapnetWindow::showSegSites()
 {
   if (! _stats)
     doStatsSetup();
-
+  
+  if (! _stats)
+    return;
+  
   unsigned segsites = _stats->nSegSites();
   
   QMessageBox message;
@@ -3662,7 +3689,10 @@ void HapnetWindow::showParsimonySites()
 {
   if (! _stats)
     doStatsSetup();
-
+  
+  if (! _stats)
+    return;
+  
   unsigned psites = _stats->nParsimonyInformative();
   
   QMessageBox message;
@@ -3680,6 +3710,9 @@ void HapnetWindow::showTajimaD()
   if (! _stats)
     doStatsSetup();
 
+  if (! _stats)
+    return;
+  
   Statistics::stat tajimaStat = _stats->TajimaD();
   
   QMessageBox message;
@@ -3704,13 +3737,30 @@ void HapnetWindow::showAmova()
   if (! _stats)
     doStatsSetup();
   
-  Statistics::stat amovaStat = _stats->amova();
+  if (! _stats)
+    return;
+  
+  Statistics::anovatab amovaStat = _stats->amova();
   
   QMessageBox message;
   message.setIcon(QMessageBox::Information);
   message.setText(tr("<b>Analysis of molecular variance</b>"));
-  QString infText(tr("F = %1<br>p(F %2 %1) = %3").arg(amovaStat.value).arg(QChar(0x2265)).arg(amovaStat.prob));
+
+  QString infText(tr("F = %1<br>p(F %2 %1) = %3 ").arg(QString::number(amovaStat.F, 'f', 3)).arg(QChar(0x2265)).arg(QString::number(amovaStat.prob, 'g', 3)));
   message.setInformativeText(infText);
+
+  QString detText(tr("%1  Sum Sq Mean Sq F value    Pr(>F)\n").arg(QString("df"), 14));
+  detText += QString("Population%1").arg(amovaStat.dfFac, 4);
+  detText +=QString("%1").arg(QString::number(amovaStat.ssb, 'f', 2), 8);
+  detText +=QString("%1").arg(QString::number(amovaStat.msb, 'f', 2), 8);
+  detText +=QString("%1").arg(QString::number(amovaStat.F, 'f', 2), 8);
+  detText += QString("%1\n").arg(QString::number(amovaStat.prob, 'g', 2), 10);
+  
+  detText += QString("Residuals %1").arg(amovaStat.dfRes, 4);
+  detText += QString("%1").arg(QString::number(amovaStat.ssw, 'f', 2), 8);
+  detText += QString("%1\n").arg(QString::number(amovaStat.msw, 'f', 2), 8);  
+  
+  message.setDetailedText(detText);
   message.setStandardButtons(QMessageBox::Ok); 
   message.setDefaultButton(QMessageBox::Ok);
 
@@ -3721,12 +3771,15 @@ void HapnetWindow::showAllStats()
 {
   if (! _stats)
     doStatsSetup();
-
+  
+  if (! _stats)
+    return;
+  
   double diversity = _stats->nucleotideDiversity();
   unsigned segsites = _stats->nSegSites();
   unsigned psites = _stats->nParsimonyInformative();
   Statistics::stat tajimaStat = _stats->TajimaD();
-  Statistics::stat amovaStat = _stats->amova();
+  Statistics::anovatab amovaStat = _stats->amova();
   
   QDialog dlg(this);
   QVBoxLayout *vlayout = new QVBoxLayout(&dlg);  
@@ -3758,7 +3811,7 @@ void HapnetWindow::showAllStats()
   QString tajimaText = (tr("<b>Tajima's D:</b> %1<br>p(D %2 %1) = %3").arg(tajimaStat.value).arg(inequal).arg(tajimaPval));
   vlayout->addWidget(new QLabel(tajimaText, &dlg));
   
-  QString amovaText(tr("<b>AMOVA F:</b> %1<br>p(F %2 %1) = %3").arg(amovaStat.value).arg(QChar(0x2265)).arg(amovaStat.prob));
+  QString amovaText(tr("<b>AMOVA F:</b> %1<br>p(F %2 %1) = %3").arg(amovaStat.F).arg(QChar(0x2265)).arg(amovaStat.prob));
   vlayout->addWidget(new QLabel(amovaText, &dlg));
   
   vlayout->addWidget(new QLabel("Log to file?", this));
@@ -3802,8 +3855,19 @@ void HapnetWindow::showAllStats()
   out << "Number of parsimony-informative sites:\t" << psites << endl;
   out << "Tajima's D statistic:\tD = " << tajimaStat.value << endl;
   out << "\tp (D >= " << tajimaStat.value << ") = " << tajimaStat.prob << endl;
-  out << "Analysis of molecular variance:\tF = " << amovaStat.value << endl;
-  out << "\tp (D >= " << amovaStat.value << ") = " << amovaStat.prob << endl;
+  out << "Analysis of molecular variance:\tF = " << amovaStat.F << endl;
+  out << "\tp (F >= " << amovaStat.F << ") = " << amovaStat.prob << endl;
+  
+  out << QString("%1  Sum Sq Mean Sq F value    Pr(>F)\n").arg(QString("df"), 14);
+  out << QString("Population%1").arg(amovaStat.dfFac, 4);
+  out << QString("%1").arg(QString::number(amovaStat.ssb, 'f', 2), 8);
+  out << QString("%1").arg(QString::number(amovaStat.msb, 'f', 2), 8);
+  out << QString("%1").arg(QString::number(amovaStat.F, 'f', 2), 8);
+  out <<  QString("%1\n").arg(QString::number(amovaStat.prob, 'g', 2), 10);
+  
+  out <<  QString("Residuals %1").arg(amovaStat.dfRes, 4);
+  out <<  QString("%1").arg(QString::number(amovaStat.ssw, 'f', 2), 8);
+  out <<  QString("%1").arg(QString::number(amovaStat.msw, 'f', 2), 8) << endl;  
   
   file.close();
 

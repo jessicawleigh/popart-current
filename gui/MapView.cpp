@@ -87,6 +87,22 @@ void MapView::setupWidget()
 
   layout->addWidget(_mapWidget);
   layout->addWidget(_zoomSlider);
+  
+//   GeoDataDocument *doc = new GeoDataDocument;
+//   
+//   GeoDataPolyStyle polyStyle(Qt::red);
+//   polyStyle.setFill(true);
+//   GeoDataStyle *style = new GeoDataStyle;
+//   style->setPolyStyle(polyStyle);
+//   
+//   GeoDataPlacemark *place;
+// 
+//   
+//   
+//   
+//   _mapWidget->model()->treeModel()->addDocument(doc);
+  
+  
 
 }
 

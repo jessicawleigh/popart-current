@@ -8,6 +8,7 @@
 using namespace std;
 
 #ifdef NET_QT
+#include <QApplication>
 #include <QThread>
 #endif
 
@@ -68,7 +69,8 @@ void Statistics::setupStats()
   updateProgress(100);
 
 #ifdef NET_QT
-  thread()->exit();
+  if (thread() != QApplication::instance()->thread())
+    thread()->exit();
 #endif
 }
 
@@ -78,8 +80,14 @@ void Statistics::setupStats()
  */
 void Statistics::updateProgress(int progress)
 {
-  //cout << "progress: " << progress << " time: " << _executionTimer.elapsed() << endl;
-  if (progress < 0 || progress > 100)  throw StatsError("Progress is not a percentage.");
+
+  // deal with invalid progress values
+  //if (progress < 0 || progress > 100)  throw StatsError("Progress is not a percentage.");  
+  if (progress < 0)
+    emit progressUpdated(0);
+  if (progress > 100)
+    emit progressUpdated(100);
+  
   emit progressUpdated(progress);
 }
 #else
@@ -505,7 +513,7 @@ double Statistics::betaCF(double a, double b, double x)
   return h;
 }
 
-Statistics::stat Statistics::amova() const
+Statistics::anovatab Statistics::amova() const
 {
   if (_traitMat.empty())
     throw StatsError("Traits must be associated prior to AMOVA calculation.");
@@ -517,8 +525,8 @@ Statistics::stat Statistics::amova() const
   double Tk;      
   
   unsigned totalN = 0;
-  vector<unsigned> clusterSizes(k, 0);
-  vector<double> clusterSSW(k, 0);
+  vector<unsigned> groupSizes(k, 0);
+  vector<double> groupSSW(k, 0);
   
   for (unsigned i = 0; i < n; i++)
   {
@@ -526,7 +534,7 @@ Statistics::stat Statistics::amova() const
     for (unsigned c = 0; c < k; c++)
     {
       ni += _traitMat.at(i).at(c);
-      clusterSizes.at(c) += _traitMat.at(i).at(c);
+      groupSizes.at(c) += _traitMat.at(i).at(c);
     }
     totalN += ni;
     
@@ -539,7 +547,7 @@ Statistics::stat Statistics::amova() const
       {
         if (_traitMat.at(i).at(c) > 0 && _traitMat.at(j).at(c) > 0)
         {
-          clusterSSW.at(c) += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist2;
+          groupSSW.at(c) += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist2;
 
         }
           //Wk += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist;
@@ -554,7 +562,7 @@ Statistics::stat Statistics::amova() const
   Tk /= (2 * totalN);  
   
   for (unsigned c = 0; c < k; c++)
-    Wk += clusterSSW.at(c)/(2 * clusterSizes.at(c));
+    Wk += groupSSW.at(c)/(2 * groupSizes.at(c));
 
   Bk = Tk - Wk;
 
@@ -570,8 +578,14 @@ Statistics::stat Statistics::amova() const
   
   //cout << "F: " << Famova << " p: " << setprecision(10) << pamova << endl;
 
-  stat amovaStat;
-  amovaStat.value = Famova;
+  anovatab amovaStat;
+  amovaStat.ssb = Bk;
+  amovaStat.ssw = Wk;
+  amovaStat.dfFac = df1;
+  amovaStat.dfRes = df2;
+  amovaStat.msb = msb;
+  amovaStat.msw = msw;
+  amovaStat.F = Famova;
   amovaStat.prob = 1 - pamova;
 
 

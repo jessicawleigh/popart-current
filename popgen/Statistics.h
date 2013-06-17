@@ -17,6 +17,18 @@ class Statistics
 #endif
 public:
   typedef struct {double value; double prob; } stat;
+  typedef struct 
+  {
+    double ssb; 
+    double ssw; 
+    unsigned dfFac;
+    unsigned dfRes;
+    double msb; 
+    double msw; 
+    double F; 
+    double prob;
+  } anovatab;
+  
   Statistics(const std::vector<Sequence*> & = std::vector<Sequence*>(), const std::vector<bool> & = std::vector<bool>(), Sequence::CharType = Sequence::DNAType);
   const std::map<Sequence, std::list<Sequence > > & mapIdenticalSeqs() { return _identicalSeqMap; };
   void setFreqsFromTraits(const std::vector<Trait *> &);
@@ -24,7 +36,7 @@ public:
   unsigned nSegSites() const { return _nSegSites; };
   unsigned nParsimonyInformative() const { return _nParsimonyInformative; };
   stat TajimaD() const ;
-  stat amova() const;
+  anovatab amova() const;
 
 #ifdef NET_QT
 public slots:

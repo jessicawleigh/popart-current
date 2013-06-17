@@ -1443,7 +1443,7 @@ void NetworkView::showTaxBox(QGraphicsItem *item)
   //QGraphicsItem *item = _theScene.itemAt(pos, _theView.viewportTransform());
   if (item)
   {   
-    QPointF pos = item->boundingRect().center();
+    QPointF pos = item->mapToScene(item->boundingRect().center());;
     QVariant data = item->data(0);
     
     if (data == QVariant())  return;
@@ -1485,7 +1485,7 @@ void NetworkView::showBarchart(QGraphicsItem *item)
   //QGraphicsItem *item = _theScene.itemAt(pos, _theView.viewportTransform());
   if (item)
   {   
-    QPointF pos = item->boundingRect().center();
+    QPointF pos = item->mapToScene(item->boundingRect().center());
     QVariant data = item->data(0);
    
     if (data == QVariant())  return; 
