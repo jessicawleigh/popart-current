@@ -154,6 +154,8 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   dockWidget->setWidget(_dataWidget);//new QLabel("Placeholder", this));
   addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
   
+  _assistant = new Assistant;
+  
   
   setupActions();
   setupMenus();
@@ -344,14 +346,14 @@ void HapnetWindow::setupActions()
   _toggleExternalLegendAct->setEnabled(false);
 
   QActionGroup *viewActions = new QActionGroup(this);
-  _dashViewAct = new QAction(tr("Show &hatch marks"), viewActions);
+  _dashViewAct = new QAction(tr("&Hatch marks"), viewActions);
   _dashViewAct->setStatusTip(tr("Show mutations as hatch marks along edges"));
   _dashViewAct->setCheckable(true);
   _dashViewAct->setChecked(true);
-  _nodeViewAct = new QAction(tr("Show &1-step edges"), viewActions);
+  _nodeViewAct = new QAction(tr("&1-step edges"), viewActions);
   _nodeViewAct->setStatusTip(tr("Show single-mutation edges with intermediate vertices"));
   _nodeViewAct->setCheckable(true);
-  _numViewAct = new QAction(tr("Show mutation &count"), viewActions);
+  _numViewAct = new QAction(tr("&Numbers"), viewActions);
   _numViewAct->setStatusTip(tr("Show numbers of mutations along edges"));
   _numViewAct->setCheckable(true);
   connect(viewActions, SIGNAL(triggered(QAction*)), this, SLOT(changeEdgeMutationView(QAction*)));
@@ -420,6 +422,17 @@ void HapnetWindow::setupActions()
   _taxBoxAct->setCheckable(true);
   connect(_taxBoxAct, SIGNAL(toggled(bool)), _netView, SLOT(toggleShowTaxBox(bool)));
   connect(_taxBoxAct, SIGNAL(toggled(bool)), this, SLOT(fixBarchartButton(bool)));
+  
+  _assistantAct = new QAction(tr("Help Contents"), this);
+  _assistantAct->setShortcut(QKeySequence::HelpContents);
+  connect(_assistantAct, SIGNAL(triggered()), this, SLOT(showDocumentation()));
+  
+  _aboutAct = new QAction(tr("&About"), this);
+  connect(_aboutAct, SIGNAL(triggered()), this, SLOT(about()));
+
+  _aboutQtAct = new QAction(tr("About &Qt"), this);
+  connect(_aboutQtAct, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
+
 }
 
 void HapnetWindow::setupMenus()
@@ -459,14 +472,6 @@ void HapnetWindow::setupMenus()
   editMenu->addSeparator();
   editMenu->addAction(_labelFontAct);
   editMenu->addAction(_legendFontAct);
-  editMenu->addSeparator();
-  QMenu *mapThemeMenu = editMenu->addMenu(tr("Map theme..."));
-  mapThemeMenu->addAction(_plainMapAct); 
-  mapThemeMenu->addAction(_blueMarbleMapAct);
-  mapThemeMenu->addAction(_atlasMapAct); // strm
-  mapThemeMenu->addAction(_osvMapAct);
-  mapThemeMenu->addAction(_cityLightsMapAct);
-  mapThemeMenu->addAction(_oldMapAct);
   
   editMenu->addSeparator();
   editMenu->addAction(_redrawAct);
@@ -490,10 +495,19 @@ void HapnetWindow::setupMenus()
   _viewMenu->addSeparator();//->setText(tr("Network"));
   // Add maps: make a group for network vs. map view, and a setSeparator(true) for both, maybe
   // Disable mutation view options when map view selected
-  _viewMenu->addAction(_dashViewAct);
-  _viewMenu->addAction(_nodeViewAct);
-  _viewMenu->addAction(_numViewAct);
+  _mutationMenu = _viewMenu->addMenu(tr("Show mutations as..."));
+  _mutationMenu->addAction(_dashViewAct);
+  _mutationMenu->addAction(_nodeViewAct);
+  _mutationMenu->addAction(_numViewAct);
 
+  _viewMenu->addSeparator();
+  QMenu *mapThemeMenu = _viewMenu->addMenu(tr("Map theme..."));
+  mapThemeMenu->addAction(_plainMapAct); 
+  mapThemeMenu->addAction(_blueMarbleMapAct);
+  mapThemeMenu->addAction(_atlasMapAct); // strm
+  mapThemeMenu->addAction(_osvMapAct);
+  mapThemeMenu->addAction(_cityLightsMapAct);
+  mapThemeMenu->addAction(_oldMapAct);
 
 
   _statsMenu =  menuBar()->addMenu(tr("&Statistics"));
@@ -508,8 +522,10 @@ void HapnetWindow::setupMenus()
   _statsMenu->addAction(_allStatsAct);
   
   QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
-  helpMenu->setEnabled(false);
-
+  helpMenu->addAction(_assistantAct);
+  helpMenu->addAction(_aboutAct);
+  helpMenu->addAction(_aboutQtAct);
+  
 }
 
 void HapnetWindow::setupTools()
@@ -3962,6 +3978,7 @@ void HapnetWindow::toggleNetActions(bool enable)
   _legendFontAct->setEnabled(enable);
   _redrawAct->setEnabled(enable);
   //_viewMenu->setEnabled(enable);
+  _mutationMenu->setEnabled(enable);
   _dashViewAct->setEnabled(enable);
   _nodeViewAct->setEnabled(enable);
   _numViewAct->setEnabled(enable);
@@ -3979,5 +3996,14 @@ void HapnetWindow::fixTaxBoxButton(bool barchartChecked)
     _taxBoxAct->setChecked(false);
 }
 
+void HapnetWindow::showDocumentation()
+{
+  _assistant->showDocumentation("overview.html");
+}
 
+void HapnetWindow::about()
+{
+     QMessageBox::about(this, tr("About PopART"),
+                        tr("PopART (Population Analysis with Reticulate Trees) is free, open source population genetics software that was developed as part of the Allan Wilson Centre Imaging Evolution Initiative.\n\nIt is used for inferring and visualising genealogical relationships among populations."));
 
+}

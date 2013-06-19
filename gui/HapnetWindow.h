@@ -23,6 +23,7 @@
 
 #include "AlignmentView.h"
 #include "AlignmentModel.h"
+#include "Assistant.h"
 #include "GeoTrait.h"
 #include "MapView.h"
 #include "NetworkView.h"
@@ -99,11 +100,13 @@ private:
   NetworkModel *_netModel;
   AlignmentModel *_alModel;
   AlignmentView *_alView;
+  Assistant *_assistant;
   TraitModel *_tModel;
   TraitView *_tView;
   QTabWidget *_dataWidget;
   QMenu *_networkMenu;
   QMenu *_viewMenu;
+  QMenu *_mutationMenu;
   QMenu *_statsMenu;
   TableParser *_tp;
   QTableWidget *_table;
@@ -184,6 +187,10 @@ private:
   QAction *_barchartAct;
   QAction *_taxBoxAct;
   
+  QAction *_assistantAct;
+  QAction *_aboutAct;
+  QAction *_aboutQtAct;
+  
   QString _filename;
   
   
@@ -245,6 +252,8 @@ private slots:
   void fixBarchartButton(bool);
   void fixTaxBoxButton(bool);
   void graphicsMove(QList<QPair<QGraphicsItem *, QPointF> >);
+  void showDocumentation();
+  void about();
 
   //QPlainTextEdit *_messageConsole;
   
