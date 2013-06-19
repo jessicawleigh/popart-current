@@ -85,23 +85,24 @@ bool Assistant::startAssistant()
 
     if (proc->state() != QProcess::Running) {
         QString app = QLibraryInfo::location(QLibraryInfo::BinariesPath) + QDir::separator();
+        QString docpath;
 #if !defined(Q_OS_MAC)
         app += QLatin1String("assistant");
+        docpath = QCoreApplication::applicationDirPath() + QDir::separator();
 #else
         app += QLatin1String("Assistant.app/Contents/MacOS/Assistant");    
+        docpath = QLibraryInfo::location(QLibraryInfo::DocumentationPath) + QDir::separator();
 #endif
 
         QStringList args;
         args << QLatin1String("-collectionFile")
-            << QCoreApplication::applicationDirPath() + QDir::separator() 
-            //+ QLibraryInfo::location(QLibraryInfo::DocumentationPath)
-            //QLibraryInfo::location(QLibraryInfo::ExamplesPath)
-            + QLatin1String("popart.qhc")
+            << docpath + QLatin1String("popart.qhc")
             << QLatin1String("-enableRemoteControl");
 
-        qDebug() << "app string:" << app;
+        /*qDebug() << "app string:" << app;
+        qDebug() << "doc path: " << QLibraryInfo::location(QLibraryInfo::DocumentationPath);
         qDebug() << "help location string:" << QCoreApplication::applicationDirPath() + QDir::separator() + QLibraryInfo::location(QLibraryInfo::DocumentationPath) + QLatin1String("popart.qhc");
-        qDebug() << "args:" << args;
+        qDebug() << "args:" << args;*/
         proc->start(app, args);
 
         if (!proc->waitForStarted()) {
