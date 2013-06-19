@@ -71,7 +71,7 @@ void Assistant::showDocumentation(const QString &page)
         return;
 
     QByteArray ba("SetSource ");
-    ba.append("qthelp://com.trolltech.examples.simpletextviewer/doc/");
+    ba.append("qthelp://popart/doc/");
     
     proc->write(ba + page.toLocal8Bit() + '\n');
 }
@@ -84,14 +84,17 @@ bool Assistant::startAssistant()
         proc = new QProcess();
 
     if (proc->state() != QProcess::Running) {
-        QString app = QLibraryInfo::location(QLibraryInfo::BinariesPath) + QDir::separator();
-        QString docpath;
-#if !defined(Q_OS_MAC)
-        app += QLatin1String("assistant");
-        docpath = QCoreApplication::applicationDirPath() + QDir::separator();
-#else
-        app += QLatin1String("Assistant.app/Contents/MacOS/Assistant");    
+        QString app; //QLibraryInfo::location(QLibraryInfo::BinariesPath) + QDir::separator();
+        QString docpath;       
+#if defined(Q_OS_MAC)
+        // maybe needs a preceding BinariesPath?
+        app = QLatin1String("Assistant.app/Contents/MacOS/Assistant");    
         docpath = QLibraryInfo::location(QLibraryInfo::DocumentationPath) + QDir::separator();
+#elif defined(Q_OS_WIN)
+        app = "assistant.exe";
+#else
+        app = QLibraryInfo::location(QLibraryInfo::BinariesPath) + QDir::separator() + QLatin1String("assistant");
+        docpath = QCoreApplication::applicationDirPath() + QDir::separator();
 #endif
 
         QStringList args;
@@ -99,10 +102,10 @@ bool Assistant::startAssistant()
             << docpath + QLatin1String("popart.qhc")
             << QLatin1String("-enableRemoteControl");
 
-        /*qDebug() << "app string:" << app;
-        qDebug() << "doc path: " << QLibraryInfo::location(QLibraryInfo::DocumentationPath);
-        qDebug() << "help location string:" << QCoreApplication::applicationDirPath() + QDir::separator() + QLibraryInfo::location(QLibraryInfo::DocumentationPath) + QLatin1String("popart.qhc");
-        qDebug() << "args:" << args;*/
+        //qDebug() << "app string:" << app;
+        //qDebug() << "doc path: " << QLibraryInfo::location(QLibraryInfo::DocumentationPath);
+        //qDebug() << "help location string:" << QCoreApplication::applicationDirPath() + QDir::separator() + QLibraryInfo::location(QLibraryInfo::DocumentationPath) + QLatin1String("popart.qhc");
+        //qDebug() << "args:" << args;
         proc->start(app, args);
 
         if (!proc->waitForStarted()) {
