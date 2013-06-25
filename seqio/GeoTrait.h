@@ -1,12 +1,19 @@
 #ifndef GEOTRAIT_H_
 #define GEOTRAIT_H_
 
+
 #include "Trait.h"
 
+#include <cmath>
 #include <string>
 #include <utility>
 #include <vector>
 using namespace std;
+
+#define PI (std::atan(1) * 4)
+#define radians(deg)  ((deg * PI) / 180)
+#define degrees(rad)  ((rad * 180) / PI)
+
 
 
 #ifdef NET_QT
@@ -56,10 +63,11 @@ public:
   const std::vector<GeoTrait*> & getClusterResult() const;
   
   static std::pair<float,float> getCoordinate(const std::string &, const std::string &);
+  typedef struct { double x; double y; double z;} coord3d;
+
   
   // Used to manage signals
   static GeoTrait *statTrait;
-
   
 private:
   static double iterativeKmeans(unsigned, const std::vector<std::pair<float,float> >&, double *distances, unsigned, bool = false);
@@ -68,6 +76,10 @@ private:
   static void optimiseCentroids(const std::vector<std::pair<float,float> >&);
   static void optimiseClusters(const std::vector<std::pair<float,float> >&);
   static double chIndex(const std::vector<std::pair<float,float> >&, double*, double* = 0, double* = 0);
+  static double greatcircle(const std::pair<float,float>&, const std::pair<float,float>&, double = 1);
+  static coord3d sph2cart(const std::pair<float,float>&, double = 1);
+  static std::pair<float,float> cart2sph(const coord3d &, double * = 0);
+  //static double rad(double deg);
   void updateProgress(int);
   
   

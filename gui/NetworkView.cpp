@@ -661,6 +661,8 @@ void NetworkView::updateTraits()
     _theScene.removeItem(_legend);
     delete _legend;
     _legend = 0;
+    _legendKeys.clear();
+    _legendLabels.clear();
   }
   
   drawLegend();
@@ -1202,8 +1204,59 @@ void NetworkView::setVertexColour(const QColor &colour)
 
 void NetworkView::setVertexSize(double rad)
 {
+  double factor = rad/_vertRadUnit; 
   _vertRadUnit = rad;
   EdgeItem::setVertexSize(rad);
+  
+  for (unsigned i = 0; i < _vertexItems.size(); i++)
+  {
+    QRectF rect = _vertexItems.at(i)->rect();
+    double newDiam = rect.width() * factor;
+    double extraRad = (newDiam - rect.width()) / 2;
+    rect.setX(rect.x() - extraRad);
+    rect.setY(rect.y() - extraRad);
+    rect.setWidth(newDiam);
+    rect.setHeight(newDiam);
+    _vertexItems.at(i)->setRect(rect);
+  }
+  
+  for (unsigned i = 0; i < _vertexSections.size(); i++)
+  {
+    QList<QGraphicsEllipseItem*>::iterator sectionIt = _vertexSections[i].begin();
+    
+    while (sectionIt != _vertexSections[i].end())
+    {
+      QRectF rect = (*sectionIt)->rect();
+      double newDiam = rect.width() * factor;
+      double extraRad = (newDiam - rect.width()) / 2;
+      rect.setX(rect.x() - extraRad);
+      rect.setY(rect.y() - extraRad);
+      rect.setWidth(newDiam);
+      rect.setHeight(newDiam);
+      (*sectionIt)->setRect(rect);
+      ++sectionIt;
+    }
+  }
+
+  
+  /*
+   * Update sizes for vertex objects (maybe set signal to pie sections)
+   * Delete legend/labels/keys
+   * draw legend again
+   */
+  
+  if (_legend)
+  {
+    _theScene.removeItem(_legend);
+    delete _legend;
+    _legend = 0;
+    _legendKeys.clear();
+    _legendLabels.clear();
+  }
+  
+  drawLegend();
+  
+
   //clearScene();
   //adjustAndDraw();
   _theScene.update(0, 0, _theScene.width(), _theScene.height());

@@ -33,6 +33,26 @@ GeoTrait::GeoTrait(const pair<float,float> &location, const string &name, QObjec
  : QObject(parent), Trait(name)
 {
   _location = location;
+  
+  /*cout << "pi: " << PI << endl;
+  cout << "pi, in degrees: " << degrees(PI) << endl;
+  cout << "45 degrees, in rad: " << radians(45) << endl;
+  cout << "45.0 degrees, in rad: " << radians(45.0) << endl;
+  cout << "PI * 180 / PI: " << PI * 180 / PI << endl;
+  cout << "3.14159 * 180 / 3.14159: " << 3.14159 * 180 / 3.14159 << endl;
+  cout << "PI * 180 / 3.14159: " << PI * 180 / 3.14159 << endl;
+  cout << "3.14159 * 180 / PI: " << 3.14159 * 180 / PI << endl;
+  
+  
+  pair<float,float> p1(-40, 170);
+  pair<float,float> p2(5, -170);
+  
+  coord3d c3d = sph2cart(p1);
+  
+  cout << p1.first << "," << p1.second << " in Cartesian: (" << c3d.x << "," << c3d.y << "," << c3d.z << ")" << endl;
+  
+  cout << "Great circle distance (r = 1): " << greatcircle(p1, p2) << endl;
+  cout << "Great circle distance (r = 6371): " << greatcircle(p1, p2, 6371) << endl;*/
 }
 
 GeoTrait::GeoTrait(const std::pair<float,float> &location, const Trait &trait, QObject *parent)
@@ -167,14 +187,18 @@ vector<GeoTrait*> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLoc
   
     double *distances = new double[seqLocations.size() * seqLocations.size()];
     
+  
+    // calculate great circle distances
+    // create a 3d coordinate struct? Or just great circle distances to centroids as well
+    // 
     for (unsigned i = 0; i < seqLocations.size(); i++)
     {
       for (unsigned j = 0; j < i; j++)
       {
-        double d = sqrt(pow(seqLocations.at(i).first - seqLocations.at(j).first, 2) + pow(seqLocations.at(i).second - seqLocations.at(j).second, 2));
+        double d = greatcircle(seqLocations.at(i), seqLocations.at(j));//sqrt(pow(seqLocations.at(i).first - seqLocations.at(j).first, 2) + pow(seqLocations.at(i).second - seqLocations.at(j).second, 2));
         distances[i * seqLocations.size() + j] = d;
         distances[j * seqLocations.size() + i] = d;
-      }
+      }      
     }
   
   if (nClusters > 0)
@@ -264,6 +288,59 @@ vector<GeoTrait*> GeoTrait::clusterSeqs(const vector<pair<float,float> >& seqLoc
   return geoTraits;
 }
 
+double GeoTrait::greatcircle(const std::pair<float,float>& coords1, const std::pair<float,float>& coords2, double r)
+{  
+  double lat1 = radians(coords1.first);// * pi/180;
+  double lon1 = radians(coords1.second);// * pi/180;
+  double lat2 = radians(coords2.first);// * pi/180;
+  double lon2 = radians(coords2.second);// * pi/180;
+    
+  double dLat = lat2 - lat1;
+  double dLon = lon2 - lon1;
+    
+  double h = pow(sin(dLat/2), 2) + cos(lat1) * cos(lat2) * pow(sin(dLon/2), 2);
+      
+  return 2 * r * asin(sqrt(h));
+    
+
+}
+
+GeoTrait::coord3d GeoTrait::sph2cart(const std::pair<float,float> & sphCoords, double r)
+{
+  coord3d cartesian;
+  cartesian.x = r * cos(radians(sphCoords.second)) * cos(radians(sphCoords.first));
+  cartesian.y = r * sin(radians(sphCoords.second)) * cos(radians(sphCoords.first));
+  cartesian.z = sin(radians(sphCoords.first));
+  
+  return cartesian;
+}
+
+pair<float,float> GeoTrait::cart2sph(const GeoTrait::coord3d &cartCoords, double * rad)
+{
+  double r = sqrt(pow(cartCoords.x, 2) + pow(cartCoords.y, 2) + pow(cartCoords.z,2));
+  double lat = asin(cartCoords.z / r);
+  double lon = atan2(cartCoords.y, cartCoords.x);
+  
+  lat = degrees(lat);
+  lon = degrees(lon);
+  
+  if (rad)
+    *rad = r;
+  
+  return pair<float,float>((float)lat, (float)lon);
+}
+
+/*double GeoTrait::radians(double deg)
+{
+  return deg * pi / 180;
+}
+
+double GeoTrait::degrees(double rad)
+{
+  return rad * 180 / pi;
+}
+*/
+
 double GeoTrait::iterativeKmeans(unsigned nClusts, const vector<pair<float,float> >& seqLocations, double *distances, unsigned iterations, bool showProgress)
 {
   double ssw;
@@ -343,25 +420,39 @@ void GeoTrait::randomCentroids(unsigned nClusts, const vector<pair<float,float> 
 void GeoTrait::optimiseCentroids(const vector<pair<float,float> > &locations)
 {
   vector<unsigned> sizes;
+  vector<coord3d> cartesian;
   for (unsigned i = 0; i < _centroids.size(); i++)
   {
     _centroids.at(i).first = 0;
     _centroids.at(i).second = 0;
+    cartesian.push_back((coord3d){0,0,0});
     sizes.push_back(0);
   }
   
   for (unsigned i = 0; i < _clusters.size(); i++)
   {
-    pair<float,float> &cent = _centroids.at(_clusters.at(i));
-    cent.first += locations.at(i).first;
-    cent.second += locations.at(i).second;
+    //pair<float,float> &cent = _centroids.at(_clusters.at(i));
+    //cent.first += locations.at(i).first;
+    //cent.second += locations.at(i).second;
+    coord3d & cent = cartesian.at(_clusters.at(i));
+    coord3d locCart = sph2cart(locations.at(i));
+    
+    cent.x += locCart.x;
+    cent.y += locCart.y;
+    cent.z += locCart.z;
+    
     sizes.at(_clusters.at(i))++;
   }
   
   for (unsigned i = 0; i < _centroids.size(); i++)
   {
-    _centroids.at(i).first /= sizes.at(i);
-    _centroids.at(i).second /= sizes.at(i);
+    coord3d & cent = cartesian.at(i);
+    cent.x /= sizes.at(i);
+    cent.y /= sizes.at(i);
+    cent.z /= sizes.at(i);
+    // _centroids.at(i).first /= sizes.at(i);
+    // _centroids.at(i).second /= sizes.at(i);
+    _centroids.at(i) = cart2sph(cent);
   }
 }
 
@@ -372,7 +463,8 @@ void GeoTrait::optimiseClusters(const vector<pair<float,float> > &locations)
     double minDist = -1;
     for (unsigned j = 0; j < _centroids.size(); j++)
     {
-      double dist = sqrt(pow(locations.at(i).first - _centroids.at(j).first, 2) + pow(locations.at(i).second - _centroids.at(j).second, 2));
+      double dist = greatcircle(locations.at(i), _centroids.at(j));
+      //sqrt(pow(locations.at(i).first - _centroids.at(j).first, 2) + pow(locations.at(i).second - _centroids.at(j).second, 2));
       
       if (minDist < 0 || dist < minDist)
       {
