@@ -33,7 +33,7 @@
 #include <marble/GeoDataLineStyle.h>
 #include <marble/GeoDataPolyStyle.h>
 #include <marble/MarbleModel.h>
-#include <marble/MarbleRunnerManager.h>
+#include <marble/SearchRunnerManager.h>
 using namespace Marble;
 
 #include <iostream>
@@ -142,8 +142,8 @@ void MapView::addHapLocations(const vector<Trait*> &traits)
   connect(_hapLayer, SIGNAL(dirtyRegion(const QRegion &)), this, SLOT(updateDirtyRegion(const QRegion &)));
   connect(_hapLayer, SIGNAL(colourChangeTriggered(int)), this, SLOT(requestChangeSeqColour(int)));
   connect(_hapLayer, SIGNAL(coordinateChangeTriggered(int)), this, SLOT(changeCoordinate(int)));
-  /*connect(_hapLayer, SIGNAL(entered(const QString &)), this, SLOT(setMapToolTip(const QString &)));
-  connect(_hapLayer, SIGNAL(left(const QString &)), this, SLOT(resetMapToolTip(const QString &)));*/
+  connect(_hapLayer, SIGNAL(entered(const QString &)), this, SLOT(setMapToolTip(const QString &)));
+  connect(_hapLayer, SIGNAL(left(const QString &)), this, SLOT(resetMapToolTip(const QString &)));
   connect(_hapLayer, SIGNAL(clickable(bool)), this, SLOT(setClickableCursor(bool)));
   _hapLayer->setColours(_colourTheme);
   _mapWidget->addLayer(_hapLayer);
@@ -264,8 +264,8 @@ void MapView::clearHapLocations()
 
 void MapView::lookupLocation(HapLocation *location)
 {
-  MarbleRunnerManager* manager = new MarbleRunnerManager(_mapWidget->model()->pluginManager(), this);
-  manager->setModel( _mapWidget->model() );
+  SearchRunnerManager* manager = new SearchRunnerManager(_mapWidget->model(), this);
+  //manager->setModel( _mapWidget->model() );
 
   QVector<GeoDataPlacemark *> searchResult = manager->searchPlacemarks(location->name());
 

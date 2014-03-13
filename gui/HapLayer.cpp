@@ -17,6 +17,7 @@
 #include <QPointF>
 #include <QRect>
 #include <QRectF>
+#include <QSizeF>
 
 using namespace Marble;
 
@@ -69,7 +70,9 @@ bool HapLayer::render(GeoPainter *painter, ViewportParams *viewport, const QStri
     bool behindGlobe;
     x = new double[5]; // allow coordinates to be repeated up to 5 times (should be overkill)
 
-    bool visible = viewport->screenCoordinates(_hapLocations.at(i)->location(), x, y, repeats, behindGlobe);
+    
+    // Marble seems to have changed this, and the documentation doesn't explain what the QSizeF argument is for
+    bool visible = viewport->screenCoordinates(_hapLocations.at(i)->location(), x, y, repeats, QSizeF(), behindGlobe);
 
     if (visible)
     {
@@ -288,9 +291,11 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
     {
       for(unsigned i = 0; i < _clusters.size(); i++)
       {
+        qDebug() << "cluster" << i << _clustLabels.at(i);
         const QRegion &clust = _clusters.at(i);
         if (clust.contains(cEvent->pos()))
         {
+          qDebug() << "clicked in cluster" << i << ", " << _clustLabels.at(i);
           QMenu menu;
           _clickedInCluster = i;
           QAction *a = menu.addAction(tr("Change coordinates"));
@@ -443,6 +448,7 @@ void HapLayer::changeColour()
 
 void HapLayer::changeCoordinates()
 {
+  qDebug() << "emitting change coordinates for" << _clickedInCluster <<endl;
   emit coordinateChangeTriggered(_clickedInCluster);
 }
 
