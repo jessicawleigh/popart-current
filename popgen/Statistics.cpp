@@ -156,7 +156,7 @@ void Statistics::condenseSitePats()
   }
   
   unsigned * oPos2CPos = new unsigned[_nsites]; 
-  ostringstream buffers[_nseqs];
+  ostringstream *buffers = new ostringstream[_nseqs];
   
   unsigned newPos = 0;
   
@@ -190,6 +190,8 @@ void Statistics::condenseSitePats()
   for (unsigned i = 0; i < _nseqs; i++)  
     _alignment.at(i).setSeq(buffers[i].str());
     // _condensedSeqs.push_back(buffers[i].str());
+    
+  delete [] buffers;
 
 }
 

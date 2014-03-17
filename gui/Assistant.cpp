@@ -46,6 +46,7 @@
 
 #include <QMessageBox>
 #include <QDebug>
+#include <QDesktopServices>
 #include "Assistant.h"
 
 Assistant::Assistant()
@@ -88,7 +89,8 @@ bool Assistant::startAssistant()
         QString docpath;       
 #if defined(Q_OS_MAC)
         // maybe needs a preceding BinariesPath?
-        app = QLatin1String("Assistant.app/Contents/MacOS/Assistant");    
+        //qDebug() << "binaries path:" <<QLibraryInfo::location(QLibraryInfo::BinariesPath);
+        app = QLibraryInfo::location(QLibraryInfo::BinariesPath) + QDir::separator() + QLatin1String("Assistant.app/Contents/MacOS/Assistant");    
         docpath = QLibraryInfo::location(QLibraryInfo::DocumentationPath) + QDir::separator();
 #elif defined(Q_OS_WIN)
         app = "assistant.exe";
@@ -102,6 +104,7 @@ bool Assistant::startAssistant()
             << docpath + QLatin1String("popart.qhc")
             << QLatin1String("-enableRemoteControl");
 
+        //qDebug() << "data location:" <<  QDesktopServices::storageLocation(QDesktopServices::DataLocation);
         //qDebug() << "app string:" << app;
         //qDebug() << "doc path: " << QLibraryInfo::location(QLibraryInfo::DocumentationPath);
         //qDebug() << "help location string:" << QCoreApplication::applicationDirPath() + QDir::separator() + QLibraryInfo::location(QLibraryInfo::DocumentationPath) + QLatin1String("popart.qhc");

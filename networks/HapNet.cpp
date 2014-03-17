@@ -174,7 +174,7 @@ void HapNet::condenseSitePats()
   
   // new site indices in condensed seq vect... Should this be an instance variable?
   _oPos2CPos = new unsigned[_nsites]; 
-  ostringstream buffers[_nseqs];
+  ostringstream *buffers = new ostringstream[_nseqs];
   
   unsigned newPos = 0;
   
@@ -207,6 +207,7 @@ void HapNet::condenseSitePats()
   for (unsigned i = 0; i < _nseqs; i++)  
     _condensedSeqs.at(i) = buffers[i].str();
 
+  delete [] buffers;
 }
 
 
