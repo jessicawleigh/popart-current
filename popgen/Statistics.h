@@ -26,6 +26,7 @@ public:
     double msb; 
     double msw; 
     double F; 
+    double phiST;
     double prob;
   } anovatab;
   

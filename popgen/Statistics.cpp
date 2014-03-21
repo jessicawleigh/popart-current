@@ -525,6 +525,7 @@ Statistics::anovatab Statistics::amova() const
   double Wk = 0.;
   double Bk = 0.;  
   double Tk;      
+  double meanGroupSize = 0;
   
   unsigned totalN = 0;
   vector<unsigned> groupSizes(k, 0);
@@ -564,7 +565,12 @@ Statistics::anovatab Statistics::amova() const
   Tk /= (2 * totalN);  
   
   for (unsigned c = 0; c < k; c++)
+  {
     Wk += groupSSW.at(c)/(2 * groupSizes.at(c));
+    meanGroupSize += groupSizes.at(c);
+  }
+  
+  meanGroupSize /= k;
 
   Bk = Tk - Wk;
 
@@ -579,6 +585,10 @@ Statistics::anovatab Statistics::amova() const
   double pamova = betaI(df1/2.0, df2/2.0, x);
   
   //cout << "F: " << Famova << " p: " << setprecision(10) << pamova << endl;
+  double sigma2a, sigma2b = msw; 
+  
+  sigma2a = (msb -sigma2b)/meanGroupSize;
+  
 
   anovatab amovaStat;
   amovaStat.ssb = Bk;
@@ -589,6 +599,7 @@ Statistics::anovatab Statistics::amova() const
   amovaStat.msw = msw;
   amovaStat.F = Famova;
   amovaStat.prob = 1 - pamova;
+  amovaStat.phiST = (sigma2a / (sigma2a + sigma2b));
 
 
   return amovaStat;

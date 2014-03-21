@@ -61,6 +61,7 @@ using namespace std;
 #include "HapNet.h"
 #include "MinSpanNet.h"
 #include "MedJoinNet.h"
+#include "MonospaceMessageBox.h"
 #include "ParsimonyNet.h"
 #include "IntNJ.h"
 #include "TCS.h"
@@ -3758,27 +3759,31 @@ void HapnetWindow::showAmova()
   
   Statistics::anovatab amovaStat = _stats->amova();
   
-  QMessageBox message;
-  message.setIcon(QMessageBox::Information);
+  //QMessageBox 
+  MonospaceMessageBox message;
+  //message.setIcon(QMessageBox::Information);
   message.setText(tr("<b>Analysis of molecular variance</b>"));
 
-  QString infText(tr("F = %1<br>p(F %2 %1) = %3 ").arg(QString::number(amovaStat.F, 'f', 3)).arg(QChar(0x2265)).arg(QString::number(amovaStat.prob, 'g', 3)));
+  QString infText(tr("F = %1<br>p(F %2 %1) = %3<br>&Phi;<sub>ST</sub> = %4").arg(QString::number(amovaStat.F, 'f', 3)).arg(QChar(0x2265)).arg(QString::number(amovaStat.prob, 'g', 3)).arg(amovaStat.phiST));
   message.setInformativeText(infText);
 
-  QString detText(tr("%1  Sum Sq Mean Sq F value    Pr(>F)\n").arg(QString("df"), 14));
-  detText += QString("Population%1").arg(amovaStat.dfFac, 4);
-  detText +=QString("%1").arg(QString::number(amovaStat.ssb, 'f', 2), 8);
-  detText +=QString("%1").arg(QString::number(amovaStat.msb, 'f', 2), 8);
-  detText +=QString("%1").arg(QString::number(amovaStat.F, 'f', 2), 8);
-  detText += QString("%1\n").arg(QString::number(amovaStat.prob, 'g', 2), 10);
+  QString detText(tr("%2%1%1Sum_Sq%1Mean_Sq%1F_value%1%1%1%1Pr(>F)\n").arg('\xa0').arg("df", 14, '\xa0'));
+  detText += QString("Population%1").arg((uint)(amovaStat.dfFac), (int)4, (int)10, QChar('\xa0'));
+  //arg(numstr, fieldwidth, fillchar)
+  detText +=QString("%1").arg(QString::number(amovaStat.ssb, 'f', 2), 8, '\xa0');
+  detText +=QString("%1").arg(QString::number(amovaStat.msb, 'f', 2), 8, '\xa0');
+  detText +=QString("%1").arg(QString::number(amovaStat.F, 'f', 2), 8, '\xa0');
+  detText += QString("%1\n").arg(QString::number(amovaStat.prob, 'g', 2), 10, '\xa0');
   
-  detText += QString("Residuals %1").arg(amovaStat.dfRes, 4);
-  detText += QString("%1").arg(QString::number(amovaStat.ssw, 'f', 2), 8);
-  detText += QString("%1\n").arg(QString::number(amovaStat.msw, 'f', 2), 8);  
+  detText += QString("Residuals%1").arg((uint)(amovaStat.dfRes), (int)5, (int)10, QChar('\xa0'));
+  detText += QString("%1").arg(QString::number(amovaStat.ssw, 'f', 2), 8, '\xa0');
+  detText += QString("%1\n").arg(QString::number(amovaStat.msw, 'f', 2), 8, '\xa0');  
   
   message.setDetailedText(detText);
-  message.setStandardButtons(QMessageBox::Ok); 
-  message.setDefaultButton(QMessageBox::Ok);
+  //message.setStandardButtons(QMessageBox::Ok); 
+  //message.setDefaultButton(QMessageBox::Ok);
+  //message.setFixedWidth(1000);
+  qDebug() << "message width: " << message.width() << "height: " << message.height();
 
   message.exec(); 
 }
