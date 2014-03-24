@@ -62,6 +62,7 @@ using namespace std;
 #include "MinSpanNet.h"
 #include "MedJoinNet.h"
 #include "MonospaceMessageBox.h"
+#include "NestedGroupDialog.h"
 #include "ParsimonyNet.h"
 #include "IntNJ.h"
 #include "TCS.h"
@@ -3757,10 +3758,15 @@ void HapnetWindow::showAmova()
   if (! _stats)
     return;
   
+  // THIS SHOULD GO ELSEWHERE, PROBABLY!!!!!!!!!!!!!!!!!!
+  NestedGroupDialog groupDlg(_traitVect, this);
+  groupDlg.exec();
+  
+  
   Statistics::anovatab amovaStat = _stats->amova();
   
   //QMessageBox 
-  MonospaceMessageBox message;
+  MonospaceMessageBox message(this);
   //message.setIcon(QMessageBox::Information);
   message.setText(tr("<b>Analysis of molecular variance</b>"));
 
