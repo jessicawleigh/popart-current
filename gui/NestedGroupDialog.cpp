@@ -1,8 +1,11 @@
 #include "NestedGroupDialog.h"
 
+#include <QAction>
+#include <QMessageBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidgetItem>
+#include <QMenu>
 #include <QPushButton>
 #include <QStringList>
 #include <QTreeWidgetItem>
@@ -19,8 +22,10 @@ NestedGroupDialog::NestedGroupDialog(const vector<Trait*> &populations, QWidget 
   
   _populations = QVector<Trait*>::fromStdVector(populations);
   
-  _unassignedView = new QListWidget(this);
+  _unassignedView = new PopulationListWidget(this);
   setPopulations();
+  _unassignedView->setSelectionMode(QAbstractItemView::ExtendedSelection); // Maybe MultiSelection?
+  connect(_unassignedView, SIGNAL(groupSelected(const QString &)), this, SLOT(addSelectedPopsToGroup(const QString &)));
   
   
   _groupView = new QTreeWidget(this);
@@ -78,7 +83,16 @@ void NestedGroupDialog::addGroup()
   {
     qDebug() << "new group: " << groupName;
     //_groupView->invisibleRootItem();
-    _groupView->addTopLevelItem(new QTreeWidgetItem(QStringList(groupName))); 
+    if (_groupView->findItems(groupName, Qt::MatchExactly).isEmpty())
+    {
+      _groupView->addTopLevelItem(new QTreeWidgetItem(QStringList(groupName))); 
+      _unassignedView->addGroup(groupName);
+    }
+    
+    else 
+    {
+      QMessageBox::warning(this, "<b>Group Exists</b>", QString("A group named %1 has already been defined").arg(groupName));
+    }
   }
 }
 
@@ -119,5 +133,84 @@ void NestedGroupDialog::setPopulations()
   }
 }
 
+void NestedGroupDialog::addSelectedPopsToGroup(const QString &group)
+{
+  // There should be only one item
+  foreach (QTreeWidgetItem *groupItem, _groupView->findItems(group, Qt::MatchExactly))
+  {
+    /*QString itemName = item->data(0, Qt::DisplayRole).toString();
+    qDebug() << "found item with data: " << itemName;*/
+    
+    foreach(QListWidgetItem *popItem, _unassignedView->selectedItems())
+    {
+      QStringList popData;
+      popData << "" << popItem->data(Qt::DisplayRole).toString();
+      QTreeWidgetItem *popChild = new QTreeWidgetItem(groupItem, popData);
+      popChild->setData(1, Qt::UserRole, popItem->data(Qt::UserRole));
+      
+      _unassignedView->takeItem(_unassignedView->row(popItem));
+      
+      delete popItem;
+    }
+  }
+}
+
+
+void PopulationListWidget::contextMenuEvent(QContextMenuEvent *event)
+{
+  qDebug() << "Selected items:";
+  
+  foreach (QListWidgetItem *item, selectedItems())
+  {
+    qDebug() << item->data(Qt::DisplayRole).toString();
+  }
+  
+
+  
+  QMenu menu;
+  
+  if (selectedItems().isEmpty())
+  {
+    QAction *emptyAct = menu.addAction("(No populations selected)");
+    emptyAct->setEnabled(false);
+  }
+  
+  else
+  {
+    QMenu *addMenu = menu.addMenu("Add to group...");
+    
+    
+    if (_groupNames.isEmpty())
+    {
+      QAction *noGroupsAct = addMenu->addAction("(No groups defined)");
+      noGroupsAct->setEnabled(false);
+    }
+    
+    else
+    {
+      QActionGroup *groupActions = new QActionGroup(addMenu);
+     
+      foreach (QString groupName, _groupNames)
+      {
+        qDebug() << "got group name: " << groupName;
+        
+        QAction *groupAct = groupActions->addAction(groupName);
+        addMenu->addAction(groupAct);
+
+      }
+      
+      connect(groupActions, SIGNAL(triggered(QAction *)), this, SLOT(setSelectedGroup(QAction *)));
+    }
+  }
+  
+  menu.exec(event->globalPos());
+}
+
+void PopulationListWidget::setSelectedGroup(QAction *action) 
+{
+  _selectedGroup = action->text(); 
+  
+  emit groupSelected(_selectedGroup);
+}
 
 

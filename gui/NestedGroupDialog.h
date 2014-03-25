@@ -1,7 +1,8 @@
 #ifndef NESTEDGROUPDIALOG_H
 #define NESTEDGROUPDIALOG_H
 
-
+#include <QAction>
+#include <QContextMenuEvent>
 #include <QDialog>
 #include <QLineEdit>
 #include <QListWidget>
@@ -16,9 +17,11 @@
 
 #include "Trait.h"
 
+class PopulationListWidget;
+
 class NestedGroupDialog : public QDialog
 {
-Q_OBJECT
+  Q_OBJECT
 
 public:
   // At some point make a static function  
@@ -31,9 +34,10 @@ public:
   
   
 private:
+  
   void setPopulations();
   
-  QListWidget *_unassignedView;
+  PopulationListWidget *_unassignedView;
   QTreeWidget *_groupView;
   QLineEdit *_addGroupEdit;
   
@@ -43,7 +47,32 @@ private:
 
 private slots:
   void addGroup();
+  void addSelectedPopsToGroup(const QString &);
   
 };
+
+
+// Would like this to be a nested or somehow private class; otherwise, dump into a new file?
+class PopulationListWidget : public QListWidget
+{
+  Q_OBJECT
+public:
+  PopulationListWidget(QWidget * parent = 0) : QListWidget(parent) {};
+  const QString & selectedGroup() const { return _selectedGroup; };
+public slots:
+  void addGroup(const QString &group) { _groupNames << group; };
+
+protected:
+  virtual void contextMenuEvent(QContextMenuEvent *);
+private:
+  QString _selectedGroup;
+  QStringList _groupNames;
+  
+private slots:
+  void setSelectedGroup(QAction *);
+signals:
+  void groupSelected(const QString &);
+};
+
 
 #endif
