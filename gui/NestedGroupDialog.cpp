@@ -39,9 +39,10 @@ NestedGroupDialog::NestedGroupDialog(const vector<Trait*> &populations, QWidget 
   _groupView->setDragEnabled(true);
   _groupView->setAcceptDrops(true);
   //_groupView->setSupportedDropActions(Qt::MoveAction);
-  _groupView->setDragDropMode(QAbstractItemView::DropOnly); // Maybe DragDrop? InternalMove);
+  _groupView->setDragDropMode(QAbstractItemView::InternalMove); // Maybe DragDrop? InternalMove);
   
   connect(_groupView, SIGNAL(popsRemoved(const QList<QPair<QString, int> > &)), this, SLOT(deassignPopulations(const QList<QPair<QString, int> > &)));
+  connect(_groupView, SIGNAL(groupDeleted(QString)), _unassignedView, SLOT(removeGroup(QString)));
   
    
   QVBoxLayout *outerLayout = new QVBoxLayout(this);
@@ -95,6 +96,7 @@ void NestedGroupDialog::addGroup()
     if (_groupView->findItems(groupName, Qt::MatchExactly).isEmpty())
     {
       QTreeWidgetItem *groupItem = new QTreeWidgetItem(QStringList(groupName));
+      //groupItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
       //qDebug() << "drag flag: " << ((groupItem->flags() & Qt::ItemIsDragEnabled) ? true : false) << " drop flag: " << ((groupItem->flags() & Qt::ItemIsDropEnabled) ? true : false);
       /*qDebug() << "testing logic. current flags: " << groupItem->flags();
       qDebug() << "Qt::ItemIsEnabled: " << Qt::ItemIsEnabled;
@@ -106,6 +108,7 @@ void NestedGroupDialog::addGroup()
       _groupView->addTopLevelItem(groupItem); 
       
       _unassignedView->addGroup(groupName);
+      groupItem->setExpanded(true);      
     }
     
     else 
@@ -179,7 +182,7 @@ void NestedGroupDialog::addSelectedPopsToGroup(const QString &group)
       delete popItem;
     }
     
-    groupItem->setExpanded(true);
+    //groupItem->setExpanded(true);
   }
 }
 
@@ -198,6 +201,16 @@ void NestedGroupDialog::deassignPopulations(const QList<QPair<QString,int> > & p
   }
 }
 
+
+void PopulationListWidget::removeGroup(QString groupName)
+{
+  
+  // TODO add more error control here.
+  int idx = _groupNames.indexOf(groupName);
+  
+  if (idx >= 0)
+    _groupNames.removeAt(idx);
+}
 
 void PopulationListWidget::contextMenuEvent(QContextMenuEvent *event)
 {
@@ -268,9 +281,7 @@ void PopulationListWidget::mousePressEvent(QMouseEvent *event)
 
 void PopulationListWidget::startDrag(Qt::DropActions)// supportedActions)
 {
-  // TODO Deal with dropped data
-  // test whether dropped on an appropriate place (group, not pop)
-  // store pop in group
+  // TODO  highlight group to be dropped on when dragging and dropping from list (see drag-and-drop from within tree)
   // don't let user hit OK until all pops assigned to groups
   // collect group structure to use with AMOVA
   // write nested AMOVA
@@ -371,9 +382,19 @@ void PopGroupWidget::dragEnterEvent(QDragEnterEvent *event)
 {
   
   if (event->mimeData()->hasFormat("text/x-popart-pop"))
+  {
     event->accept();
+    //qDebug() << "drag enter from list";
+  }
   else
-    event->ignore();
+  {
+    QTreeWidget::dragEnterEvent(event);
+    
+    //qDebug() << "drag enter from within tree.";
+  }
+    //event->ignore();
+    
+  
 }
 
 void PopGroupWidget::dragMoveEvent(QDragMoveEvent *event)
@@ -383,10 +404,15 @@ void PopGroupWidget::dragMoveEvent(QDragMoveEvent *event)
   {
     event->setDropAction(Qt::MoveAction);
     event->accept();
+    //QTreeWidget::dragMoveEvent(event);
+    //qDebug() << "drag move from list.";
   }
     
   else
-    event->ignore();
+  {
+    QTreeWidget::dragMoveEvent(event);
+    //qDebug() << "drag move from within tree.";
+  }
   
 }
 
@@ -395,30 +421,54 @@ void PopGroupWidget::dragMoveEvent(QDragMoveEvent *event)
 
 void PopGroupWidget::dropEvent(QDropEvent *event)
 {
-  qDebug() << "got a drop event.";
+  
+  QTreeWidget::dropEvent(event);
+  //qDebug() << "got a drop event.";
   
   if (event->mimeData()->hasFormat("text/x-popart-pop"))
   {
-    QByteArray itemData = event->mimeData()->data("text/x-popart-pop");
-    QDataStream dataStream(&itemData, QIODevice::ReadOnly);
+    //qDebug() << "dropping from list.";
     
-    while (! dataStream.atEnd())
+    QTreeWidgetItem *targetItem = itemAt(event->pos());
+    if (targetItem)
     {
-    
-      QString popName;
-      int popIdx;
-      dataStream >> popName;
-      dataStream >> popIdx;
-    
-      qDebug() << "got pop name: " << popName << " and index: " << popIdx; 
+      if (targetItem->parent())
+        targetItem = targetItem->parent();
+      
+      //targetItem->setExpanded(true);
+
+      
+      QByteArray itemData = event->mimeData()->data("text/x-popart-pop");
+      QDataStream dataStream(&itemData, QIODevice::ReadOnly);
+      
+      while (! dataStream.atEnd())
+      { 
+        QString popName;
+        int popIdx;
+        dataStream >> popName;
+        dataStream >> popIdx;
+        
+        QTreeWidgetItem *popChild = new QTreeWidgetItem(targetItem, QStringList(popName));
+        popChild->setFlags(popChild->flags() & ~Qt::ItemIsDropEnabled);
+        popChild->setData(0, Qt::UserRole, popIdx);
+        
+        //qDebug() << "got pop name: " << popName << " and index: " << popIdx; 
+      }
+      
+      event->setDropAction(Qt::MoveAction);
+      event->accept();
     }
     
-    event->setDropAction(Qt::MoveAction);
-    event->accept();
+    else // no target item
+      QTreeWidget::dropEvent(event);
   }
   
   else
-    event->ignore();
+  {
+    //qDebug() << "dropping from within tree.";
+    QTreeWidget::dropEvent(event);
+  }
+
   //qDebug() << "data: " << event->mimeData()->data();
   //qDebug() << "text: " << event->mimeData()->formats();
   
@@ -452,8 +502,10 @@ void PopGroupWidget::deleteSelectedGroups()
     }
     
     //takeTopLevelItem(
-    
+    QString groupName = groupItem->data(0, Qt::DisplayRole).toString();
     delete groupItem;
+    
+    emit groupDeleted(groupName);
   }
   
   //qDebug() << "populations to deassign:";

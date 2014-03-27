@@ -70,6 +70,7 @@ public:
   const QString & selectedGroup() const { return _selectedGroup; };
 public slots:
   void addGroup(const QString &group) { _groupNames << group; };
+  void removeGroup(QString);
 
 protected:
   virtual void contextMenuEvent(QContextMenuEvent *);
@@ -92,7 +93,7 @@ class PopGroupWidget : public QTreeWidget
 {
   Q_OBJECT
 public:
-  PopGroupWidget(QWidget * parent = 0) : QTreeWidget(parent) {};
+  PopGroupWidget(QWidget * parent = 0) : QTreeWidget(parent) { setDropIndicatorShown(true); };
   
 protected:
   virtual void contextMenuEvent(QContextMenuEvent *);
@@ -110,6 +111,7 @@ private slots:
     
 signals:
   void popsRemoved(const QList<QPair<QString,int> > &);
+  void groupDeleted(QString);
 };
 
 
