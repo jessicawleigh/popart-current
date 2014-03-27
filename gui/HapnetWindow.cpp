@@ -3789,7 +3789,7 @@ void HapnetWindow::showAmova()
   //message.setStandardButtons(QMessageBox::Ok); 
   //message.setDefaultButton(QMessageBox::Ok);
   //message.setFixedWidth(1000);
-  qDebug() << "message width: " << message.width() << "height: " << message.height();
+  //qDebug() << "message width: " << message.width() << "height: " << message.height();
 
   message.exec(); 
 }

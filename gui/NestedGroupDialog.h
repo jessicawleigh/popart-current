@@ -3,11 +3,18 @@
 
 #include <QAction>
 #include <QContextMenuEvent>
+#include <QDrag>
+#include <QDragEnterEvent>
+#include <QDragLeaveEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
 #include <QDialog>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QList>
 #include <QMap>
+#include <QMouseEvent>
+#include <QPair>
 #include <QString>
 #include <QStringList>
 #include <QTreeWidget>
@@ -18,6 +25,7 @@
 #include "Trait.h"
 
 class PopulationListWidget;
+class PopGroupWidget;
 
 class NestedGroupDialog : public QDialog
 {
@@ -38,7 +46,7 @@ private:
   void setPopulations();
   
   PopulationListWidget *_unassignedView;
-  QTreeWidget *_groupView;
+  PopGroupWidget *_groupView;
   QLineEdit *_addGroupEdit;
   
   //QMap<QString, QList<Trait*> > _groups;
@@ -48,6 +56,7 @@ private:
 private slots:
   void addGroup();
   void addSelectedPopsToGroup(const QString &);
+  void deassignPopulations(const QList<QPair<QString,int> > &);
   
 };
 
@@ -64,7 +73,12 @@ public slots:
 
 protected:
   virtual void contextMenuEvent(QContextMenuEvent *);
+  //virtual void dragLeaveEvent(QDragLeaveEvent *);
+  virtual void mousePressEvent(QMouseEvent *);
+  virtual void startDrag(Qt::DropActions);
+  
 private:
+  QPoint _mousePressed;
   QString _selectedGroup;
   QStringList _groupNames;
   
@@ -72,6 +86,30 @@ private slots:
   void setSelectedGroup(QAction *);
 signals:
   void groupSelected(const QString &);
+};
+
+class PopGroupWidget : public QTreeWidget
+{
+  Q_OBJECT
+public:
+  PopGroupWidget(QWidget * parent = 0) : QTreeWidget(parent) {};
+  
+protected:
+  virtual void contextMenuEvent(QContextMenuEvent *);
+  virtual void dragEnterEvent(QDragEnterEvent *);
+  //virtual void dragLeaveEvent(QDragLeaveEvent *);
+  virtual void dragMoveEvent(QDragMoveEvent *);
+  virtual void dropEvent(QDropEvent *);
+  
+private:
+  QList<QPair<QString,int> > _deassignedPops;
+  
+private slots:
+  void deassignSelectedPop();
+  void deleteSelectedGroups();
+    
+signals:
+  void popsRemoved(const QList<QPair<QString,int> > &);
 };
 
 
