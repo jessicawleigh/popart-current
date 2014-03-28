@@ -3760,7 +3760,27 @@ void HapnetWindow::showAmova()
   
   // THIS SHOULD GO ELSEWHERE, PROBABLY!!!!!!!!!!!!!!!!!!
   NestedGroupDialog groupDlg(_traitVect, this);
-  groupDlg.exec();
+  bool groupsSet = groupDlg.exec();
+  
+  if (groupsSet)
+  {
+    QMap<QString,QList<Trait *> > groups = groupDlg.groups();
+    
+    QMap<QString, QList<Trait *> >::const_iterator mapIt = groups.constBegin();
+    
+    while (mapIt != groups.constEnd())
+    {
+      cout << "group " << mapIt.key().toStdString() << ":";
+      
+      foreach (Trait *t, mapIt.value())
+      {
+        cout << ' ' << t->name();
+      }
+      
+      ++mapIt;
+      cout << endl;
+    }
+  }
   
   
   Statistics::anovatab amovaStat = _stats->amova();

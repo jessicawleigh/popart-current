@@ -54,6 +54,7 @@ private:
   QVector<Trait*> _populations;
 
 private slots:
+  void checkAndAccept();
   void addGroup();
   void addSelectedPopsToGroup(const QString &);
   void deassignPopulations(const QList<QPair<QString,int> > &);
@@ -77,6 +78,8 @@ protected:
   //virtual void dragLeaveEvent(QDragLeaveEvent *);
   virtual void mousePressEvent(QMouseEvent *);
   virtual void startDrag(Qt::DropActions);
+  virtual QStringList mimeTypes() const;
+  virtual QMimeData * mimeData(const QList<QListWidgetItem *>) const;
   
 private:
   QPoint _mousePressed;
@@ -97,13 +100,20 @@ public:
   
 protected:
   virtual void contextMenuEvent(QContextMenuEvent *);
-  virtual void dragEnterEvent(QDragEnterEvent *);
+  virtual void mousePressEvent(QMouseEvent *);
+  virtual QStringList mimeTypes() const;
+  virtual QMimeData * mimeData(const QList<QTreeWidgetItem *>) const;
+  virtual bool dropMimeData(QTreeWidgetItem *, int, const QMimeData *, Qt::DropAction);
+  virtual void startDrag(Qt::DropActions);
+  //virtual Qt::DropActions supportedDropActions() const { return Qt::MoveAction; };
+  /*virtual void dragEnterEvent(QDragEnterEvent *);
   //virtual void dragLeaveEvent(QDragLeaveEvent *);
   virtual void dragMoveEvent(QDragMoveEvent *);
-  virtual void dropEvent(QDropEvent *);
+  virtual void dropEvent(QDropEvent *);*/
   
 private:
   QList<QPair<QString,int> > _deassignedPops;
+  QPoint _mousePressed;
   
 private slots:
   void deassignSelectedPop();
