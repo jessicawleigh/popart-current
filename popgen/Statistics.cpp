@@ -1,6 +1,7 @@
 #include "Statistics.h"
 #include "StatsError.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <iomanip>
@@ -255,6 +256,7 @@ void Statistics::assessSites()
   }  
 }
 
+// Allow a sequence to be associated with different traits with different sample counts
 void Statistics::setFreqsFromTraits(const vector<Trait *> & traitVect)
 {
   
@@ -263,6 +265,7 @@ void Statistics::setFreqsFromTraits(const vector<Trait *> & traitVect)
   _nseqs = 0;
   
   _traitMat.clear();
+  _traitGroups.clear();
   
   for (unsigned i = 0; i < _distances.size(); i++)
     _traitMat.push_back(vector<unsigned>(traitVect.size(), 0));
@@ -285,6 +288,7 @@ void Statistics::setFreqsFromTraits(const vector<Trait *> & traitVect)
     const vector<string> & seqNames = (*traitIt)->seqNames();*/
   for (unsigned i = 0; i < traitVect.size(); i++)
   {
+    _traitGroups.push_back(traitVect.at(i)->group());
     const vector<string> & seqNames = traitVect.at(i)->seqNames();
     
     for (unsigned j = 0; j < seqNames.size(); j++)
@@ -515,6 +519,114 @@ double Statistics::betaCF(double a, double b, double x)
   return h;
 }
 
+// TODO write permutation-based significance assessment
+// Check that there's more than one group
+Statistics::nestedamovatab Statistics::nestedAmova() const
+{
+  // Excoffier's notation: average population sizes
+  unsigned n, nprime, nprimeprime;
+  unsigned totalN = 0; // total number of individuals 
+  
+  /* sum of squares: total, among groups, among populations (within groups), 
+   * among individuals (within populations) */
+  double sst = 0, ssag = 0, ssap = 0, sswp = 0; 
+  
+  unsigned npop, ngroup, nunique;
+  nunique = _distances.size(); // number of unique haplotypes
+  
+  // Delete this
+  for (unsigned i = 0; i < nunique; i++)
+  {
+    for (unsigned j = 0; j < i; j++)
+    {
+      cout << ' ' << _distances.at(i).at(j);
+    }
+    cout << endl;
+  }
+  // End of debugging junk
+  
+  npop = _traitGroups.size();
+  ngroup = 0;//max_element(_traitGroups) + 1;
+  
+  for (unsigned p = 0; p < _traitGroups.size(); p++)
+    if (_traitGroups.at(p) >= ngroup)  ngroup = _traitGroups.at(p) + 1;
+    
+  cout << "number of groups: " << ngroup << endl;
+  
+  vector<unsigned> popSizes(npop, 0);
+  vector<double> popSSW(npop, 0);
+  vector<unsigned> groupSizes(ngroup, 0);
+  vector<double> groupSSW(ngroup, 0);
+  
+  for (unsigned i = 0; i < nunique; i++)
+  {
+    unsigned ni = 0;
+    for (unsigned p = 0; p < npop; p++)
+    {
+      ni += _traitMat.at(i).at(p);
+      popSizes.at(p) += _traitMat.at(i).at(p);
+      //unsigned groupIdx = _traitGroups.at(p);
+
+      groupSizes.at(_traitGroups.at(p)) += _traitMat.at(i).at(p);
+    }
+    totalN += ni;
+
+    for (unsigned j = 0; j < nunique; j++)
+    {
+      unsigned nj = 0;
+      double dist2 = pow((double)(_distances.at(i).at(j)), 2);
+      
+      for (unsigned p = 0; p < npop; p++)
+      {
+        if (_traitMat.at(i).at(p) > 0 && _traitMat.at(j).at(p) > 0)
+          popSSW.at(p) += _traitMat.at(i).at(p) * _traitMat.at(j).at(p) * dist2;
+        
+        for (unsigned q = 0; q < npop; q++)
+        {
+          if (_traitMat.at(j).at(q) > 0 && _traitGroups.at(p) == _traitGroups.at(q))
+            groupSSW.at(_traitGroups.at(p)) += _traitMat.at(i).at(p) * _traitMat.at(j).at(q) * dist2;      
+        }
+        
+        nj += _traitMat.at(j).at(p);
+      }
+      
+      sst += ni * nj * dist2;
+    }
+  }
+  
+  sst /= (2 * totalN);
+  
+  for (unsigned p = 0; p < npop; p++)
+    sswp += popSSW.at(p) / (2 * popSizes.at(p));
+  
+  for (unsigned g = 0; g < ngroup; g++)
+    ssap += groupSSW.at(g) / (2 * groupSizes.at(g));
+  
+  ssap -= sswp;
+  
+  ssag = sst - ssap - sswp;
+
+  double msag = ssag / (ngroup - 1);
+  double msap = ssap / (npop - ngroup);
+  double mswp = sswp / (totalN - npop);
+  
+  
+  cout << "totalN: " << totalN << " npop: " << npop << " ngroup: " << ngroup << endl;
+  cout << "ssag: " << ssag << " msag: " << msag << " dfag: " << (ngroup - 1) << endl;
+  cout << "ssap: " << ssap << " msap: " << msap << " dfap: " << (npop - ngroup) << endl;
+  cout << "sswp: " << sswp << " mswp: " << mswp << " dfwp: " << (totalN - npop) << endl;
+
+  nestedamovatab tab;
+  tab.ss_ag = ssag;
+  tab.ss_ap = ssap;
+  tab.ss_wp = sswp;
+  tab.ms_ag = msag;
+  tab.ms_ap = msap;
+  tab.ms_wp = mswp;
+  
+  
+}
+
 Statistics::anovatab Statistics::amova() const
 {
   if (_traitMat.empty())
@@ -524,7 +636,7 @@ Statistics::anovatab Statistics::amova() const
 
   double Wk = 0.;
   double Bk = 0.;  
-  double Tk;      
+  double Tk = 0;      
   double meanGroupSize = 0;
   
   unsigned totalN = 0;

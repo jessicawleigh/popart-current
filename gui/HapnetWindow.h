@@ -84,6 +84,7 @@ private:
   ViewType _view;
   TraitType _activeTraits;
   bool _mapTraitsSet;
+  bool _traitGroupsSet;
   bool _externalLegend;
   HapNet * _g;
   Sequence::CharType _datatype;
@@ -117,6 +118,7 @@ private:
   std::vector<unsigned> _badSeqs;
   std::vector<Trait *> _traitVect;
   std::vector<ParsimonyTree *> _treeVect;
+  std::vector<std::string> _groupVect;
   Statistics *_stats;
   
   std::istream *_tabfile;

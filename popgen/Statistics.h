@@ -30,6 +30,25 @@ public:
     double prob;
   } anovatab;
   
+  typedef struct
+  {
+    double ss_ag; // among groups
+    double ss_ap; // among populations/within groups
+    double ss_wp; // within populations (among individuals)
+    /*unsigned df_ag;
+    unsigned df_ap;
+    unsigned df_wp;*/
+    double ms_ag;
+    double ms_ap;
+    double ms_wp;
+    double sigma_a;
+    double sigma_b;
+    double sigma_c;
+    double phiST;
+    double phiSC;
+    double phiCT;
+  } nestedamovatab;
+  
   Statistics(const std::vector<Sequence*> & = std::vector<Sequence*>(), const std::vector<bool> & = std::vector<bool>(), Sequence::CharType = Sequence::DNAType);
   const std::map<Sequence, std::list<Sequence > > & mapIdenticalSeqs() { return _identicalSeqMap; };
   void setFreqsFromTraits(const std::vector<Trait *> &);
@@ -37,6 +56,7 @@ public:
   unsigned nSegSites() const { return _nSegSites; };
   unsigned nParsimonyInformative() const { return _nParsimonyInformative; };
   stat TajimaD() const ;
+  nestedamovatab nestedAmova() const;
   anovatab amova() const;
 
 #ifdef NET_QT
@@ -78,6 +98,7 @@ private:
   std::vector<unsigned> _orig2condidx;
   std::vector<std::vector<unsigned> > _distances;
   std::vector<std::vector<unsigned> > _traitMat;
+  std::vector<unsigned> _traitGroups;
 #ifdef NET_QT
   QTime _executionTimer;
 signals:

@@ -4,8 +4,8 @@
 #include <iostream>
 using namespace std;
 
-Trait::Trait(const string &name)
-  : _traitName(name)
+Trait::Trait(const string &name, unsigned groupID)
+  : _traitName(name), _traitGroup(groupID)
 {
 
 }
@@ -57,4 +57,14 @@ vector<string> Trait::seqNames() const
   }
   
   return seqnames;
+}
+
+void Trait::setGroup(unsigned groupID)
+{
+  _traitGroup = groupID;
+}
+
+unsigned Trait::group() const
+{
+  return _traitGroup;
 }

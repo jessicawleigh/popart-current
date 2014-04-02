@@ -1,5 +1,5 @@
-#ifndef NESTEDGROUPDIALOG_H
-#define NESTEDGROUPDIALOG_H
+#ifndef GROUPITEMDIALOG_H
+#define GROUPITEMDIALOG_H
 
 #include <QAction>
 #include <QContextMenuEvent>
@@ -9,6 +9,7 @@
 #include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QDialog>
+#include <QIcon>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QList>
@@ -20,14 +21,12 @@
 #include <QTreeWidget>
 #include <QVector>
 
-#include <vector>
+#include <memory>
 
-#include "Trait.h"
+class UnsortedListWidget;
+class GroupedTreeWidget;
 
-class PopulationListWidget;
-class PopGroupWidget;
-
-class NestedGroupDialog : public QDialog
+class GroupItemDialog : public QDialog
 {
   Q_OBJECT
 
@@ -36,38 +35,39 @@ public:
   //static ColourTheme::Theme getColour(QWidget *, ColourTheme::Theme, Qt::WindowFlags = 0, bool * = 0, bool * = 0);
   // and make the constructor private
   
-  NestedGroupDialog(const std::vector<Trait*> &, QWidget * = 0, Qt::WindowFlags = 0);
+  GroupItemDialog(const QVector<QString> &, QMap<QString, QList<QString> > &, const QString & = "Unsorted Items", const QString & = "Grouped Items", QWidget * = 0, Qt::WindowFlags = 0);
   
-  QMap<QString, QList<Trait*> > groups() const;
+  QMap<QString, QList<QString> > groups() const;
   
   
 private:
   
-  void setPopulations();
+  void setItemContent();
   
-  PopulationListWidget *_unassignedView;
-  PopGroupWidget *_groupView;
+  UnsortedListWidget *_unassignedView;
+  GroupedTreeWidget *_groupView;
   QLineEdit *_addGroupEdit;
   
   //QMap<QString, QList<Trait*> > _groups;
   //QSet<Trait*> _unassignedPops;
-  QVector<Trait*> _populations;
+  QVector<QString> _items;
+  QMap<QString, QList<QString> > &_groupedItems;
 
 private slots:
   void checkAndAccept();
   void addGroup();
-  void addSelectedPopsToGroup(const QString &);
-  void deassignPopulations(const QList<QPair<QString,int> > &);
+  void addSelectedItemsToGroup(const QString &);
+  void deassignItems(const QList<QPair<QString,int> > &);
   
 };
 
 
 // Would like this to be a nested or somehow private class; otherwise, dump into a new file?
-class PopulationListWidget : public QListWidget
+class UnsortedListWidget : public QListWidget
 {
   Q_OBJECT
 public:
-  PopulationListWidget(QWidget * parent = 0) : QListWidget(parent) {};
+  UnsortedListWidget(QWidget * parent = 0) : QListWidget(parent) {};
   const QString & selectedGroup() const { return _selectedGroup; };
 public slots:
   void addGroup(const QString &group) { _groupNames << group; };
@@ -92,11 +92,11 @@ signals:
   void groupSelected(const QString &);
 };
 
-class PopGroupWidget : public QTreeWidget
+class GroupedTreeWidget : public QTreeWidget
 {
   Q_OBJECT
 public:
-  PopGroupWidget(QWidget * parent = 0) : QTreeWidget(parent) { setDropIndicatorShown(true); };
+  GroupedTreeWidget(QWidget * = 0);
   
 protected:
   virtual void contextMenuEvent(QContextMenuEvent *);
@@ -112,16 +112,40 @@ protected:
   virtual void dropEvent(QDropEvent *);*/
   
 private:
-  QList<QPair<QString,int> > _deassignedPops;
+  //bool isLocked(QTreeWidgetItem *) const;
+
+  QList<QPair<QString,int> > _deassignedItems;
   QPoint _mousePressed;
+  //QVector<bool> _lockedGroups;
   
 private slots:
-  void deassignSelectedPop();
+  void toggleLockSelectedGroup();
+  void deassignSelectedItem();
   void deleteSelectedGroups();
     
 signals:
-  void popsRemoved(const QList<QPair<QString,int> > &);
+  void itemsRemoved(const QList<QPair<QString,int> > &);
   void groupDeleted(QString);
+  void groupLocked(QString);
+  void groupUnlocked(QString);
+};
+
+
+class GroupedTreeWidgetItem : public QTreeWidgetItem
+{
+public:
+  GroupedTreeWidgetItem(const QStringList &);
+  GroupedTreeWidgetItem(GroupedTreeWidget *, const QStringList &);
+  GroupedTreeWidgetItem(GroupedTreeWidgetItem *, const QStringList &);
+  
+  bool isLocked() const;
+  void setLocked(bool);
+  //void unlock();
+  
+private:
+  //void constructItem();
+  bool _locked;
+  static std::auto_ptr<QIcon> _lockedIcon;// = 0; 
 };
 
 

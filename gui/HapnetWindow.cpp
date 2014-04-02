@@ -54,6 +54,7 @@ using namespace std;
 #include "HapAppError.h"
 #include "MoveCommand.h"
 #include "GeoTrait.h"
+#include "GroupItemDialog.h"
 #include "XPM.h"
 #include "ConcreteHapNet.h"
 #include "Edge.h"
@@ -62,7 +63,6 @@ using namespace std;
 #include "MinSpanNet.h"
 #include "MedJoinNet.h"
 #include "MonospaceMessageBox.h"
-#include "NestedGroupDialog.h"
 #include "ParsimonyNet.h"
 #include "IntNJ.h"
 #include "TCS.h"
@@ -144,6 +144,7 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _alView = new AlignmentView(this);
   _tModel = 0;
   _tView = new TraitView(this);
+  _traitGroupsSet = false;
   _tView->setSelectionBehavior(QAbstractItemView::SelectRows);
   _tView->setSelectionMode(QAbstractItemView::ContiguousSelection);
   _dataWidget = new QTabWidget(this);
@@ -1527,6 +1528,7 @@ void HapnetWindow::closeTrees()
 
 void HapnetWindow::closeTraits()
 {
+  _traitGroupsSet = false;
   if (! _traitVect.empty())
   {
     for (unsigned i = 0; i < _traitVect.size(); i++)
@@ -3759,26 +3761,70 @@ void HapnetWindow::showAmova()
     return;
   
   // THIS SHOULD GO ELSEWHERE, PROBABLY!!!!!!!!!!!!!!!!!!
-  NestedGroupDialog groupDlg(_traitVect, this);
-  bool groupsSet = groupDlg.exec();
+  // Also, store groups, whether empty or not
   
-  if (groupsSet)
+  if (! _traitGroupsSet)
   {
-    QMap<QString,QList<Trait *> > groups = groupDlg.groups();
+    QVector<QString> traitStrings;
+    map<QString, Trait*> nameToTrait;
     
-    QMap<QString, QList<Trait *> >::const_iterator mapIt = groups.constBegin();
-    
-    while (mapIt != groups.constEnd())
+    for (unsigned i = 0; i < _traitVect.size(); i++)
     {
-      cout << "group " << mapIt.key().toStdString() << ":";
+      traitStrings << QString::fromStdString(_traitVect.at(i)->name());
+      nameToTrait[traitStrings.last()] = _traitVect.at(i);
+    }
+    
+    QMap<QString, QList<QString> > traitGroups;
+    GroupItemDialog groupDlg(traitStrings, traitGroups);
+    bool groupsSuccess = groupDlg.exec();
+    
+    if (groupsSuccess)
+    {
+      //QMap<QString, QList<QString> > traitGroups = groupDlg.groups();
+      _groupVect.clear();
       
-      foreach (Trait *t, mapIt.value())
+      QMap<QString, QList<QString> >::const_iterator mapIt = traitGroups.constBegin();
+      unsigned groupIdx = 0;
+      
+      while (mapIt != traitGroups.constEnd())
       {
-        cout << ' ' << t->name();
+        _groupVect.push_back(mapIt.key().toStdString());
+        
+        cout << "group " << mapIt.key().toStdString() << ":";
+        
+        foreach (QString str, mapIt.value())
+        {
+          cout << ' ' << str.toStdString();
+          Trait *t = nameToTrait[str];
+          t->setGroup(groupIdx);
+          cout << '=' << t->name();
+        }
+        
+        ++mapIt;
+        groupIdx++;
+        cout << endl;
       }
       
-      ++mapIt;
-      cout << endl;
+      _stats->setFreqsFromTraits(_traitVect); 
+      Statistics::nestedamovatab namovaStat = _stats->nestedAmova();
+      
+      /*GroupItemDialog testDlg(traitStrings, traitGroups);
+      groupsSuccess = testDlg.exec();
+      
+      cout << "Groups now:" << endl;
+      mapIt = traitGroups.constBegin();
+      while (mapIt != traitGroups.constEnd())
+      {
+        cout << "group " << mapIt.key().toStdString() << ":";
+        
+        foreach (QString str, mapIt.value())
+        {
+          cout << ' ' << str.toStdString();
+        }
+        
+        ++mapIt;
+        cout << endl;
+      }*/
     }
   }
   

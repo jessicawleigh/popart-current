@@ -8,7 +8,7 @@
 class Trait 
 {
 public:
-  Trait(const std::string &);
+  Trait(const std::string &, unsigned = 0);
   virtual ~Trait();
   
   void setName(const std::string &);
@@ -19,9 +19,13 @@ public:
   
   std::vector<std::string> seqNames() const;
   
+  void setGroup(unsigned);
+  unsigned group() const;
+  
 private:
   std::string _traitName;
   std::map<std::string, unsigned> _seqCounts;
+  unsigned _traitGroup; 
 };
 
 #endif
