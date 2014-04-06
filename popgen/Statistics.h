@@ -35,19 +35,19 @@ public:
     double ss_ag; // among groups
     double ss_ap; // among populations/within groups
     double ss_wp; // within populations (among individuals)
-    /*unsigned df_ag;
+    unsigned df_ag;
     unsigned df_ap;
-    unsigned df_wp;*/
+    unsigned df_wp;
     double ms_ag;
     double ms_ap;
     double ms_wp;
-    double sigma_a;
-    double sigma_b;
-    double sigma_c;
-    double phiST;
-    double phiSC;
-    double phiCT;
-  } nestedamovatab;
+    double sigma2_a;
+    double sigma2_b;
+    double sigma2_c;
+    stat phiST;
+    stat phiSC;
+    stat phiCT;
+  } amovatab;
   
   Statistics(const std::vector<Sequence*> & = std::vector<Sequence*>(), const std::vector<bool> & = std::vector<bool>(), Sequence::CharType = Sequence::DNAType);
   const std::map<Sequence, std::list<Sequence > > & mapIdenticalSeqs() { return _identicalSeqMap; };
@@ -56,8 +56,10 @@ public:
   unsigned nSegSites() const { return _nSegSites; };
   unsigned nParsimonyInformative() const { return _nParsimonyInformative; };
   stat TajimaD() const ;
-  nestedamovatab nestedAmova() const;
-  anovatab amova() const;
+  amovatab nestedAmova() const;
+  amovatab amova() const;
+  
+  const static unsigned Iterations = 1000;
 
 #ifdef NET_QT
 public slots:
@@ -67,10 +69,32 @@ public slots:
 
 private:  
   
+  class DiscreteDistribution
+  {
+  public:
+    DiscreteDistribution(const vector<double> &);
+    DiscreteDistribution(const vector<unsigned> &);
+    const vector<double> & probabilities() const { return _probs; };
+    unsigned sample() const;
+    
+  private:
+    void setupTables();
+    
+    vector<double> _weights;
+    unsigned _nitems;
+    vector<double> _probs;
+    vector<unsigned> _alias;
+    
+  };
+  
   void condenseSitePats();
   void assessSites();
   void computeDistances();
   unsigned pairwiseDistance(unsigned, unsigned) const;
+  void amovaPrivate(const std::vector<std::vector<unsigned> > &, amovatab &) const;
+  void nestedAmovaPrivate(const std::vector<std::vector<unsigned > > &, const std::vector<unsigned> &, amovatab &) const;
+  void permuteAll(std::vector<std::vector<unsigned> > &, const std::vector<unsigned> &) const; 
+  void permuteInGroups(std::vector<std::vector<unsigned> > &, const std::vector<unsigned> &, const std::vector<vector<unsigned> >&) const; 
   
   // these functions are straight out of numerical recipes 6.1 and 6.4
   static double gammaLn(double);
@@ -79,6 +103,7 @@ private:
   const static unsigned MAXIT = 100;
   const static double EPS = 3.0e-7;
   const static double FPMIN = 1.0e-30;
+  const static unsigned LARGE = 1E6;
   void updateProgress(int);
 
   const vector<Sequence*> *_tmpAlignment;
@@ -99,6 +124,8 @@ private:
   std::vector<std::vector<unsigned> > _distances;
   std::vector<std::vector<unsigned> > _traitMat;
   std::vector<unsigned> _traitGroups;
+  
+  static unsigned permuteCount;
 #ifdef NET_QT
   QTime _executionTimer;
 signals:

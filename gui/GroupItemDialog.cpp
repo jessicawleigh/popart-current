@@ -246,12 +246,25 @@ void GroupItemDialog::deassignItems(const QList<QPair<QString,int> > & itemData)
 }
 
 void GroupItemDialog::checkAndAccept()
-{
-  
-  // TODO allow unassigned items, but ask if they should be assigned to an "Unlabeled" group (or unlabeled_X if "Unlabeled" exists
+{  
+
+  bool okToAccept = false;
+  bool createDefault = false;
   if (_unassignedView->count() > 0)
-    QMessageBox::warning(this, "<b>Items Not Assigned</b>", "All items must be assigned to groups before clicking OK.");
-  else
+  {
+    int answer = QMessageBox::question(this, "<b>Items Not Assigned</b>", "Add remaining items to \"Default\" group?", QMessageBox::Yes | QMessageBox::No);
+    
+    if (answer == QMessageBox::Yes)
+    {
+      createDefault = true;
+      okToAccept = true;
+    }
+  }
+  
+  else if (_groupView->topLevelItemCount() == 1)
+    QMessageBox::warning(this, "<b>Only One Group</b>", "Define at least two groups, or cancel");
+  
+  if (okToAccept)
   {
     _groupedItems.clear();
     
@@ -268,6 +281,19 @@ void GroupItemDialog::checkAndAccept()
       }
       
       _groupedItems.insert(groupName, itemList);
+    }
+    
+    if (createDefault)
+    {
+      QList<QString> itemList;
+      
+      for (int i = 0; i < _unassignedView->count(); i++)
+      {
+        QListWidgetItem *item = _unassignedView->item(i);
+        itemList << item->data(Qt::DisplayRole).toString();
+      }
+      
+      _groupedItems.insert("Default", itemList);
     }
     
     accept();
@@ -496,9 +522,7 @@ QMimeData * GroupedTreeWidget::mimeData(const QList<QTreeWidgetItem *> items) co
 bool GroupedTreeWidget::dropMimeData(QTreeWidgetItem *parent, int index, const QMimeData *data, Qt::DropAction action)
 {
   bool dropSuccess = false;
-  
-  qDebug() << "in GroupTreeWidget::dropMimeData";
-  
+    
   if (action == Qt::MoveAction && data->hasFormat("text/x-popart-pop"))
   {
     if (parent && (parent->flags() & Qt::ItemIsDropEnabled))

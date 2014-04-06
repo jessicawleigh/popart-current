@@ -119,6 +119,8 @@ private:
   std::vector<Trait *> _traitVect;
   std::vector<ParsimonyTree *> _treeVect;
   std::vector<std::string> _groupVect;
+  std::vector<std::string> _geoGroupVect;
+  std::vector<std::string> *_traitGroups;
   Statistics *_stats;
   
   std::istream *_tabfile;
@@ -136,6 +138,7 @@ private:
   
   QAction *_undoAct;
   QAction *_redoAct;
+  QAction *_traitGroupAct;
   QAction *_traitColourAct;
   QAction *_vertexColourAct;
   QAction *_vertexSizeAct;
@@ -235,6 +238,7 @@ private slots:
   void search();
   void changeColourTheme(); 
   void changeColour(int);
+  void setTraitGroups();
   void setTraitColour();
   void changeVertexColour();
   void changeVertexSize();
@@ -251,6 +255,7 @@ private slots:
   void redrawNetwork();
   void toggleNetActions(bool);
   void toggleAlignmentActions(bool);
+  void toggleTraitActions(bool);
   void fixBarchartButton(bool);
   void fixTaxBoxButton(bool);
   void graphicsMove(QList<QPair<QGraphicsItem *, QPointF> >);

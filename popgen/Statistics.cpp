@@ -4,8 +4,10 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <stack>
 using namespace std;
 
 #ifdef NET_QT
@@ -15,6 +17,8 @@ using namespace std;
 
 //map<Sequence, list<Sequence> > Statistics::_identicalSeqMap = map<Sequence, list<Sequence> >();
 //vector<Sequence> Statistics::_alignment = vector<Sequence>();
+
+unsigned Statistics::permuteCount = 0;
 
 
 Statistics::Statistics(const vector<Sequence*> & alignment, const vector<bool> & mask, Sequence::CharType datatype)
@@ -521,10 +525,243 @@ double Statistics::betaCF(double a, double b, double x)
 
 // TODO write permutation-based significance assessment
 // Check that there's more than one group
-Statistics::nestedamovatab Statistics::nestedAmova() const
+Statistics::amovatab Statistics::nestedAmova() const
 {
-  // Excoffier's notation: average population sizes
-  unsigned n, nprime, nprimeprime;
+  if (_traitMat.empty())
+    throw StatsError("Traits must be associated prior to AMOVA calculation.");
+
+  //const unsigned Iterations = 1000;
+  unsigned totalN = 0; // total number of individuals 
+  unsigned nunique = _distances.size();
+  unsigned npop = _traitGroups.size();
+  unsigned ngroup = 0;
+  //vector<map<unsigned, unsigned> > popCounters(npop);
+  vector<unsigned> ncopies;
+  vector<vector<unsigned> > ncopiesByGroup;
+  //vector<vector<unsigned> > popMat(nunique, vector<unsigned>(npop, 0));
+  
+  // do we need this? Need number of copies of each unique genotype, not just totalN
+  for (unsigned i = 0; i < nunique; i++)
+  {
+    unsigned ni = 0;
+    for (unsigned p = 0; p < npop; p++)
+    {
+      ni += _traitMat.at(i).at(p);
+      if (_traitGroups.at(p) >= ngroup)  
+      {
+        ngroup = _traitGroups.at(p) + 1;
+        ncopiesByGroup.resize(ngroup, vector<unsigned>(nunique, 0));
+      }
+      
+      ncopiesByGroup.at(_traitGroups.at(p)).at(i) += _traitMat.at(i).at(p);
+      //if (_traitMat.at(i).at(p) > 0)
+      //  popCounters.at(p)[i] = _traitMat.at(i).at(p);
+
+
+    }
+    totalN += ni;
+    ncopies.push_back(ni);
+  }
+  
+  amovatab result;
+  nestedAmovaPrivate(_traitMat, _traitGroups, result);
+  
+  /*vector<double> tmpweights;
+  int tmparray[] = {15, 32, 0, 6, 6, 0, 16, 29, 18, 42};
+  tmpweights.assign(tmparray, tmparray + 10);
+  
+  DiscreteDistribution dd(tmpweights);
+  
+  vector<double>::const_iterator probit = dd.probabilities().begin();
+  
+  cout << "probabilities:";
+  while (probit != dd.probabilities().end())
+  {
+    cout << ' ' << *probit;
+    ++probit;
+  }
+  
+  cout << endl;
+  
+  vector<unsigned> tmpcounts(tmpweights.size(), 0);
+  for (unsigned i = 0; i < Iterations; i++)
+    tmpcounts.at(dd.sample()) ++;
+  
+  cout << "counts:";
+  for (unsigned i = 0; i < tmpcounts.size(); i++)
+    cout << ' ' << tmpcounts.at(i);
+  
+  cout << endl;*/
+    
+  // Don't need all these counters, probably... either the sigmas or the phis.
+  // counters for number of as-or-more extreme random values
+  unsigned sigma2cSmaller = 0, phiSTbigger = 0;
+  unsigned sigma2bBigger = 0, phiSCbigger = 0;
+  unsigned sigma2aBigger = 0, phiCTbigger = 0;
+  
+  amovatab permutedResult;
+  vector<vector<unsigned > > traitMatCopyAll(_traitMat);
+  vector<vector<unsigned > > traitMatCopyGroups(_traitMat);
+  vector<unsigned> traitGroupsCopy(_traitGroups);
+  
+  /*ofstream sigmafile("sigma.out");
+  sigmafile << "sigma2c\tsigma2b\tsigma2a\n";
+  ofstream phifile("phi.out");
+  phifile << "phiST\tphiSC\tphiCT\n";*/
+  
+  for (unsigned i = 0; i < Iterations; i++)
+  { 
+    // phiST: how similar are individuals in populations relative to randomised populations?
+    // test phiST by permuting individuals among populations 
+    // big phiST is more extreme
+    permuteAll(traitMatCopyAll, ncopies);
+    nestedAmovaPrivate(traitMatCopyAll, _traitGroups, permutedResult);
+    if (permutedResult.sigma2_c < result.sigma2_c)  sigma2cSmaller++;
+    if (permutedResult.phiST.value > result.phiST.value)  phiSTbigger++;
+    //sigmafile << permutedResult.sigma2_c << '\t';
+    //phifile << permutedResult.phiST.value << '\t';
+    
+    // phiSC: how similar are individuals in populations relative to randomised populations within groups?
+    // test phiSC by permuting individuals among populations, but within groups
+    permuteInGroups(traitMatCopyGroups, _traitGroups, ncopiesByGroup);
+    nestedAmovaPrivate(traitMatCopyGroups, _traitGroups, permutedResult);
+    if (permutedResult.sigma2_b > result.sigma2_b)  sigma2bBigger++;
+    if (permutedResult.phiSC.value > result.phiSC.value)  phiSCbigger++;
+    //sigmafile << permutedResult.sigma2_b << '\t';
+    //phifile << permutedResult.phiSC.value << '\t';
+    
+    // phiCT: how similar are individuals in groups relative to randomised groups?
+    //test phiCT by permuting populations among groups
+    random_shuffle(traitGroupsCopy.begin(), traitGroupsCopy.end());
+    nestedAmovaPrivate(_traitMat, traitGroupsCopy, permutedResult);
+    if (permutedResult.sigma2_a > result.sigma2_a)  sigma2aBigger++;
+    if (permutedResult.phiCT.value > result.phiCT.value)  phiCTbigger++;
+    //sigmafile << permutedResult.sigma2_a << '\n';
+    //phifile << permutedResult.phiCT.value << '\n';
+    
+    //sigmafile << permutedResult.sigma2_c << '\t' << permutedResult.sigma2_b << '\t' << permutedResult.sigma2_a << '\n';
+    //phifile << permutedResult.phiST.value << '\t' << permutedResult.phiSC.value << '\t' << permutedResult.phiCT.value << '\n';
+    
+  }
+  
+  //sigmafile.close(); phifile.close();
+      
+      //test sigma2a by permuting populations among groups    
+  
+  result.phiCT.prob = ((double)phiCTbigger)/Iterations;
+  result.phiSC.prob = ((double)phiSCbigger)/Iterations;
+  result.phiST.prob = ((double)phiSTbigger)/Iterations;
+  
+  /*cout << "phiST: " << result.phiST.value << " phiSC: " << result.phiSC.value << " phiCT: " << result.phiCT.value << endl;
+  cout << "sigma2c: " << result.sigma2_c << " sigma2b: " << result.sigma2_b << " sigma2a: " << result.sigma2_a << endl; 
+  
+  cout << "sigma2c bigger: " << sigma2cSmaller << " phiST smaller: " << phiSTbigger << endl;
+  cout << "sigma2b smaller: " << sigma2bBigger << " phiSC smaller: " << phiSCbigger << endl;
+  cout << "sigma2a smaller: " << sigma2aBigger << " phiCT smaller: " << phiCTbigger << endl;*/
+  
+  
+  //cout << "permutation count: " << permuteCount << endl;
+  return result;
+    
+}
+
+void Statistics::permuteAll(vector<vector<unsigned> > &popMat, const vector<unsigned> &ncopies) const
+{
+    
+  unsigned nunique = popMat.size();
+  unsigned npop = popMat.at(0).size();
+
+  // create a discrete distribution of unique seqs
+  
+  //vector<double> weights(ncopies.begin(), ncopies.end());
+  DiscreteDistribution uniqueDistrib(ncopies);
+  
+  for (unsigned a = 0; a < nunique; a++)
+  {
+    vector<unsigned> popMatRow(popMat.at(a));
+    for (unsigned p = 0; p < npop; p++)
+    {
+      for (unsigned i = 0; i < popMatRow.at(p); i++)
+      {
+        unsigned b = uniqueDistrib.sample();
+        if (a != b)
+        {
+          unsigned u = random() % ncopies.at(b);
+          unsigned q = 0, cumulative = 0;
+          //for (unsigned cumulative = 0, q = 0; q < npop; q++)
+          while (q < npop)
+          {
+            cumulative += popMat.at(b).at(q);
+            if (cumulative > u)  break;
+            q++;
+          }
+          
+          // swap a_i in p and b_u in q
+          popMat.at(a).at(q)++;
+          popMat.at(a).at(p)--;
+          popMat.at(b).at(p)++;
+          popMat.at(b).at(q)--;
+          //permuteCount++;
+        }
+        
+        //else
+        //  permuteCount++; // count a == b as "silent" permutations          
+      }
+    }
+  }   
+}
+
+void Statistics::permuteInGroups(vector<vector<unsigned> > &popMat, const vector<unsigned> &popGroups, const vector<vector<unsigned> > &ncopiesByGroup) const
+{
+  unsigned nunique = popMat.size();
+  unsigned npop = popMat.at(0).size();
+  unsigned ngroup = ncopiesByGroup.size();
+  
+  vector<DiscreteDistribution> distributions;
+  
+  for (unsigned g = 0; g < ngroup; g++)  distributions.push_back(DiscreteDistribution(ncopiesByGroup.at(g)));
+  
+  for (unsigned a = 0; a < nunique; a++)
+  {
+    vector<unsigned> popMatRow(popMat.at(a));
+    for (unsigned p = 0; p < npop; p++)
+    {
+      unsigned group = popGroups.at(p);
+      for (unsigned i = 0; i < popMatRow.at(p); i++)
+      {
+        unsigned b = distributions.at(group).sample();
+        if (a != b)
+        {
+          unsigned u = random() % ncopiesByGroup.at(group).at(b);
+          unsigned q = 0, cumulative = 0;
+          //for (unsigned cumulative = 0, q = 0; q < npop; q++)
+          while (q < npop)
+          {
+            if (popGroups.at(q) == group)
+            {
+              cumulative += popMat.at(b).at(q);
+              if (cumulative > u)  break;
+            }
+            q++;
+          }
+          
+          // swap a_i in p and b_u in q
+          popMat.at(a).at(q)++;
+          popMat.at(a).at(p)--;
+          popMat.at(b).at(p)++;
+          popMat.at(b).at(q)--;
+          //permuteCount++;
+        }
+        
+        //else
+        //  permuteCount++; // count a == b as "silent" permutations
+      }
+    }
+  }   
+}
+
+void Statistics::nestedAmovaPrivate(const vector<vector<unsigned> > &popMat, const vector<unsigned> &popGroups, amovatab &result) const
+{
   unsigned totalN = 0; // total number of individuals 
   
   /* sum of squares: total, among groups, among populations (within groups), 
@@ -534,25 +771,12 @@ Statistics::nestedamovatab Statistics::nestedAmova() const
   unsigned npop, ngroup, nunique;
   nunique = _distances.size(); // number of unique haplotypes
   
-  // Delete this
-  for (unsigned i = 0; i < nunique; i++)
-  {
-    for (unsigned j = 0; j < i; j++)
-    {
-      cout << ' ' << _distances.at(i).at(j);
-    }
-    cout << endl;
-  }
-  // End of debugging junk
+  npop = popGroups.size();
+  ngroup = 0;//max_element(popGroups) + 1;
   
-  npop = _traitGroups.size();
-  ngroup = 0;//max_element(_traitGroups) + 1;
-  
-  for (unsigned p = 0; p < _traitGroups.size(); p++)
-    if (_traitGroups.at(p) >= ngroup)  ngroup = _traitGroups.at(p) + 1;
-    
-  cout << "number of groups: " << ngroup << endl;
-  
+  for (unsigned p = 0; p < popGroups.size(); p++)
+    if (popGroups.at(p) >= ngroup)  ngroup = popGroups.at(p) + 1;
+      
   vector<unsigned> popSizes(npop, 0);
   vector<double> popSSW(npop, 0);
   vector<unsigned> groupSizes(ngroup, 0);
@@ -563,11 +787,9 @@ Statistics::nestedamovatab Statistics::nestedAmova() const
     unsigned ni = 0;
     for (unsigned p = 0; p < npop; p++)
     {
-      ni += _traitMat.at(i).at(p);
-      popSizes.at(p) += _traitMat.at(i).at(p);
-      //unsigned groupIdx = _traitGroups.at(p);
-
-      groupSizes.at(_traitGroups.at(p)) += _traitMat.at(i).at(p);
+      ni += popMat.at(i).at(p);
+      popSizes.at(p) += popMat.at(i).at(p);
+      groupSizes.at(popGroups.at(p)) += popMat.at(i).at(p);
     }
     totalN += ni;
 
@@ -578,30 +800,55 @@ Statistics::nestedamovatab Statistics::nestedAmova() const
       
       for (unsigned p = 0; p < npop; p++)
       {
-        if (_traitMat.at(i).at(p) > 0 && _traitMat.at(j).at(p) > 0)
-          popSSW.at(p) += _traitMat.at(i).at(p) * _traitMat.at(j).at(p) * dist2;
+        if (popMat.at(i).at(p) > 0 && popMat.at(j).at(p) > 0)
+          popSSW.at(p) += popMat.at(i).at(p) * popMat.at(j).at(p) * dist2;
         
         for (unsigned q = 0; q < npop; q++)
         {
-          if (_traitMat.at(j).at(q) > 0 && _traitGroups.at(p) == _traitGroups.at(q))
-            groupSSW.at(_traitGroups.at(p)) += _traitMat.at(i).at(p) * _traitMat.at(j).at(q) * dist2;      
+          if (popMat.at(j).at(q) > 0 && popGroups.at(p) == popGroups.at(q))
+            groupSSW.at(popGroups.at(p)) += popMat.at(i).at(p) * popMat.at(j).at(q) * dist2;      
         }
         
-        nj += _traitMat.at(j).at(p);
+        nj += popMat.at(j).at(p);
       }
       
       sst += ni * nj * dist2;
     }
   }
   
+  
   sst /= (2 * totalN);
   
+  // Excoffier's notation: average population sizes
+  double n = totalN, nprime = 0, nprimeprime = 0;
+  unsigned sumPop2sizes = 0;
+  unsigned sumGroup2sizes = 0;
+  //unsigned sumGroupPop2sizes = 0;
+  vector<unsigned> groupPop2sizes(ngroup, 0);
+
   for (unsigned p = 0; p < npop; p++)
+  {
     sswp += popSSW.at(p) / (2 * popSizes.at(p));
+    unsigned pop2size = pow(popSizes.at(p), 2);
+    sumPop2sizes += pop2size;
+    groupPop2sizes.at(popGroups[p]) += pop2size;
+  }
   
   for (unsigned g = 0; g < ngroup; g++)
+  {   
     ssap += groupSSW.at(g) / (2 * groupSizes.at(g));
+    sumGroup2sizes += pow(groupSizes.at(g), 2);//group2size;
+    //sumGroupPop2sizes += groupPop2sizes.at(g);
+    
+    n -= ((double)groupPop2sizes.at(g)) / groupSizes.at(g);
+    nprime += ((double)groupPop2sizes.at(g)) / groupSizes.at(g);
+  }
   
+  n /= (npop - ngroup);
+  nprime -= ((double)sumPop2sizes)/totalN;
+  nprime /= (ngroup - 1);
+  nprimeprime = (totalN - ((double)sumGroup2sizes) / totalN) / (ngroup - 1);
+    
   ssap -= sswp;
   
   ssag = sst - ssap - sswp;
@@ -611,26 +858,84 @@ Statistics::nestedamovatab Statistics::nestedAmova() const
   double mswp = sswp / (totalN - npop);
   
   
-  cout << "totalN: " << totalN << " npop: " << npop << " ngroup: " << ngroup << endl;
+  /*cout << "totalN: " << totalN << " npop: " << npop << " ngroup: " << ngroup << endl;
   cout << "ssag: " << ssag << " msag: " << msag << " dfag: " << (ngroup - 1) << endl;
   cout << "ssap: " << ssap << " msap: " << msap << " dfap: " << (npop - ngroup) << endl;
   cout << "sswp: " << sswp << " mswp: " << mswp << " dfwp: " << (totalN - npop) << endl;
-
-  nestedamovatab tab;
-  tab.ss_ag = ssag;
-  tab.ss_ap = ssap;
-  tab.ss_wp = sswp;
-  tab.ms_ag = msag;
-  tab.ms_ap = msap;
-  tab.ms_wp = mswp;
   
+  cout << "n: " << n << " n': " << nprime << " n'': " << nprimeprime << endl;*/
+  
+  double sigma2c = mswp; 
+  double sigma2b = (msap - sigma2c)/n; 
+  double sigma2a = (msag - sigma2c - (nprime * sigma2b))/nprimeprime;
+  
+  //cout << "sigma2a: " << sigma2a << " sigma2b: " << sigma2b << " sigma2c: " << sigma2c << endl;
+
+  result.ss_ag = ssag;
+  result.ss_ap = ssap;
+  result.ss_wp = sswp;
+  result.df_ag = ngroup -1;
+  result.df_ap = npop - ngroup;
+  result.df_wp = totalN - npop;
+  result.ms_ag = msag;
+  result.ms_ap = msap;
+  result.ms_wp = mswp;
+  result.sigma2_a = sigma2a;
+  result.sigma2_b = sigma2b;
+  result.sigma2_c = sigma2c;
+  result.phiST.value = (sigma2a + sigma2b)/(sigma2a + sigma2b + sigma2c);
+  result.phiCT.value = sigma2a/(sigma2a + sigma2b + sigma2c);
+  result.phiSC.value = sigma2b/(sigma2b + sigma2c);
+  
+  //cout << "phiST: " << tab.phiST << " phiCT: " << tab.phiCT << " phiSC: " << tab.phiSC << endl;
   
 }
 
-Statistics::anovatab Statistics::amova() const
+// TODO combine amova and nested amova?
+// 
+
+Statistics::amovatab Statistics::amova() const
 {
   if (_traitMat.empty())
     throw StatsError("Traits must be associated prior to AMOVA calculation.");
+
+  //const unsigned Iterations = 1000;
+
+  amovatab result;
+  amovaPrivate(_traitMat, result);
+  
+  amovatab permutedResult;
+  vector<vector<unsigned> > traitMatCopy(_traitMat);
+  
+  unsigned nunique = _traitMat.size();
+  unsigned npop = _traitMat.at(0).size();
+  
+  vector<unsigned> ncopies(nunique, 0);
+  
+  for (unsigned i = 0; i < nunique; i++)
+  {
+    for (unsigned p = 0; p < npop; p++)
+      ncopies.at(i) += _traitMat.at(i).at(p);
+  }
+  
+  unsigned phiSTbigger = 0;
+  
+  for (unsigned i = 0; i < Iterations; i++)
+  {
+    permuteAll(traitMatCopy, ncopies);
+    amovaPrivate(traitMatCopy, permutedResult);
+    
+    if (permutedResult.phiST.value > result.phiST.value)
+      phiSTbigger++;
+  }
+  
+  result.phiST.prob = ((double)phiSTbigger)/Iterations;
+  
+  return result;
+}
+
+void Statistics::amovaPrivate(const std::vector<std::vector<unsigned> > &popMat, amovatab &result) const
+{
   unsigned n = _distances.size();  
   unsigned k = _traitMat.at(0).size();
 
@@ -682,27 +987,30 @@ Statistics::anovatab Statistics::amova() const
     meanGroupSize += groupSizes.at(c);
   }
   
-  meanGroupSize /= k;
+  // Not quite the mean... see Arlequin 3.5 manual p. 147, what Excoffier calls 'n' 
+  meanGroupSize /= (k - 1);
 
   Bk = Tk - Wk;
-
-  double msw = Wk / (totalN - k);
-  double msb = Bk / (k - 1);
   
-  double Famova = msb / msw;
+  unsigned dfw = totalN - k;
+  unsigned dfb = k - 1;
+
+  double msw = Wk / dfw;//(totalN - k);
+  double msb = Bk / dfb;//(k - 1);
+  
+  /* double Famova = msb / msw;
   
   unsigned df1 = k - 1;
   unsigned df2 = totalN - k;
   double x = df1 * Famova / (df1 * Famova + df2);
-  double pamova = betaI(df1/2.0, df2/2.0, x);
+  double pamova = betaI(df1/2.0, df2/2.0, x);*/
   
   //cout << "F: " << Famova << " p: " << setprecision(10) << pamova << endl;
-  double sigma2a, sigma2b = msw; 
-  
-  sigma2a = (msb -sigma2b)/meanGroupSize;
+  double sigma2a, sigma2b = msw;  
+  sigma2a = (msb - sigma2b)/meanGroupSize;
   
 
-  anovatab amovaStat;
+  /*anovatab amovaStat;
   amovaStat.ssb = Bk;
   amovaStat.ssw = Wk;
   amovaStat.dfFac = df1;
@@ -714,8 +1022,98 @@ Statistics::anovatab Statistics::amova() const
   amovaStat.phiST = (sigma2a / (sigma2a + sigma2b));
 
 
-  return amovaStat;
+  return amovaStat;*/
+  
+  result.ss_ag = NAN;
+  result.ss_ap = Bk;
+  result.ss_wp = Wk;
+  result.df_ag = NAN;
+  result.df_ap = dfb;
+  result.df_wp = dfw;
+  result.ms_ag = NAN;
+  result.ms_ap = msb;
+  result.ms_wp = msw;
+  result.sigma2_a = sigma2a;
+  result.sigma2_b = sigma2b;
+  result.sigma2_c = NAN;
+  result.phiST.value = sigma2a / (sigma2a + sigma2b);
+  result.phiCT.value = result.phiSC.value = NAN;
+  
 }
 
-// Phi test
+Statistics::DiscreteDistribution::DiscreteDistribution(const vector <double> &weights)
+ : _weights(weights), _nitems(weights.size())
+{
+  setupTables();
+}
+
+Statistics::DiscreteDistribution::DiscreteDistribution(const vector <unsigned> &weights)
+ : _weights(weights.begin(), weights.end()), _nitems(weights.size())
+{
+  setupTables();
+}
+
+void Statistics::DiscreteDistribution::setupTables()
+{
+  double totalweight;
+  for (unsigned i = 0; i < _nitems; i++)
+    totalweight += _weights.at(i);
+  
+  double avgweight = totalweight/_nitems;
+  
+  stack<unsigned> large;
+  stack<unsigned> small;
+  _alias.resize(_nitems);
+    
+  for (unsigned i = 0; i < _nitems; i++)
+  {
+    _probs.push_back(_weights.at(i)/totalweight);
+    _weights.at(i) /= avgweight;
+    
+    if (_weights.at(i) < 1)  small.push(i);
+    else  large.push(i);
+  }
+  
+  while (! small.empty() && ! large.empty())
+  {
+    unsigned s = small.top();
+    small.pop();
+    
+    unsigned l = large.top();
+    large.pop();
+    
+    _alias[s] = l;
+    _weights[l] = _weights[l] + _weights[s] - 1;
+    
+    if (_weights[l] < 1)  small.push(l);
+    else  large.push(l);
+  }
+  
+  while (! large.empty())
+  {
+    unsigned l = large.top();
+    large.pop();
+    
+    _weights[l] = 1;
+  }
+  
+  while (! small.empty())
+  {
+    unsigned s = small.top();
+    small.pop();
+    
+    _weights[s] = 1;
+  }
+}
+
+unsigned Statistics::DiscreteDistribution::sample() const
+{
+  unsigned column = random() % _nitems;
+  double u = (random() % LARGE) / ((double)LARGE);
+  
+  if (u <= _weights[column])  return column;
+  
+  return _alias[column];
+}
+
 

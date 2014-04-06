@@ -249,6 +249,11 @@ void HapnetWindow::setupActions()
   _redoAct = _history->createRedoAction(this, tr("&Redo"));
   _redoAct->setShortcuts(QKeySequence::Redo);
   
+  _traitGroupAct = new QAction(tr("Create &trait groups"), this);
+  _traitGroupAct->setStatusTip(tr("Create or edit groups of traits (for AMOVA)"));
+  _traitGroupAct->setEnabled(false);
+  connect(_traitGroupAct, SIGNAL(triggered()), this, SLOT(setTraitGroups()));
+  
   _traitColourAct = new QAction(tr("Set trait &colour"), this);
   _traitColourAct->setStatusTip(tr("Change a colour associated with a trait"));
   _traitColourAct->setEnabled(false);
@@ -463,10 +468,11 @@ void HapnetWindow::setupMenus()
   editMenu->addAction(_redoAct);
   editMenu->addSeparator();
 
-  QAction *dataEditAction = new QAction("Data editing disabled", this);
-  dataEditAction->setEnabled(false);
-  editMenu->addAction(dataEditAction);
-  editMenu->addSeparator();
+  //QAction *dataEditAction = new QAction("Data editing disabled", this);
+  //dataEditAction->setEnabled(false);
+  //editMenu->addAction(dataEditAction);
+  //editMenu->addSeparator();
+  editMenu->addAction(_traitGroupAct);
   editMenu->addAction(_traitColourAct);
   editMenu->addAction(_vertexColourAct);
   editMenu->addAction(_vertexSizeAct);
@@ -669,7 +675,6 @@ void HapnetWindow::openAlignment()
             _alModel->maskRows(_badSeqs.at(i), _badSeqs.at(i));
         }
         
-        // TODO check this
         if (traitsuccess)
         {
           _tModel = new TraitModel(_traitVect);
@@ -683,7 +688,13 @@ void HapnetWindow::openAlignment()
 
           else
             _mapTraitsSet = false;
+          
+          toggleTraitActions(true);
         }
+        
+        // this will turn off AMOVA, which requires traits
+        else
+          toggleTraitActions(false);
 
         if (netsuccess)
         {
@@ -1345,6 +1356,7 @@ bool HapnetWindow::loadTraitsFromParser()
         
         _activeTraits = Traits;
         _toggleTraitAct->setText(tr("Use GeoTags &groups"));
+        _traitGroups = &_groupVect;
       }
 
       else
@@ -1354,8 +1366,9 @@ bool HapnetWindow::loadTraitsFromParser()
         for (unsigned i = 0; i < gtv.size(); i++)
           _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
 
-          _activeTraits = GeoTags;
+        _activeTraits = GeoTags;
         _toggleTraitAct->setText(tr("Use Traits &groups"));
+        _traitGroups = &_geoGroupVect;
 
       }
 
@@ -1378,6 +1391,7 @@ bool HapnetWindow::loadTraitsFromParser()
       _activeTraits = Traits;
       _toggleTraitAct->setText(tr("Use GeoTags &groups"));
       _toggleTraitAct->setEnabled(false);
+        _traitGroups = &_groupVect;
     }
     
     else if (parser->hasGeoTags())
@@ -1389,6 +1403,7 @@ bool HapnetWindow::loadTraitsFromParser()
       _activeTraits = GeoTags;
       _toggleTraitAct->setText(tr("Use Traits &groups"));
       _toggleTraitAct->setEnabled(false);
+        _traitGroups = &_geoGroupVect;
     }
     
     else
@@ -1528,7 +1543,11 @@ void HapnetWindow::closeTrees()
 
 void HapnetWindow::closeTraits()
 {
+  toggleTraitActions(false);
   _traitGroupsSet = false;
+  _geoGroupVect.clear();
+  _groupVect.clear();
+
   if (! _traitVect.empty())
   {
     for (unsigned i = 0; i < _traitVect.size(); i++)
@@ -1760,6 +1779,7 @@ void HapnetWindow::importTraits()
       }
       
       _activeTraits = Traits;
+      _traitGroups = &_groupVect;
 
       QAbstractItemModel *tmpModel = _tView->model();
       _tModel = new TraitModel(_traitVect);
@@ -1958,6 +1978,7 @@ void HapnetWindow::finaliseClustering()
   _traitVect.assign(geoTraits.begin(), geoTraits.end());
   
   _activeTraits = GeoTags;
+  _traitGroups = &_geoGroupVect;
   
   QAbstractItemModel *tmpModel = _tView->model();
   _tModel = new TraitModel(_traitVect);
@@ -3318,7 +3339,7 @@ void HapnetWindow::toggleActiveTraits()
   if (_activeTraits == Traits)
   {
     _activeTraits = GeoTags;
-    _toggleTraitAct->setText(tr("Use Traits &groups"));
+    _toggleTraitAct->setText(tr("Use Traits &populations"));
 
     closeTraits();
 
@@ -3326,13 +3347,21 @@ void HapnetWindow::toggleActiveTraits()
     
     for (unsigned i = 0; i < gtv.size(); i++)
       _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
+    
+    if (_geoGroupVect.empty())
+      _traitGroupsSet = false;
+    
+    else
+      _traitGroupsSet = true;
+
+    _traitGroups = &_geoGroupVect;
 
   }
 
   else
   {
     _activeTraits = Traits;
-    _toggleTraitAct->setText(tr("Use GeoTags &groups"));
+    _toggleTraitAct->setText(tr("Use GeoTags &populations"));
     
     closeTraits();
 
@@ -3345,6 +3374,15 @@ void HapnetWindow::toggleActiveTraits()
       else
         _traitVect.push_back(new Trait(*(traits.at(i))));
     }
+    
+    if (_groupVect.empty())
+      _traitGroupsSet = false;
+    
+    else
+      _traitGroupsSet = true;
+
+    _traitGroups = &_groupVect;
+      
   }
   
   if (_g)
@@ -3470,6 +3508,73 @@ void HapnetWindow::redrawNetwork()
   unsigned iterations = spinBox->value();
 
   _netView->redraw(iterations);
+}
+
+void HapnetWindow::setTraitGroups()
+{
+  if (_traitVect.empty()) 
+  {
+    statusBar()->showMessage(tr("No traits read."));
+    return;
+  }
+  
+  QVector<QString> traitStrings;
+  map<QString, Trait*> nameToTrait;
+  QMap<QString, QList<QString> > traitGroupMap;
+  
+  if (_traitGroupsSet)
+  {
+    for (unsigned i = 0; i < _traitGroups->size(); i++)
+      traitGroupMap[QString::fromStdString(_traitGroups->at(i))] = QList<QString>();
+  }
+  
+  for (unsigned i = 0; i < _traitVect.size(); i++)
+  {
+    traitStrings << QString::fromStdString(_traitVect.at(i)->name());
+    nameToTrait[traitStrings.last()] = _traitVect.at(i);
+    
+    if (_traitGroupsSet)
+    {
+      string groupName = _traitGroups->at(_traitVect.at(i)->group());
+      traitGroupMap[QString::fromStdString(groupName)] << traitStrings.last();
+    }
+  }
+  
+  GroupItemDialog groupDlg(traitStrings, traitGroupMap);
+  bool groupsSuccess = groupDlg.exec();
+  
+  if (groupsSuccess)
+  {
+    //QMap<QString, QList<QString> > traitGroups = groupDlg.groups();
+    _traitGroups->clear();
+    
+    QMap<QString, QList<QString> >::const_iterator mapIt = traitGroupMap.constBegin();
+    unsigned groupIdx = 0;
+    
+    while (mapIt != traitGroupMap.constEnd())
+    {
+      _traitGroups->push_back(mapIt.key().toStdString());
+      
+      //cout << "group " << mapIt.key().toStdString() << ":";
+      
+      foreach (QString str, mapIt.value())
+      {
+        //cout << ' ' << str.toStdString();
+        Trait *t = nameToTrait[str];
+        t->setGroup(groupIdx);
+        //cout << '=' << t->name();
+      }
+      
+      ++mapIt;
+      groupIdx++;
+      //cout << endl;
+    }
+    
+    if (_stats)
+      _stats->setFreqsFromTraits(_traitVect);
+    
+    _traitGroupsSet = true;
+  }
 }
 
 void HapnetWindow::setTraitColour()
@@ -3760,86 +3865,163 @@ void HapnetWindow::showAmova()
   if (! _stats)
     return;
   
-  // THIS SHOULD GO ELSEWHERE, PROBABLY!!!!!!!!!!!!!!!!!!
-  // Also, store groups, whether empty or not
+  Statistics::amovatab amovaStat;
+  bool nestedAmovaPerformed = false;
   
-  if (! _traitGroupsSet)
+  if (_traitGroupsSet)
   {
-    QVector<QString> traitStrings;
-    map<QString, Trait*> nameToTrait;
+    amovaStat = _stats->nestedAmova();
+    nestedAmovaPerformed = true;
+  }
     
-    for (unsigned i = 0; i < _traitVect.size(); i++)
+  else
+  {
+    
+    QMessageBox groupPromptDlg(this);
+    groupPromptDlg.setIcon(QMessageBox::Warning);
+    groupPromptDlg.setText("<b>Trait groups not set</b>");
+    groupPromptDlg.setInformativeText("Groups must be defined for nested AMOVA. Define groups now or perform simple (non-nested) AMOVA?");
+    
+    
+    QPushButton *defineGroupsButton = groupPromptDlg.addButton("Define groups", QMessageBox::AcceptRole);
+    groupPromptDlg.setDefaultButton(defineGroupsButton);
+    //QAbstractButton *simpleAmovaButton = 
+    groupPromptDlg.addButton("Simple AMOVA", QMessageBox::DestructiveRole);
+    groupPromptDlg.setStandardButtons(QMessageBox::Cancel);
+    
+    
+    // OK, Cancel, "Simple AMOVA"
+    
+    //int result = 
+    groupPromptDlg.exec();
+    
+    QMessageBox::ButtonRole result = groupPromptDlg.buttonRole(groupPromptDlg.clickedButton());
+    
+    cout << "result: " << result << " destructive role: " << QMessageBox::DestructiveRole << " accept role: " << QMessageBox::AcceptRole << " reject role: " << QMessageBox::RejectRole << endl;
+    
+    if (result == QMessageBox::RejectRole)
+      return;
+    
+    else if (result == QMessageBox::DestructiveRole)  // perform simple amova
+      amovaStat = _stats->amova();
+      
+    else 
     {
-      traitStrings << QString::fromStdString(_traitVect.at(i)->name());
-      nameToTrait[traitStrings.last()] = _traitVect.at(i);
-    }
-    
-    QMap<QString, QList<QString> > traitGroups;
-    GroupItemDialog groupDlg(traitStrings, traitGroups);
-    bool groupsSuccess = groupDlg.exec();
-    
-    if (groupsSuccess)
-    {
-      //QMap<QString, QList<QString> > traitGroups = groupDlg.groups();
-      _groupVect.clear();
+      setTraitGroups();
       
-      QMap<QString, QList<QString> >::const_iterator mapIt = traitGroups.constBegin();
-      unsigned groupIdx = 0;
-      
-      while (mapIt != traitGroups.constEnd())
-      {
-        _groupVect.push_back(mapIt.key().toStdString());
-        
-        cout << "group " << mapIt.key().toStdString() << ":";
-        
-        foreach (QString str, mapIt.value())
-        {
-          cout << ' ' << str.toStdString();
-          Trait *t = nameToTrait[str];
-          t->setGroup(groupIdx);
-          cout << '=' << t->name();
-        }
-        
-        ++mapIt;
-        groupIdx++;
-        cout << endl;
-      }
-      
-      _stats->setFreqsFromTraits(_traitVect); 
-      Statistics::nestedamovatab namovaStat = _stats->nestedAmova();
-      
-      /*GroupItemDialog testDlg(traitStrings, traitGroups);
-      groupsSuccess = testDlg.exec();
-      
-      cout << "Groups now:" << endl;
-      mapIt = traitGroups.constBegin();
-      while (mapIt != traitGroups.constEnd())
-      {
-        cout << "group " << mapIt.key().toStdString() << ":";
-        
-        foreach (QString str, mapIt.value())
-        {
-          cout << ' ' << str.toStdString();
-        }
-        
-        ++mapIt;
-        cout << endl;
-      }*/
+      // if trait groups still not set, user must have cancelled, don't perform AMOVA
+      if (! _traitGroupsSet)
+        return;
+      amovaStat = _stats->nestedAmova();
+      nestedAmovaPerformed = true;
     }
   }
   
-  
-  Statistics::anovatab amovaStat = _stats->amova();
+  double sigmaTotal = amovaStat.sigma2_a + amovaStat.sigma2_b;
+  double smallestP = 1.0 / Statistics::Iterations;
   
   //QMessageBox 
   MonospaceMessageBox message(this);
   //message.setIcon(QMessageBox::Information);
   message.setText(tr("<b>Analysis of molecular variance</b>"));
 
-  QString infText(tr("F = %1<br>p(F %2 %1) = %3<br>&Phi;<sub>ST</sub> = %4").arg(QString::number(amovaStat.F, 'f', 3)).arg(QChar(0x2265)).arg(QString::number(amovaStat.prob, 'g', 3)).arg(amovaStat.phiST));
+  //QString infText(tr("F = %1<br>p(F %2 %1) = %3<br>&Phi;<sub>ST</sub> = %4").arg(QString::number(amovaStat.F, 'f', 3)).arg(QChar(0x2265)).arg(QString::number(amovaStat.prob, 'g', 3)).arg(amovaStat.phiST));
+  QString infText(QString("&Phi;<sub>ST</sub> = %1 Significance: p ").arg(QString::number(amovaStat.phiST.value, 'f', 5))); 
+  //%2").arg(QString::number(amovaStat.phiST.value, 'f', 5)).arg(QString::number(amovaStat.phiST.prob, 'f', 3)));
+  
+  if (amovaStat.phiST.prob < smallestP)
+    infText += QString("&lt; %1").arg(smallestP);
+    
+  else
+    infText += QString("= %1").arg(QString::number(amovaStat.phiST.prob, 'g', 3));
+    
   message.setInformativeText(infText);
+  
+  QString detText(QString("                  Sum of\nVariation    df  squares sigma^2 %variation\n\n"));
+  
+  if (nestedAmovaPerformed)
+  { 
+    sigmaTotal += amovaStat.sigma2_c;
+    
+    detText += QString("Among\ngroups%1").arg(amovaStat.df_ag, 9); 
+    detText += QString("%1").arg(QString::number(amovaStat.ss_ag, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(amovaStat.sigma2_a, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
 
-  QString detText(tr("%2%1%1Sum_Sq%1Mean_Sq%1F_value%1%1%1%1Pr(>F)\n").arg('\xa0').arg("df", 14, '\xa0'));
+    detText += QString("Among\npopulations%1").arg(amovaStat.df_ap, 4);
+    detText += QString("%1").arg(QString::number(amovaStat.ss_ap, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(amovaStat.sigma2_b, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
+    
+    detText += QString("Within\npopulations%1").arg(amovaStat.df_wp, 4);
+    detText += QString("%1").arg(QString::number(amovaStat.ss_wp, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(amovaStat.sigma2_c, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_c / sigmaTotal, 'f', 5), 11);
+    
+    detText += QString("TOTAL%1").arg(amovaStat.df_ag + amovaStat.df_ap + amovaStat.df_wp, 10);
+    detText += QString("%1").arg(QString::number(amovaStat.ss_ag + amovaStat.ss_ap + amovaStat.ss_wp, 'f', 3), 9);
+    detText += QString("%1\n\n").arg(QString::number(sigmaTotal, 'f', 3), 8);
+    
+    detText += QString("Fixation indices\n    Phi_ST: %1\n\n").arg(QString::number(amovaStat.phiST.value, 'f', 5));
+    detText += QString("    Phi_SC: %1\n\n").arg(QString::number(amovaStat.phiSC.value, 'f', 5));
+    detText += QString("    Phi_CT: %1\n\n").arg(QString::number(amovaStat.phiCT.value, 'f', 5));
+    detText += QString("Significance (%1 permutations):\n").arg(Statistics::Iterations);
+    detText += QString("    Phi_ST: Pr(random value > observed Phi_ST) ");
+    
+    if (amovaStat.phiST.prob < smallestP)
+      detText += QString("< %1").arg(smallestP);
+      
+    else
+      detText += QString("= %1").arg(QString::number(amovaStat.phiST.prob, 'g', 3));
+
+    detText += QString("    Phi_SC: Pr(random value > observed Phi_SC) ");
+    
+    if (amovaStat.phiSC.prob < smallestP)
+      detText += QString("< %1").arg(smallestP);
+      
+    else
+      detText += QString("= %1").arg(QString::number(amovaStat.phiSC.prob, 'g', 3));
+
+    detText += QString("    Phi_CT: Pr(random value > observed Phi_CT) ");
+
+    if (amovaStat.phiCT.prob < smallestP)
+      detText += QString("< %1").arg(smallestP);
+      
+    else
+      detText += QString("= %1").arg(QString::number(amovaStat.phiCT.prob, 'g', 3));
+    
+  }
+  
+  else
+  {
+    
+    detText += QString("Among\npopulations%1").arg(amovaStat.df_ap, 4); // .arg((uint)amovaStat.df_ap, (int)4, (int)10, QChar(' '));
+    detText += QString("%1").arg(QString::number(amovaStat.ss_ap, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(amovaStat.sigma2_a, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
+    
+    detText += QString("Within\npopulations%1").arg(amovaStat.df_wp, 4);
+    detText += QString("%1").arg(QString::number(amovaStat.ss_wp, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(amovaStat.sigma2_b, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
+    
+    detText += QString("TOTAL%1").arg(amovaStat.df_ap + amovaStat.df_wp, 10);
+    detText += QString("%1").arg(QString::number(amovaStat.ss_ap + amovaStat.ss_wp, 'f', 3), 9);
+    detText += QString("%1\n\n").arg(QString::number(sigmaTotal, 'f', 3), 8);
+    
+    detText += QString("Fixation index\nPhi_ST: %1\n\n").arg(QString::number(amovaStat.phiST.value, 'f', 5));
+    detText += QString("Significance (%1 permutations):\n").arg(Statistics::Iterations);
+    detText += QString("Phi_ST: Pr(random value > observed Phi_ST) ");//%1 %2").arg(QString::number(amovaStat.phiST.prob, 'g', 3));
+    
+    if (amovaStat.phiST.prob < smallestP)
+      detText += QString("< %1").arg(smallestP);
+      
+    else
+      detText += QString("= %1").arg(QString::number(amovaStat.phiST.prob, 'g', 3));
+  }
+  
+
+  /*QString detText(tr("%2%1%1Sum_Sq%1Mean_Sq%1F_value%1%1%1%1Pr(>F)\n").arg('\xa0').arg("df", 14, '\xa0'));
   detText += QString("Population%1").arg((uint)(amovaStat.dfFac), (int)4, (int)10, QChar('\xa0'));
   //arg(numstr, fieldwidth, fillchar)
   detText +=QString("%1").arg(QString::number(amovaStat.ssb, 'f', 2), 8, '\xa0');
@@ -3849,7 +4031,7 @@ void HapnetWindow::showAmova()
   
   detText += QString("Residuals%1").arg((uint)(amovaStat.dfRes), (int)5, (int)10, QChar('\xa0'));
   detText += QString("%1").arg(QString::number(amovaStat.ssw, 'f', 2), 8, '\xa0');
-  detText += QString("%1\n").arg(QString::number(amovaStat.msw, 'f', 2), 8, '\xa0');  
+  detText += QString("%1\n").arg(QString::number(amovaStat.msw, 'f', 2), 8, '\xa0');  */
   
   message.setDetailedText(detText);
   //message.setStandardButtons(QMessageBox::Ok); 
@@ -3860,6 +4042,7 @@ void HapnetWindow::showAmova()
   message.exec(); 
 }
 
+// TODO add AMOVA here
 void HapnetWindow::showAllStats()
 {
   if (! _stats)
@@ -3872,7 +4055,7 @@ void HapnetWindow::showAllStats()
   unsigned segsites = _stats->nSegSites();
   unsigned psites = _stats->nParsimonyInformative();
   Statistics::stat tajimaStat = _stats->TajimaD();
-  Statistics::anovatab amovaStat = _stats->amova();
+  //Statistics::amovatab amovaStat = _stats->amova();
   
   QDialog dlg(this);
   QVBoxLayout *vlayout = new QVBoxLayout(&dlg);  
@@ -3904,8 +4087,8 @@ void HapnetWindow::showAllStats()
   QString tajimaText = (tr("<b>Tajima's D:</b> %1<br>p(D %2 %1) = %3").arg(tajimaStat.value).arg(inequal).arg(tajimaPval));
   vlayout->addWidget(new QLabel(tajimaText, &dlg));
   
-  QString amovaText(tr("<b>AMOVA F:</b> %1<br>p(F %2 %1) = %3").arg(amovaStat.F).arg(QChar(0x2265)).arg(amovaStat.prob));
-  vlayout->addWidget(new QLabel(amovaText, &dlg));
+  //QString amovaText(tr("<b>AMOVA F:</b> %1<br>p(F %2 %1) = %3").arg(amovaStat.F).arg(QChar(0x2265)).arg(amovaStat.prob));
+  //vlayout->addWidget(new QLabel(amovaText, &dlg));
   
   vlayout->addWidget(new QLabel("Log to file?", this));
 
@@ -3948,7 +4131,7 @@ void HapnetWindow::showAllStats()
   out << "Number of parsimony-informative sites:\t" << psites << endl;
   out << "Tajima's D statistic:\tD = " << tajimaStat.value << endl;
   out << "\tp (D >= " << tajimaStat.value << ") = " << tajimaStat.prob << endl;
-  out << "Analysis of molecular variance:\tF = " << amovaStat.F << endl;
+  /*out << "Analysis of molecular variance:\tF = " << amovaStat.F << endl;
   out << "\tp (F >= " << amovaStat.F << ") = " << amovaStat.prob << endl;
   
   out << QString("%1  Sum Sq Mean Sq F value    Pr(>F)\n").arg(QString("df"), 14);
@@ -3960,7 +4143,7 @@ void HapnetWindow::showAllStats()
   
   out <<  QString("Residuals %1").arg(amovaStat.dfRes, 4);
   out <<  QString("%1").arg(QString::number(amovaStat.ssw, 'f', 2), 8);
-  out <<  QString("%1").arg(QString::number(amovaStat.msw, 'f', 2), 8) << endl;  
+  out <<  QString("%1").arg(QString::number(amovaStat.msw, 'f', 2), 8) << endl;  */
   
   file.close();
 
@@ -4032,6 +4215,12 @@ void HapnetWindow::toggleAlignmentActions(bool enable)
   
 }
 
+void HapnetWindow::toggleTraitActions(bool enable)
+{
+  _traitGroupAct->setEnabled(enable);
+  _amovaAct->setEnabled(enable);
+}
+
 void HapnetWindow::toggleNetActions(bool enable)
 {
   _saveAsAct->setEnabled(enable);
@@ -4046,6 +4235,7 @@ void HapnetWindow::toggleNetActions(bool enable)
   _searchAct->setEnabled(enable);
   _taxBoxAct->setEnabled(enable);
   _barchartAct->setEnabled(enable);
+  
   _traitColourAct->setEnabled(enable);
   _vertexColourAct->setEnabled(enable);
   _vertexSizeAct->setEnabled(enable);
