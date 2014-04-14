@@ -924,6 +924,7 @@ Statistics::amovatab Statistics::amova() const
   {
     permuteAll(traitMatCopy, ncopies);
     amovaPrivate(traitMatCopy, permutedResult);
+    //cout << permutedResult.phiST.value << endl;
     
     if (permutedResult.phiST.value > result.phiST.value)
       phiSTbigger++;
@@ -937,7 +938,7 @@ Statistics::amovatab Statistics::amova() const
 void Statistics::amovaPrivate(const std::vector<std::vector<unsigned> > &popMat, amovatab &result) const
 {
   unsigned n = _distances.size();  
-  unsigned k = _traitMat.at(0).size();
+  unsigned k = popMat.at(0).size();//_traitMat.at(0).size();
 
   double Wk = 0.;
   double Bk = 0.;  
@@ -953,8 +954,8 @@ void Statistics::amovaPrivate(const std::vector<std::vector<unsigned> > &popMat,
     unsigned ni = 0;
     for (unsigned c = 0; c < k; c++)
     {
-      ni += _traitMat.at(i).at(c);
-      groupSizes.at(c) += _traitMat.at(i).at(c);
+      ni += popMat.at(i).at(c);//_traitMat.at(i).at(c);
+      groupSizes.at(c) += popMat.at(i).at(c);//_traitMat.at(i).at(c);
     }
     totalN += ni;
     
@@ -965,14 +966,14 @@ void Statistics::amovaPrivate(const std::vector<std::vector<unsigned> > &popMat,
       
       for (unsigned c = 0; c < k; c++)
       {
-        if (_traitMat.at(i).at(c) > 0 && _traitMat.at(j).at(c) > 0)
+        if (popMat.at(i).at(c) > 0 && popMat.at(j).at(c) > 0)
         {
-          groupSSW.at(c) += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist2;
+          groupSSW.at(c) += popMat.at(i).at(c) * popMat.at(j).at(c) * dist2;
 
         }
-          //Wk += _traitMat.at(i).at(c) * _traitMat.at(j).at(c) * dist;
+          //Wk += popMat.at(i).at(c) * popMat.at(j).at(c) * dist;
        
-        nj += _traitMat.at(j).at(c);
+        nj += popMat.at(j).at(c);
       }
       Tk += ni * nj * dist2;
     }
@@ -1108,8 +1109,8 @@ void Statistics::DiscreteDistribution::setupTables()
 
 unsigned Statistics::DiscreteDistribution::sample() const
 {
-  unsigned column = random() % _nitems;
-  double u = (random() % LARGE) / ((double)LARGE);
+  unsigned column = rand() % _nitems;
+  double u = (rand() % LARGE) / ((double)LARGE);
   
   if (u <= _weights[column])  return column;
   

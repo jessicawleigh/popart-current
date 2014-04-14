@@ -3897,7 +3897,7 @@ void HapnetWindow::showAmova()
     
     QMessageBox::ButtonRole result = groupPromptDlg.buttonRole(groupPromptDlg.clickedButton());
     
-    cout << "result: " << result << " destructive role: " << QMessageBox::DestructiveRole << " accept role: " << QMessageBox::AcceptRole << " reject role: " << QMessageBox::RejectRole << endl;
+    //cout << "result: " << result << " destructive role: " << QMessageBox::DestructiveRole << " accept role: " << QMessageBox::AcceptRole << " reject role: " << QMessageBox::RejectRole << endl;
     
     if (result == QMessageBox::RejectRole)
       return;
