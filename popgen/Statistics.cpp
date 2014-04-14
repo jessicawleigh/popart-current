@@ -686,7 +686,7 @@ void Statistics::permuteAll(vector<vector<unsigned> > &popMat, const vector<unsi
         unsigned b = uniqueDistrib.sample();
         if (a != b)
         {
-          unsigned u = random() % ncopies.at(b);
+          unsigned u = rand() % ncopies.at(b);
           unsigned q = 0, cumulative = 0;
           //for (unsigned cumulative = 0, q = 0; q < npop; q++)
           while (q < npop)
@@ -732,7 +732,7 @@ void Statistics::permuteInGroups(vector<vector<unsigned> > &popMat, const vector
         unsigned b = distributions.at(group).sample();
         if (a != b)
         {
-          unsigned u = random() % ncopiesByGroup.at(group).at(b);
+          unsigned u = rand() % ncopiesByGroup.at(group).at(b);
           unsigned q = 0, cumulative = 0;
           //for (unsigned cumulative = 0, q = 0; q < npop; q++)
           while (q < npop)
