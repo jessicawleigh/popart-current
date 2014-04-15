@@ -639,6 +639,7 @@ Statistics::amovatab Statistics::nestedAmova() const
     permuteAll(traitMatCopyAll, ncopies);
     cout << "done with first permutation" << endl;
     nestedAmovaPrivate(traitMatCopyAll, _traitGroups, permutedResult);
+    cout << "finished nested amovaprivate." << endl;
     if (permutedResult.sigma2_c < result.sigma2_c)  sigma2cSmaller++;
     if (permutedResult.phiST.value > result.phiST.value)  phiSTbigger++;
     //sigmafile << permutedResult.sigma2_c << '\t';
@@ -738,6 +739,7 @@ void Statistics::permuteAll(vector<vector<unsigned> > &popMat, const vector<unsi
 
 void Statistics::permuteInGroups(vector<vector<unsigned> > &popMat, const vector<unsigned> &popGroups, const vector<vector<unsigned> > &ncopiesByGroup) const
 {
+  
   unsigned nunique = popMat.size();
   unsigned npop = popMat.at(0).size();
   unsigned ngroup = ncopiesByGroup.size();
