@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <sstream>
 #include <stack>
+#include <time.h>
 using namespace std;
 
 #ifdef NET_QT
@@ -547,6 +548,14 @@ double Statistics::betaCF(double a, double b, double x)
 // Check that there's more than one group
 Statistics::amovatab Statistics::nestedAmova() const
 {
+/*	  int seed = time(0);
+
+	  ofstream seedfile("seed.out");
+	  seedfile << seed << endl;
+	  seedfile.close();
+      //seed = 1397546234;
+
+	  srand(seed);*/
 
   if (_traitMat.empty())
     throw StatsError("Traits must be associated prior to AMOVA calculation.");
@@ -635,11 +644,11 @@ Statistics::amovatab Statistics::nestedAmova() const
     // phiST: how similar are individuals in populations relative to randomised populations?
     // test phiST by permuting individuals among populations 
     // big phiST is more extreme
-	cout << "iteration: " << (i + 1) << endl;
+	//cout << "iteration: " << (i + 1) << endl;
     permuteAll(traitMatCopyAll, ncopies);
-    cout << "done with first permutation" << endl;
+    //cout << "done with first permutation" << endl;
     nestedAmovaPrivate(traitMatCopyAll, _traitGroups, permutedResult);
-    cout << "finished nested amovaprivate." << endl;
+    //cout << "finished nested amovaprivate." << endl;
     if (permutedResult.sigma2_c < result.sigma2_c)  sigma2cSmaller++;
     if (permutedResult.phiST.value > result.phiST.value)  phiSTbigger++;
     //sigmafile << permutedResult.sigma2_c << '\t';
@@ -648,7 +657,7 @@ Statistics::amovatab Statistics::nestedAmova() const
     // phiSC: how similar are individuals in populations relative to randomised populations within groups?
     // test phiSC by permuting individuals among populations, but within groups
     permuteInGroups(traitMatCopyGroups, _traitGroups, ncopiesByGroup);
-    cout << "done with second permutation" << endl;
+    //cout << "done with second permutation" << endl;
     nestedAmovaPrivate(traitMatCopyGroups, _traitGroups, permutedResult);
     if (permutedResult.sigma2_b > result.sigma2_b)  sigma2bBigger++;
     if (permutedResult.phiSC.value > result.phiSC.value)  phiSCbigger++;
@@ -658,7 +667,7 @@ Statistics::amovatab Statistics::nestedAmova() const
     // phiCT: how similar are individuals in groups relative to randomised groups?
     //test phiCT by permuting populations among groups
     random_shuffle(traitGroupsCopy.begin(), traitGroupsCopy.end());
-    cout << "done with third permutation" << endl;
+    //cout << "done with third permutation" << endl;
     nestedAmovaPrivate(_traitMat, traitGroupsCopy, permutedResult);
     if (permutedResult.sigma2_a > result.sigma2_a)  sigma2aBigger++;
     if (permutedResult.phiCT.value > result.phiCT.value)  phiCTbigger++;
@@ -693,7 +702,6 @@ Statistics::amovatab Statistics::nestedAmova() const
 
 void Statistics::permuteAll(vector<vector<unsigned> > &popMat, const vector<unsigned> &ncopies) const
 {
-    
   unsigned nunique = popMat.size();
   unsigned npop = popMat.at(0).size();
 
@@ -739,37 +747,71 @@ void Statistics::permuteAll(vector<vector<unsigned> > &popMat, const vector<unsi
 
 void Statistics::permuteInGroups(vector<vector<unsigned> > &popMat, const vector<unsigned> &popGroups, const vector<vector<unsigned> > &ncopiesByGroup) const
 {
-  
+  //cout << "in permuteInGroups, permuteCount: " << permuteCount++ << endl;
   unsigned nunique = popMat.size();
   unsigned npop = popMat.at(0).size();
   unsigned ngroup = ncopiesByGroup.size();
   
+  /*for (unsigned i = 0; i < ncopiesByGroup.size(); i++)
+  {
+	cout << "group " << i << ":";
+	for (unsigned j = 0; j < ncopiesByGroup.at(i).size(); j++)
+	  cout << " " << ncopiesByGroup.at(i).at(j);
+	cout << endl;
+  }*/
+
   vector<DiscreteDistribution> distributions;
   
   for (unsigned g = 0; g < ngroup; g++)  distributions.push_back(DiscreteDistribution(ncopiesByGroup.at(g)));
   
   for (unsigned a = 0; a < nunique; a++)
   {
+	//if (permuteCount == 352)  cout << "a: " << a << endl;
     vector<unsigned> popMatRow(popMat.at(a));
     for (unsigned p = 0; p < npop; p++)
     {
       unsigned group = popGroups.at(p);
+      //if (permuteCount == 352)  cout << "p: " << p << " group: " << group << endl;
       for (unsigned i = 0; i < popMatRow.at(p); i++)
       {
-        unsigned b = distributions.at(group).sample();
+        unsigned b;
+
+        // TODO figure out why DiscreteDistribution::sample sometimes returns an item with weight 0
+        do
+        {
+          b = distributions.at(group).sample();
+        }  while (ncopiesByGroup.at(group).at(b) == 0);
+        //if (permuteCount == 352)  cout << "i: " << i << " b: " << b << endl;
         if (a != b)
         {
-          unsigned u = rand() % ncopiesByGroup.at(group).at(b);
+          /*if (permuteCount == 352)
+          {
+        	cout << " a = " << a << ", not equal to b" << endl;
+            cout << "ncopiesByGroup.size(): " << ncopiesByGroup.size() << endl;
+            cout << " ncopiesByGroup.at(" << group << ").size(): " <<  ncopiesByGroup.at(group).size() << endl;
+          }*/
+
+          int randnum = rand();
+          /*if (permuteCount == 352)
+          {
+          cout << "random number: " << randnum << endl;
+          cout << "ncopiesByGroup.at(" << group << ").at(" << b << "): " << ncopiesByGroup.at(group).at(b) << endl;
+          cout << "randnum % whatever: " << ncopiesByGroup.at(group).at(b) << endl;
+          }*/
+          unsigned u = randnum % ncopiesByGroup.at(group).at(b);//rand() % ncopiesByGroup.at(group).at(b);
+          //if (permuteCount == 352)  cout << "u: " << u << endl;
           unsigned q = 0, cumulative = 0;
           //for (unsigned cumulative = 0, q = 0; q < npop; q++)
           while (q < npop)
           {
+            //if (permuteCount == 352)  cout << "q: " << q << " cumulative: " << cumulative << endl;
             if (popGroups.at(q) == group)
             {
               cumulative += popMat.at(b).at(q);
               if (cumulative > u)  break;
             }
             q++;
+            //if (permuteCount == 352)  cout << "now, q: " << q << " cumulative: " << cumulative << endl;
           }
           
           // swap a_i in p and b_u in q
@@ -777,20 +819,25 @@ void Statistics::permuteInGroups(vector<vector<unsigned> > &popMat, const vector
           popMat.at(a).at(p)--;
           popMat.at(b).at(p)++;
           popMat.at(b).at(q)--;
+
           //permuteCount++;
         }
         
         //else
         //  permuteCount++; // count a == b as "silent" permutations
+        //else
+        //  if (permuteCount == 352)  cout << "a, b equal" << endl;
       }
     }
-  }   
+  }
+
+  //cout << "end of permuteInGroups" << endl;
 }
 
 void Statistics::nestedAmovaPrivate(const vector<vector<unsigned> > &popMat, const vector<unsigned> &popGroups, amovatab &result) const
 {
 
-	cout << "in nestedamovaPrivate" << endl;
+	//cout << "in nestedamovaPrivate" << endl;
   unsigned totalN = 0; // total number of individuals 
   
   /* sum of squares: total, among groups, among populations (within groups), 

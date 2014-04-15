@@ -105,12 +105,8 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _progress->setCancelButton(cancelButton);
 
   int seed = QDateTime::currentDateTime().toTime_t();
-  qsrand(seed);//1397540756);//seed);
+  qsrand(seed);
   QStatusBar *sbar = statusBar();
-  
-  /*ofstream seedfile("seed.out");
-  seedfile << seed << endl;
-  seedfile.close();*/
   
   resize(800, 600);
   
@@ -3522,42 +3518,6 @@ void HapnetWindow::setTraitGroups()
     return;
   }
   
-  // TODO remove this debug code
-  _traitGroups->push_back("a");
-  _traitGroups->push_back("b");
-  _traitGroups->push_back("c");
-  map<string, Trait*> nameToTrait2;
-  
-  for (unsigned i = 0; i < _traitVect.size(); i++)
-  {
-    nameToTrait2[_traitVect.at(i)->name()] = _traitVect.at(i);
-  }
-  
-  Trait *t;
-  
-  t = nameToTrait2["Africa"];
-  t->setGroup(0);
-  
-  t = nameToTrait2["America"];
-  t->setGroup(1);
-
-  t = nameToTrait2["Asia"];
-  t->setGroup(1);
-
-  t = nameToTrait2["Australia"];
-  t->setGroup(2);
-
-  t = nameToTrait2["Europe"];
-  t->setGroup(2);
-  
-  
-  _traitGroupsSet = true;
-  
-  
-  return;
-  // end block to remove
-  
-  
   QVector<QString> traitStrings;
   map<QString, Trait*> nameToTrait;
   QMap<QString, QList<QString> > traitGroupMap;
@@ -4014,7 +3974,7 @@ void HapnetWindow::showAmova()
     else
       detText += QString("= %1").arg(QString::number(amovaStat.phiST.prob, 'g', 3));
 
-    detText += QString("    Phi_SC: Pr(random value > observed Phi_SC) ");
+    detText += QString("\n    Phi_SC: Pr(random value > observed Phi_SC) ");
     
     if (amovaStat.phiSC.prob < smallestP)
       detText += QString("< %1").arg(smallestP);
@@ -4022,7 +3982,7 @@ void HapnetWindow::showAmova()
     else
       detText += QString("= %1").arg(QString::number(amovaStat.phiSC.prob, 'g', 3));
 
-    detText += QString("    Phi_CT: Pr(random value > observed Phi_CT) ");
+    detText += QString("\n    Phi_CT: Pr(random value > observed Phi_CT) ");
 
     if (amovaStat.phiCT.prob < smallestP)
       detText += QString("< %1").arg(smallestP);
@@ -4030,6 +3990,8 @@ void HapnetWindow::showAmova()
     else
       detText += QString("= %1").arg(QString::number(amovaStat.phiCT.prob, 'g', 3));
     
+    detText += QString("\n");
+
   }
   
   else
