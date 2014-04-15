@@ -248,6 +248,7 @@ void GroupItemDialog::deassignItems(const QList<QPair<QString,int> > & itemData)
 void GroupItemDialog::checkAndAccept()
 {  
 
+  //qDebug() << "in check and accept.";
   bool okToAccept = false;
   bool createDefault = false;
   if (_unassignedView->count() > 0)
@@ -264,8 +265,13 @@ void GroupItemDialog::checkAndAccept()
   else if (_groupView->topLevelItemCount() == 1)
     QMessageBox::warning(this, "<b>Only One Group</b>", "Define at least two groups, or cancel");
   
+  else
+	okToAccept = true;
+
   if (okToAccept)
   {
+
+	//qDebug() << "ok to accept.";
     _groupedItems.clear();
     
     for (int i = 0; i < _groupView->topLevelItemCount(); i++)

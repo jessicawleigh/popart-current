@@ -353,7 +353,7 @@ unsigned Statistics::pairwiseDistance(unsigned idx1, unsigned idx2) const
 
 double Statistics::nucleotideDiversity() const
 {
-  double pi;
+  double pi = 0;
   unsigned freqI, freqJ;
   map<string, unsigned>::const_iterator countIt;
     
@@ -418,7 +418,27 @@ Statistics::stat Statistics::TajimaD() const
   else
     Dmax = ((n + 1.)/(2 * n) - 1./a1)/sqrt(e2);
 
-  double Dprime = (Dmax - D) / (Dmax - Dmin);
+  if (Dmax <= D)
+  {
+	  cerr << "D: " << D << " Dmax: " << Dmax << endl;
+	  Dmax = D;
+  }
+
+  if (Dmin >= D)
+  {
+	  cerr << "D: " << D << " Dmin: " << Dmin << endl;
+	  Dmin = D;
+  }
+
+  double Dprime;
+
+  if (Dmax == Dmin)
+  {
+	  cerr << "D: " << D << " Dmin: " << Dmin << " Dmax: " << Dmax << endl;
+	  Dprime = 0;
+  }
+  else
+    Dprime = (Dmax - D) / (Dmax - Dmin);
   
   double alpha = - (1 + Dmin * Dmax) * Dmax / (Dmax - Dmin);
   double beta = (1 + Dmin * Dmax) * Dmin / (Dmax - Dmin);
@@ -527,6 +547,7 @@ double Statistics::betaCF(double a, double b, double x)
 // Check that there's more than one group
 Statistics::amovatab Statistics::nestedAmova() const
 {
+
   if (_traitMat.empty())
     throw StatsError("Traits must be associated prior to AMOVA calculation.");
 
@@ -614,7 +635,9 @@ Statistics::amovatab Statistics::nestedAmova() const
     // phiST: how similar are individuals in populations relative to randomised populations?
     // test phiST by permuting individuals among populations 
     // big phiST is more extreme
+	cout << "iteration: " << (i + 1) << endl;
     permuteAll(traitMatCopyAll, ncopies);
+    cout << "done with first permutation" << endl;
     nestedAmovaPrivate(traitMatCopyAll, _traitGroups, permutedResult);
     if (permutedResult.sigma2_c < result.sigma2_c)  sigma2cSmaller++;
     if (permutedResult.phiST.value > result.phiST.value)  phiSTbigger++;
@@ -624,6 +647,7 @@ Statistics::amovatab Statistics::nestedAmova() const
     // phiSC: how similar are individuals in populations relative to randomised populations within groups?
     // test phiSC by permuting individuals among populations, but within groups
     permuteInGroups(traitMatCopyGroups, _traitGroups, ncopiesByGroup);
+    cout << "done with second permutation" << endl;
     nestedAmovaPrivate(traitMatCopyGroups, _traitGroups, permutedResult);
     if (permutedResult.sigma2_b > result.sigma2_b)  sigma2bBigger++;
     if (permutedResult.phiSC.value > result.phiSC.value)  phiSCbigger++;
@@ -633,6 +657,7 @@ Statistics::amovatab Statistics::nestedAmova() const
     // phiCT: how similar are individuals in groups relative to randomised groups?
     //test phiCT by permuting populations among groups
     random_shuffle(traitGroupsCopy.begin(), traitGroupsCopy.end());
+    cout << "done with third permutation" << endl;
     nestedAmovaPrivate(_traitMat, traitGroupsCopy, permutedResult);
     if (permutedResult.sigma2_a > result.sigma2_a)  sigma2aBigger++;
     if (permutedResult.phiCT.value > result.phiCT.value)  phiCTbigger++;
@@ -762,6 +787,8 @@ void Statistics::permuteInGroups(vector<vector<unsigned> > &popMat, const vector
 
 void Statistics::nestedAmovaPrivate(const vector<vector<unsigned> > &popMat, const vector<unsigned> &popGroups, amovatab &result) const
 {
+
+	cout << "in nestedamovaPrivate" << endl;
   unsigned totalN = 0; // total number of individuals 
   
   /* sum of squares: total, among groups, among populations (within groups), 
@@ -1056,7 +1083,7 @@ Statistics::DiscreteDistribution::DiscreteDistribution(const vector <unsigned> &
 
 void Statistics::DiscreteDistribution::setupTables()
 {
-  double totalweight;
+  double totalweight = 0;
   for (unsigned i = 0; i < _nitems; i++)
     totalweight += _weights.at(i);
   
