@@ -118,6 +118,7 @@ private:
 
   QList<QPair<QString,int> > _deassignedItems;
   QPoint _mousePressed;
+  bool _suppressRenameEvent;
   //QVector<bool> _lockedGroups;
   
 private slots:

@@ -113,7 +113,7 @@ void GroupItemDialog::addGroup()
     
     else 
     {
-      QMessageBox::warning(this, "<b>Group Exists</b>", QString("A group named %1 has already been defined").arg(groupName));
+      QMessageBox::warning(this, "Group Exists", QString("A group named %1 has already been defined").arg(groupName));
     }
   }
 }
@@ -171,7 +171,7 @@ void GroupItemDialog::setItemContent()
       
       if (itemIt == unassignedItems.end())
       {
-        QMessageBox::critical(this, "<b>Unknown Item</b>", QString("Item %1 in group %2 does not exist, or has already been assigned to another group.").arg(itemName).arg(groupName));
+        QMessageBox::critical(this, "Unknown Item", QString("Item %1 in group %2 does not exist, or has already been assigned to another group.").arg(itemName).arg(groupName));
         reject();
       }
       
@@ -460,6 +460,7 @@ void UnsortedListWidget::setSelectedGroup(QAction *action)
 GroupedTreeWidget::GroupedTreeWidget(QWidget *parent)
  : QTreeWidget(parent)
 {
+  _suppressRenameEvent = false;
   setDropIndicatorShown(true);
   
   connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(renameGroup(QTreeWidgetItem *, int)));
@@ -686,17 +687,40 @@ void GroupedTreeWidget::deassignSelectedItem()
 
 }
 
-// TODO if renamed group has the same name as another group, throw an error and change it back
 void GroupedTreeWidget::renameGroup(QTreeWidgetItem *item, int) // don't need second "column" argument, always one col
 {
+  if (_suppressRenameEvent)  return; // prevents recursive calls to this slot
+
   GroupedTreeWidgetItem *groupItem = dynamic_cast<GroupedTreeWidgetItem *>(item);
   
   if (groupItem)
   {
     QString newName = groupItem->data(0, Qt::DisplayRole).toString();
     QString oldName = groupItem->oldText();
-    groupItem->updateOldText();
-    emit groupNameChanged(oldName, newName);
+    bool nameExists = false;
+        
+    foreach (QTreeWidgetItem *otherItem, findItems(newName, Qt::MatchExactly))
+    {
+      if (otherItem != item)
+      {
+        nameExists = true;
+        break;
+      }
+    }
+    
+    if (nameExists)
+    {
+      QMessageBox::warning(this, "Group Exists", QString("A group named %1 has already been defined").arg(newName));
+      _suppressRenameEvent = true;
+      groupItem->setData(0, Qt::DisplayRole, oldName);
+      _suppressRenameEvent = false;
+    }
+    
+    else
+    {
+      groupItem->updateOldText();
+      emit groupNameChanged(oldName, newName);
+    }
   }
 }
 
