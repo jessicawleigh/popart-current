@@ -58,6 +58,7 @@ private slots:
   void addGroup();
   void addSelectedItemsToGroup(const QString &);
   void deassignItems(const QList<QPair<QString,int> > &);
+  //void checkAndRenameGroup(QTreeWidgetItem *, int);
   
 };
 
@@ -72,7 +73,8 @@ public:
 public slots:
   void addGroup(const QString &group) { _groupNames << group; };
   void removeGroup(QString);
-
+  void renameGroup(QString, QString);
+  
 protected:
   virtual void contextMenuEvent(QContextMenuEvent *);
   //virtual void dragLeaveEvent(QDragLeaveEvent *);
@@ -122,12 +124,14 @@ private slots:
   void toggleLockSelectedGroup();
   void deassignSelectedItem();
   void deleteSelectedGroups();
+  void renameGroup(QTreeWidgetItem *, int);
     
 signals:
   void itemsRemoved(const QList<QPair<QString,int> > &);
   void groupDeleted(QString);
   void groupLocked(QString);
   void groupUnlocked(QString);
+  void groupNameChanged(QString, QString);
 };
 
 
@@ -140,12 +144,16 @@ public:
   
   bool isLocked() const;
   void setLocked(bool);
+  QString oldText() const;
+  void setOldText(const QString &);
+  void updateOldText();
   //void unlock();
   
 private:
   //void constructItem();
   bool _locked;
   static std::auto_ptr<QIcon> _lockedIcon;// = 0; 
+  QString _oldText;
 };
 
 

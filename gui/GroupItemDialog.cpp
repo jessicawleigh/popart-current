@@ -51,6 +51,8 @@ GroupItemDialog::GroupItemDialog(const QVector<QString> &items, QMap<QString,QLi
   connect(_groupView, SIGNAL(groupDeleted(QString)), _unassignedView, SLOT(removeGroup(QString)));
   connect(_groupView, SIGNAL(groupLocked(QString)), _unassignedView, SLOT(removeGroup(QString)));
   connect(_groupView, SIGNAL(groupUnlocked(QString)), _unassignedView, SLOT(addGroup(QString)));
+  //connect(_groupView, SIGNAL(itemChanged(QTreeWidgetItem *, int)), this, SLOT(checkAndRenameGroup(QTreeWidgetItem *, int)));
+  connect(_groupView, SIGNAL(groupNameChanged(QString, QString)), _unassignedView, SLOT(renameGroup(QString, QString)));
   
    
   QVBoxLayout *outerLayout = new QVBoxLayout(this);
@@ -102,7 +104,7 @@ void GroupItemDialog::addGroup()
     if (_groupView->findItems(groupName, Qt::MatchExactly).isEmpty())
     {
       QTreeWidgetItem *groupItem = new GroupedTreeWidgetItem(QStringList(groupName));
-      groupItem->setFlags(groupItem->flags() & ~Qt::ItemIsDragEnabled);
+      groupItem->setFlags((groupItem->flags() | Qt::ItemIsEditable) & ~Qt::ItemIsDragEnabled);
       _groupView->addTopLevelItem(groupItem); 
       
       _unassignedView->addGroup(groupName);
@@ -156,7 +158,7 @@ void GroupItemDialog::setItemContent()
     QString groupName = groupIt.key();
 
     GroupedTreeWidgetItem *groupItem = new GroupedTreeWidgetItem(QStringList(groupName));
-    groupItem->setFlags(groupItem->flags() & ~Qt::ItemIsDragEnabled);
+    groupItem->setFlags((groupItem->flags() | Qt::ItemIsEditable) & ~Qt::ItemIsDragEnabled);
     _groupView->addTopLevelItem(groupItem); 
     
     _unassignedView->addGroup(groupName);
@@ -253,7 +255,7 @@ void GroupItemDialog::checkAndAccept()
   bool createDefault = false;
   if (_unassignedView->count() > 0)
   {
-    int answer = QMessageBox::question(this, "<b>Items Not Assigned</b>", "Add remaining items to \"Default\" group?", QMessageBox::Yes | QMessageBox::No);
+    int answer = QMessageBox::question(this, "Items Not Assigned", "Add remaining items to \"Default\" group?", QMessageBox::Yes | QMessageBox::No);
     
     if (answer == QMessageBox::Yes)
     {
@@ -263,15 +265,28 @@ void GroupItemDialog::checkAndAccept()
   }
   
   else if (_groupView->topLevelItemCount() == 1)
-    QMessageBox::warning(this, "<b>Only One Group</b>", "Define at least two groups, or cancel");
+  {
+    QMessageBox::warning(this, "Only One Group", "Define at least two groups, or cancel");
+    return;
+  }
   
   else
-	okToAccept = true;
+    okToAccept = true;
+  
+  for (int i = 0; i < _groupView->topLevelItemCount(); i++)
+  {
+    QTreeWidgetItem *groupItem = _groupView->topLevelItem(i);
+    if (groupItem->childCount() == 0)
+    {
+      okToAccept = false;
+      QMessageBox::warning(this, "Empty Group", QString("Group %1 has no members.").arg(groupItem->data(0, Qt::DisplayRole).toString()));
+    }
+  }
 
   if (okToAccept)
   {
 
-	//qDebug() << "ok to accept.";
+    //qDebug() << "ok to accept.";
     _groupedItems.clear();
     
     for (int i = 0; i < _groupView->topLevelItemCount(); i++)
@@ -315,6 +330,14 @@ void UnsortedListWidget::removeGroup(QString groupName)
   
   if (idx >= 0)
     _groupNames.removeAt(idx);
+}
+
+void UnsortedListWidget::renameGroup(QString oldName, QString newName)
+{
+  int idx = _groupNames.indexOf(oldName);
+  
+  if (idx >= 0)
+    _groupNames.replace(idx, newName);
 }
 
 void UnsortedListWidget::contextMenuEvent(QContextMenuEvent *event)
@@ -438,6 +461,8 @@ GroupedTreeWidget::GroupedTreeWidget(QWidget *parent)
  : QTreeWidget(parent)
 {
   setDropIndicatorShown(true);
+  
+  connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(renameGroup(QTreeWidgetItem *, int)));
     /*QStyledItemDelegate *delegate = dynamic_cast<QStyledItemDelegate *>(_groupView->itemDelegate());
   if (! delegate)
     qDebug() << "not a QStyledItemDelegate!";*/
@@ -470,8 +495,11 @@ void GroupedTreeWidget::contextMenuEvent(QContextMenuEvent *event)
   
   else
   {
-    QAction *deleteGroupsAct = menu.addAction("Delete group");
-    connect(deleteGroupsAct, SIGNAL(triggered()), this, SLOT(deleteSelectedGroups()));
+    //QAction *renameGroupAct = menu.addAction("Rename group");
+    
+    
+    QAction *deleteGroupAct = menu.addAction("Delete group");
+    connect(deleteGroupAct, SIGNAL(triggered()), this, SLOT(deleteSelectedGroups()));
     
     QAction *lockGroupAct = menu.addAction("Lock group");
     connect(lockGroupAct, SIGNAL(triggered()), this, SLOT(toggleLockSelectedGroup()));
@@ -480,8 +508,9 @@ void GroupedTreeWidget::contextMenuEvent(QContextMenuEvent *event)
     
     if (item->isLocked())//->isDisabled())
     {
-      //deleteGroupsAct->setText("(Group is locked)");
-      deleteGroupsAct->setEnabled(false);
+      ///deleteGroupsAct->setText("(Group is locked)");
+      //renameGroupAct->setEnabled(false);
+      deleteGroupAct->setEnabled(false);
       lockGroupAct->setText("Unlock group");
     }
     
@@ -621,7 +650,7 @@ void GroupedTreeWidget::toggleLockSelectedGroup()
       QTreeWidgetItem *childItem = groupItem->child(i);
       childItem->setFlags(childItem->flags() | Qt::ItemIsDragEnabled);
     }
-    groupItem->setFlags((groupItem->flags() | Qt::ItemIsDropEnabled) & ~Qt::ItemIsUserCheckable);
+    groupItem->setFlags((groupItem->flags() | Qt::ItemIsDropEnabled | Qt::ItemIsEditable) & ~Qt::ItemIsUserCheckable);
     groupItem->setLocked(false);//setDisabled(false);
     
     emit(groupUnlocked(groupName));
@@ -634,7 +663,7 @@ void GroupedTreeWidget::toggleLockSelectedGroup()
       QTreeWidgetItem *childItem = groupItem->child(i);
       childItem->setFlags(childItem->flags() & ~Qt::ItemIsDragEnabled);
     }
-    groupItem->setFlags(groupItem->flags() & ~Qt::ItemIsDropEnabled & ~Qt::ItemIsUserCheckable);
+    groupItem->setFlags(groupItem->flags() & ~Qt::ItemIsDropEnabled & ~Qt::ItemIsEditable & ~Qt::ItemIsUserCheckable);
     groupItem->setLocked(true);//setDisabled(true);
     
     emit(groupLocked(groupName));
@@ -657,16 +686,30 @@ void GroupedTreeWidget::deassignSelectedItem()
 
 }
 
+// TODO if renamed group has the same name as another group, throw an error and change it back
+void GroupedTreeWidget::renameGroup(QTreeWidgetItem *item, int) // don't need second "column" argument, always one col
+{
+  GroupedTreeWidgetItem *groupItem = dynamic_cast<GroupedTreeWidgetItem *>(item);
+  
+  if (groupItem)
+  {
+    QString newName = groupItem->data(0, Qt::DisplayRole).toString();
+    QString oldName = groupItem->oldText();
+    groupItem->updateOldText();
+    emit groupNameChanged(oldName, newName);
+  }
+}
+
 GroupedTreeWidgetItem::GroupedTreeWidgetItem(const QStringList &strings)
- : QTreeWidgetItem(strings, QTreeWidgetItem::UserType), _locked(false)
+ : QTreeWidgetItem(strings, QTreeWidgetItem::UserType), _locked(false), _oldText(strings.front())
 {}
 
 GroupedTreeWidgetItem::GroupedTreeWidgetItem(GroupedTreeWidget *parent, const QStringList &strings)
- : QTreeWidgetItem(parent, strings, QTreeWidgetItem::UserType), _locked(false)
+ : QTreeWidgetItem(parent, strings, QTreeWidgetItem::UserType), _locked(false), _oldText(strings.front())
 {}
 
 GroupedTreeWidgetItem::GroupedTreeWidgetItem(GroupedTreeWidgetItem *parent, const QStringList &strings)
- : QTreeWidgetItem(parent, strings, QTreeWidgetItem::UserType), _locked(false)
+ : QTreeWidgetItem(parent, strings, QTreeWidgetItem::UserType), _locked(false), _oldText(strings.front())
 {}
 
 bool GroupedTreeWidgetItem::isLocked() const
@@ -690,4 +733,19 @@ void GroupedTreeWidgetItem::setLocked(bool lock)
   
   else
     setIcon(0, QIcon());
+}
+
+QString GroupedTreeWidgetItem::oldText() const
+{
+  return _oldText;
+}
+
+void GroupedTreeWidgetItem::setOldText(const QString & text)
+{
+  _oldText = text;
+}
+
+void GroupedTreeWidgetItem::updateOldText()
+{
+  _oldText = data(0, Qt::DisplayRole).toString();
 }
