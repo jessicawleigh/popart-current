@@ -12,6 +12,7 @@ using namespace std;
 #include <QStack>
 #include <QString>
 #include <QVector>
+#include <QVector3D>
 
 // Algorithm taken from Tunkelang 1999
 
@@ -20,7 +21,7 @@ class NetworkLayout : public QObject
 Q_OBJECT
 
 public:
-  NetworkLayout(NetworkModel *, double, double);
+  NetworkLayout(NetworkModel *, double, double, double=0);
   virtual ~NetworkLayout();
 
   static const double GOODENOUGH = 1E-4;
@@ -35,9 +36,9 @@ public:
   unsigned edgeEndIdx(unsigned edgeId) const { return _edgeList.at(edgeId).end; };
   double edgeWeight(unsigned edgeId) const { return _edgeList.at(edgeId).prefLength / NetworkItem::EDGELENGTH; };
   unsigned vertexCount() const;
-  const QPointF & vertexCoords(unsigned vertId) const;
-  const QPointF & northWest() const { return _northWest; };
-  const QPointF & southEast() const { return _southEast; };
+  QPointF vertexCoords(unsigned vertId) const;
+  QPointF northWest() const { return _northWest.toPointF(); };
+  QPointF southEast() const { return _southEast.toPointF(); };
   void centreVertices();
   void zeroVertices();
   void translateVertices(const QPointF & );
@@ -171,27 +172,30 @@ private:
 
   void step();//double);
 
-  double l2Norm(const QVector<QPointF> &) const;
-  double dot(const QVector<QPointF> &,  const QVector<QPointF> &) const;
+  double l2Norm(const QVector<QVector3D> &) const;
+  double dot(const QVector<QVector3D> &,  const QVector<QVector3D> &) const;
 
   NetworkModel *_model;
-  double _width;
-  double _height;
+  double _width; // x
+  double _height; // y
+  double _depth; // z
   unsigned _maxiter;
 
-  QVector<QPointF> _vertexPositions;
+  QVector<QVector3D> _vertexPositions;
   QVector<EdgeData> _edgeList;
-  QVector<QPointF> _negGrad;
-  QVector<QPointF> _descentDirection;
-  QVector<QPointF> _previousDirection;
+  QVector<QVector3D> _negGrad;
+  QVector<QVector3D> _descentDirection;
+  QVector<QVector3D> _previousDirection;
 
-  QPointF _southEast;
-  QPointF _northWest;
+  QVector3D _southEast;
+  QVector3D _northWest;
 
   double _prevGradMag2;
   double _stepSize;
   double _prevStepSize;
   double _howGood;
+  
+  bool _is3Dlayout;
 
   QuadTree *_quadtree;
 

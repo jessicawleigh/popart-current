@@ -14,12 +14,19 @@ const double NetworkLayout::CAP = numeric_limits<double>::max() / 1000;
 const double NetworkLayout::MINVERTSIZE = 4.0 / 9;
 
 
-NetworkLayout::NetworkLayout(NetworkModel *model, double width, double height)
+NetworkLayout::NetworkLayout(NetworkModel *model, double width, double height, double depth)
   : _southEast(), _northWest()
 {
   _model = model;
   _width = width;
   _height = height;
+  _depth = depth;
+  
+  if (_depth == 0)
+    _is3Dlayout = false;
+  else
+    _is3Dlayout = true;
+  
   _stepSize = 0.1;
   _prevStepSize = 0;
   _howGood = numeric_limits<double>::max();
@@ -66,10 +73,11 @@ void NetworkLayout::shuffleVertices()
   {
     double x = qrand() % (int)_width;
     double y = qrand() % (int)_height;
+    double z = 0;
     
 
     //_vertexPositions.push_back(QPointF(15 * (i + 10 + pow(-1., i)), 15 * (i + 10 + pow(-1., i + 1))));
-    _vertexPositions.push_back(QPointF(x, y));
+    _vertexPositions.push_back(QVector3D(x, y, z));
 
   }  
   
@@ -83,12 +91,15 @@ void NetworkLayout::zeroVertices()
     
       _vertexPositions[i].setX(0);
       _vertexPositions[i].setY(0);
+      _vertexPositions[i].setZ(0);
   }
   
   _northWest.setX(0);
   _northWest.setY(0);
+  _northWest.setZ(0);
   _southEast.setX(0);
   _southEast.setY(0);
+  _southEast.setZ(0);
 }
 
 void NetworkLayout::centreVertices()
@@ -101,34 +112,54 @@ void NetworkLayout::centreVertices()
   _southEast.setX(_vertexPositions.at(0).x());
   _southEast.setY(_vertexPositions.at(0).y());
   
+  if (_is3Dlayout)
+  {
+    _northWest.setZ(_vertexPositions.at(0).z());
+    _southEast.setZ(_vertexPositions.at(0).z());
+  }
+  
   for (unsigned i = 1; i < _vertexPositions.size(); i++)
   {
     
       double x = _vertexPositions.at(i).x();
       double y = _vertexPositions.at(i).y();
+      double z = _vertexPositions.at(i).z();
     
       if (x < _northWest.x())  _northWest.setX(x);
       else if (x > _southEast.x())  _southEast.setX(x);
       
       if (y < _northWest.y())  _northWest.setY(y);
       else if (y > _southEast.y())  _southEast.setY(y);
+      
+      if (_is3Dlayout)
+      {
+        if (z < _northWest.z())  _northWest.setZ(z);
+        else if (z > _southEast.z()) _southEast.setZ(z);
+      }
   }
   
-  QPointF mid = _northWest + _southEast / 2;
+  QVector3D mid = _northWest + _southEast / 2;
   mid.setX(_width/2 - mid.x());
   mid.setY(_height/2 - mid.y());
+  
+  if (_is3Dlayout)
+    mid.setZ(_depth/2 - mid.z());
+  
+  else
+    mid.setZ(0);
   
   for (unsigned i = 0; i < _vertexPositions.size(); i++)
     _vertexPositions[i] += mid;
  
   
-  _northWest += mid;
-  
+  _northWest += mid;  
   _southEast += mid;
 }
 
-void NetworkLayout::translateVertices(const QPointF & translation)
+void NetworkLayout::translateVertices(const QPointF & translation2D)
 {
+  QVector3D translation(translation2D);
+  
   for (unsigned i = 0; i < _vertexPositions.size(); i++)
   {
     _vertexPositions[i] += translation;
@@ -239,7 +270,12 @@ void NetworkLayout::getNegGrad()
 {
   
   for (unsigned i = 0; i < _negGrad.size(); i++)
-    _negGrad[i].rx() = _negGrad[i].ry() = 0;
+  {  
+    //_negGrad[i].rx() = _negGrad[i].ry() = 0;
+    _negGrad[i].setX(0);
+    _negGrad[i].setY(0);
+    _negGrad[i].setZ(0);
+  }
   
   applySprings();   
   applyCharges();
@@ -254,12 +290,13 @@ void NetworkLayout::applySprings()
   //unsigned eidx = 0;
   while (edIt != _edgeList.constEnd())
   {
-    const QPointF & startPoint = _vertexPositions.at(edIt->start);
-    const QPointF & endPoint = _vertexPositions.at(edIt->end);
+    const QVector3D & startPoint = _vertexPositions.at(edIt->start);
+    const QVector3D & endPoint = _vertexPositions.at(edIt->end);
     
     double dx = endPoint.x() - startPoint.x();
     double dy = endPoint.y() - startPoint.y();
-    double length = sqrt(dx * dx + dy * dy);
+    double dz = endPoint.z() - startPoint.z();
+    double length = sqrt(dx * dx + dy * dy + dz * dz);
     
     // Comes from the weird radius function of Cell.java in Jiggle, might be for square vertices. Maybe replace with just:
     // 0.5 * (NetworkItem::VERTRAD * sqrt(model()->index(i, 0).data(NetworkItem::SizeRole).toUInt()) + NetworkItem::VERTRAD * sqrt(model()->index(j, 0).data(NetworkItem::SizeRole).toUInt()));
@@ -279,15 +316,35 @@ void NetworkLayout::applySprings()
     
     attraction = min(attraction, CAP / length);
     
+    
+    QVector3D force(dx, dy, dz);
+    force *= attraction;
+    
+    if (! _is3Dlayout)
+      force.setZ(0);
+    
+    _negGrad[edIt->start] += force * NetworkItem::VERTWEIGHT;
+    _negGrad[edIt->end] -= force * NetworkItem::VERTWEIGHT;
+    
     // X component of force
-    double force = attraction * dx;
-    _negGrad[edIt->start].rx() += NetworkItem::VERTWEIGHT * force;
-    _negGrad[edIt->end].rx() -= NetworkItem::VERTWEIGHT * force;
+   /* double force = attraction * dx;
+    //_negGrad[edIt->start].rx() += NetworkItem::VERTWEIGHT * force;
+   // _negGrad[edIt->end].rx() -= NetworkItem::VERTWEIGHT * force;
+    _negGrad[edIt->start].setX(_negGrad[edIt->start].x() + NetworkItem::VERTWEIGHT * force);
+    _negGrad[edIt->end].setX(_negGrad[edIt->end].x() - NetworkItem::VERTWEIGHT * force);
     
     // Y component
     force = attraction * dy;
-    _negGrad[edIt->start].ry() += NetworkItem::VERTWEIGHT * force;
-    _negGrad[edIt->end].ry() -= NetworkItem::VERTWEIGHT * force;
+    //_negGrad[edIt->start].ry() += NetworkItem::VERTWEIGHT * force;
+    //_negGrad[edIt->end].ry() -= NetworkItem::VERTWEIGHT * force;
+    _negGrad[edIt->start].setY(_negGrad[edIt->start].y() + NetworkItem::VERTWEIGHT * force);
+    _negGrad[edIt->end].setY(_negGrad[edIt->end].y() -NetworkItem::VERTWEIGHT * force);
+    
+    // Z component
+    force = attraction * dz;
+    _negGrad[edIt->start].setZ(_negGrad[edIt->start].z() + NetworkItem::VERTWEIGHT * force);
+    _negGrad[edIt->end].setZ(_negGrad[edIt->end].z() -NetworkItem::VERTWEIGHT * force);*/
+    
     
     ++edIt;
   }
@@ -298,28 +355,36 @@ void NetworkLayout::applyCharges()
   /*QPointF lowerLeft(0, 0);
   QPointF upperRight(_width, _height);*/
   
+  // TODO test if 3D code works with useBH = true
   bool useBH = false;
   if (useBH)
   {
-    QPointF lowerLeft(_vertexPositions.at(0));
-    QPointF upperRight(_vertexPositions.at(0));
+    QVector3D lowerLeft(_vertexPositions.at(0));
+    QVector3D upperRight(_vertexPositions.at(0));
 
     for (unsigned i = 1 ; i < _vertexPositions.size(); i++)
     {
       double x = _vertexPositions.at(i).x();
       double y = _vertexPositions.at(i).y();
+      double z = _vertexPositions.at(i).z();
 
       if (x < lowerLeft.x())  lowerLeft.setX(x);
       else if (x > upperRight.x())  upperRight.setX(x);
 
       if (y < lowerLeft.y())  lowerLeft.setY(y);
       else if (y > upperRight.y())  upperRight.setY(y);
+
+      if (_is3Dlayout)
+      {
+        if (z < lowerLeft.z())  lowerLeft.setZ(z);
+        else if (z > upperRight.z())  upperRight.setZ(z);
+      }
     }
 
     if (_quadtree)
-      _quadtree->resetTree(lowerLeft, upperRight);
+      _quadtree->resetTree(lowerLeft.toPointF(), upperRight.toPointF());
     else
-      _quadtree = new QuadTree(lowerLeft, upperRight);
+      _quadtree = new QuadTree(lowerLeft.toPointF(), upperRight.toPointF());
     //QuadTree qt(lowerLeft, upperRight);
     //QPointF &coordsI, &coordsJ;
 
@@ -328,34 +393,42 @@ void NetworkLayout::applyCharges()
       double size = _model->index(i, 0).data(NetworkItem::SizeRole).toUInt();
       size = max(size, MINVERTSIZE);
       double rad = 0.5 * NetworkItem::VERTRAD * sqrt(size);
-      _quadtree->insertVertex(i, rad, _vertexPositions.at(i));
+      _quadtree->insertVertex(i, rad, _vertexPositions.at(i).toPointF());
     }
     
     
     
     QVector<QuadTreeNode *> leavesByID;
+    
+    QVector<QPointF> negGrad2D;
+    foreach (QVector3D point3D, _negGrad)
+      negGrad2D.push_back(point3D.toPointF());
+    
     for (unsigned i = 0; i < _vertexPositions.size(); i++)
     {
-      QuadTreeNode *leaf = _quadtree->lookup(_vertexPositions.at(i));
+      QuadTreeNode *leaf = _quadtree->lookup(_vertexPositions.at(i).toPointF());
       leavesByID.push_back(leaf);
 
       QuadTreeNode *p = leaf;
       QuadTreeNode *parent;// = p->parent();
 
+      
+      // TODO need to apply this in 3D quadrants... so 8 children (front and back): nwf, nwb, nef, neb, swf, swb, sef, seb
+      // or maybe just use 0, 1, for each dimension: parent->child(0,0,0) is nwchild?
       while (p != _quadtree->root())
       {
         parent = p->parent();
         QuadTreeNode *sibling = parent->nwChild();
-        if (sibling != p && sibling->vertexCount() > 0)  _quadtree->computeRepulsion(leaf, sibling, _negGrad);
+        if (sibling != p && sibling->vertexCount() > 0)  _quadtree->computeRepulsion(leaf, sibling, negGrad2D);
 
         sibling = parent->neChild();
-        if (sibling != p && sibling->vertexCount() > 0)  _quadtree->computeRepulsion(leaf, sibling, _negGrad);
+        if (sibling != p && sibling->vertexCount() > 0)  _quadtree->computeRepulsion(leaf, sibling, negGrad2D);
   
         sibling = parent->swChild();
-        if (sibling != p && sibling->vertexCount() > 0)  _quadtree->computeRepulsion(leaf, sibling, _negGrad);
+        if (sibling != p && sibling->vertexCount() > 0)  _quadtree->computeRepulsion(leaf, sibling, negGrad2D);
 
         sibling = parent->seChild();
-        if (sibling != p && sibling->vertexCount() > 0)  _quadtree->computeRepulsion(leaf, sibling, _negGrad);
+        if (sibling != p && sibling->vertexCount() > 0)  _quadtree->computeRepulsion(leaf, sibling, negGrad2D);
 
         p = parent;
       }
@@ -365,7 +438,7 @@ void NetworkLayout::applyCharges()
 
 
     for (unsigned i = 0; i < leavesByID.size(); i++)
-      _negGrad[i] += leavesByID.at(i)->force();
+      _negGrad[i] += QVector3D(leavesByID.at(i)->force());
   }
   
   else
@@ -373,15 +446,16 @@ void NetworkLayout::applyCharges()
 
     for (unsigned i = 0; i < _vertexPositions.size(); i++)
     {
-      const QPointF &coordsI = _vertexPositions.at(i);
+      const QVector3D &coordsI = _vertexPositions.at(i);
       double sizeI = _model->index(i, 0).data(NetworkItem::SizeRole).toUInt();
       sizeI = max(sizeI, MINVERTSIZE);
       
       for (unsigned j = i + 1; j < _vertexPositions.size(); j++)
       {
-        const QPointF &coordsJ = _vertexPositions.at(j);
+        const QVector3D &coordsJ = _vertexPositions.at(j);
         double dx = coordsI.x() - coordsJ.x();
         double dy = coordsI.y() - coordsJ.y();
+        double dz = coordsI.z() - coordsJ.z();
 
         // Sum of radii
         //double t = abs(NetworkItem::VERTRAD/dx);
@@ -394,7 +468,7 @@ void NetworkLayout::applyCharges()
         double radsum = 0.5 * NetworkItem::VERTRAD * (sqrt(sizeI) + sqrt(sizeJ));
 
         // Distance squared
-        double dist2 = pow(dx, 2) + pow(dy, 2);
+        double dist2 = pow(dx, 2) + pow(dy, 2) + pow(dz, 2);
         double dist = sqrt(dist2);
 
         // minimum preferred distance
@@ -408,15 +482,28 @@ void NetworkLayout::applyCharges()
         //double repulsion = (dist2 < (k * k) ?  k * k / dist2 : k * k * k / (dist2 * dist));
 
         repulsion = min(repulsion, CAP / dist);
+        
+        QVector3D force(dx, dy, dz);
+        force *= repulsion;
+        
+        if (! _is3Dlayout)
+          force.setZ(0);
+        
+        _negGrad[i] += force;
+        _negGrad[j] -= force;
 
+        /*
         // X component of force
         double force = repulsion * dx;
         _negGrad[i].rx() += force * NetworkItem::VERTWEIGHT;
         _negGrad[j].rx() -= force * NetworkItem::VERTWEIGHT;
 
+        // Y component of force
         force = repulsion * dy;
         _negGrad[i].ry() += force * NetworkItem::VERTWEIGHT;
         _negGrad[j].ry() -= force * NetworkItem::VERTWEIGHT;
+        */
+        
       }
     }
   }
@@ -435,8 +522,8 @@ void NetworkLayout::computeDirection()
     for (unsigned i = 0; i < n; i++)
     {
       
-      _descentDirection.push_back(QPointF(_negGrad.at(i)));
-      gradMag2 += _negGrad.at(i).x() * _negGrad.at(i).x() + _negGrad.at(i).y() * _negGrad.at(i).y();
+      _descentDirection.push_back(_negGrad.at(i));
+      gradMag2 += pow(_negGrad.at(i).x(), 2) + pow(_negGrad.at(i).y(), 2) + pow(_negGrad.at(i).z(), 2);
     }
   }
   
@@ -445,7 +532,7 @@ void NetworkLayout::computeDirection()
 
     for (unsigned i = 0; i < n; i++)
     {
-      gradMag2 += _negGrad.at(i).x() * _negGrad.at(i).x() + _negGrad.at(i).y() * _negGrad.at(i).y();
+      gradMag2 += pow(_negGrad.at(i).x(), 2) + pow(_negGrad.at(i).y(), 2) + pow(_negGrad.at(i).z(), 2);
       
     }
     
@@ -453,8 +540,8 @@ void NetworkLayout::computeDirection()
     {
       for (unsigned i = 0; i < n; i++)
       {
-        _previousDirection[i].setX(0); _previousDirection[i].setY(0);
-        _descentDirection[i].setX(0); _descentDirection[i].setY(0);
+        _previousDirection[i].setX(0); _previousDirection[i].setY(0); _previousDirection[i].setZ(0);
+        _descentDirection[i].setX(0); _descentDirection[i].setY(0); _descentDirection[i].setZ(0);
       }
       
       return;
@@ -472,9 +559,12 @@ void NetworkLayout::computeDirection()
       _descentDirection[i].setX(_negGrad.at(i).x() + ratio * _previousDirection[i].x());
       _descentDirection[i].setY(_negGrad.at(i).y() + ratio * _previousDirection[i].y());
       
-      dotProd += _descentDirection.at(i).x() * _negGrad.at(i).x() + _descentDirection.at(i).y() * _negGrad.at(i).y();
+      if (_is3Dlayout)
+        _descentDirection[i].setZ(_negGrad.at(i).z() + ratio * _previousDirection[i].z());
       
-      magDescDir2 += _descentDirection.at(i).x() * _descentDirection.at(i).x() + _descentDirection.at(i).y() * _descentDirection.at(i).y();
+      dotProd += _descentDirection.at(i).x() * _negGrad.at(i).x() + _descentDirection.at(i).y() * _negGrad.at(i).y() + _descentDirection.at(i).z() * _negGrad.at(i).z();
+      
+      magDescDir2 += _descentDirection.at(i).x() * _descentDirection.at(i).x() + _descentDirection.at(i).y() * _descentDirection.at(i).y() + _descentDirection.at(i).z() * _descentDirection.at(i).z();
       
     }
     
@@ -493,11 +583,11 @@ void NetworkLayout::computeDirection()
   
   if (_previousDirection.empty())
   {
-    QVector<QPointF>::const_iterator dirIt = _descentDirection.constBegin();
+    QVector<QVector3D>::const_iterator dirIt = _descentDirection.constBegin();
     
     while (dirIt != _descentDirection.constEnd())
     {
-      _previousDirection.push_back(QPointF(*dirIt));
+      _previousDirection.push_back(QVector3D(*dirIt));
       ++dirIt;
     }
   }
@@ -505,10 +595,11 @@ void NetworkLayout::computeDirection()
   else
   {
     for (unsigned i = 0; i < n; i++)
-    {
-      _previousDirection[i].setX(_descentDirection.at(i).x());
-      _previousDirection[i].setY(_descentDirection.at(i).y());
-    }
+      _previousDirection[i] = _descentDirection.at(i);
+    //{
+      //_previousDirection[i].setX(_descentDirection.at(i).x());
+      //_previousDirection[i].setY(_descentDirection.at(i).y());
+    //}
   }
 }
 
@@ -517,27 +608,28 @@ void NetworkLayout::step()//double size)
   double s = _stepSize - _prevStepSize;
   for (unsigned i = 0; i < _vertexPositions.size(); i++)
   {
-    _vertexPositions[i].rx() += _descentDirection.at(i).x() * s;
-    _vertexPositions[i].ry() += _descentDirection.at(i).y() * s;
+    //_vertexPositions[i].rx() += _descentDirection.at(i).x() * s;
+    //_vertexPositions[i].ry() += _descentDirection.at(i).y() * s;
+    _vertexPositions[i] += _descentDirection.at(i) * s;
     
   }
   _prevStepSize = _stepSize;
     //_vertexPositions[i] += _descentDirection.at(i) * size;
 }
 
-double NetworkLayout::l2Norm(const QVector<QPointF> & points) const
+double NetworkLayout::l2Norm(const QVector<QVector3D> & points) const
 {  
   return sqrt(dot(points, points));
 }
 
-double NetworkLayout::dot(const QVector<QPointF> & pointsA, const QVector<QPointF> & pointsB) const
+double NetworkLayout::dot(const QVector<QVector3D> & pointsA, const QVector<QVector3D> & pointsB) const
 {
   if (pointsA.size() != pointsB.size())  throw HapAppError("Vectors are different sizes, can't compute dot product.");
   
   double dotProd = 0;
   
   for (unsigned i = 0; i < pointsA.size(); i++)
-    dotProd += pointsA.at(i).x() * pointsB.at(i).x() + pointsA.at(i).y() * pointsB.at(i).y();
+    dotProd += pointsA.at(i).x() * pointsB.at(i).x() + pointsA.at(i).y() * pointsB.at(i).y() + pointsA.at(i).z() * pointsB.at(i).z();
   
   
   return dotProd;
@@ -559,11 +651,11 @@ QPointF NetworkLayout::edgeStart(unsigned edgeId) const
   double vrad = 0.5 * NetworkItem::VERTRAD * sqrt(_model->index(idx, 0).data(NetworkItem::SizeRole).toDouble());
   vrad = max(vrad, NetworkItem::VERTRAD / 3.0);
 
-  QPointF startPoint = _vertexPositions.at(idx);
-  startPoint.rx() += vrad;
-  startPoint.ry() += vrad;
+  QVector3D startPoint = _vertexPositions.at(idx) + QVector3D(vrad, vrad, vrad);
+  //startPoint.rx() += vrad;
+  //startPoint.ry() += vrad;
     
-  return startPoint;
+  return startPoint.toPointF();
 }
 
 QPointF NetworkLayout::edgeEnd(unsigned edgeId) const
@@ -578,12 +670,12 @@ QPointF NetworkLayout::edgeEnd(unsigned edgeId) const
   double vrad = 0.5 * NetworkItem::VERTRAD * sqrt(_model->index(idx, 0).data(NetworkItem::SizeRole).toDouble());
   vrad = max(vrad, NetworkItem::VERTRAD / 3);
   
-  QPointF endPoint = _vertexPositions.at(idx);
+  QVector3D endPoint = _vertexPositions.at(idx) + QVector3D(vrad, vrad, vrad);
 
-  endPoint.rx() += vrad;
-  endPoint.ry() += vrad;
+  //endPoint.rx() += vrad;
+  //endPoint.ry() += vrad;
     
-  return endPoint;
+  return endPoint.toPointF();
 
 }
 
@@ -592,14 +684,14 @@ unsigned NetworkLayout::vertexCount() const
   return _vertexPositions.size();
 }
 
-const QPointF & NetworkLayout::vertexCoords(unsigned vertId) const
+QPointF NetworkLayout::vertexCoords(unsigned vertId) const
 {
   if (vertId >= _vertexPositions.size())
   {
     throw HapAppError("Vertex index out of range");
   }
   
-  return _vertexPositions.at(vertId);
+  return _vertexPositions.at(vertId).toPointF();
 }
 
 /*double NetworkLayout::vertexSize(unsigned vertId)

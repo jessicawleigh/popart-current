@@ -2,6 +2,7 @@
 #include "BorderRectItem.h"
 
 #include <QList>
+#include <QTransform>
 
 #include <iostream>
 using namespace std;
@@ -15,8 +16,8 @@ void NetworkScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
   QPointF mousePos(event->buttonDownScenePos(Qt::LeftButton).x(),
                    event->buttonDownScenePos(Qt::LeftButton).y());  
-  
-  QGraphicsItem *movingItem = itemAt(mousePos.x(), mousePos.y());  
+  // TODO use the appropriate QTransform. There are some items that ignore transformation, this could mess things up.
+  QGraphicsItem *movingItem = itemAt(mousePos.x(), mousePos.y(), QTransform());  
   
   BorderRectItem::BorderGrip *gripItem = dynamic_cast<BorderRectItem::BorderGrip *>(movingItem);
   

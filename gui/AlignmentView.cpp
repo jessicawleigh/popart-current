@@ -20,13 +20,13 @@ AlignmentView::AlignmentView(QWidget *parent)
   setShowGrid(false);
 
   QHeaderView *vheader = verticalHeader();
-  vheader->setResizeMode(QHeaderView::Fixed);
+  vheader->setSectionResizeMode(QHeaderView::Fixed);
   vheader->setDefaultSectionSize(19);
-  vheader->setMovable(true);
+  vheader->setSectionsMovable(true);
   //connect(vheader, SIGNAL(sectionMoved(int, int, int)), this, SLOT(moveSequence(int, int, int)));
 
   QHeaderView *hheader = horizontalHeader();
-  hheader->setResizeMode(QHeaderView::Fixed);
+  hheader->setSectionResizeMode(QHeaderView::Fixed);
   hheader->setDefaultSectionSize(12);
   
   setSelectionMode(QAbstractItemView::ContiguousSelection);
