@@ -16,12 +16,12 @@ GLNetworkWindow::GLNetworkWindow(QWindow *parent)
  , _vertRadUnit(NetworkItem::VERTRAD)
  ,_networkData({.model=0,.layout=0})
  ,_backgroundColour(246, 255, 213)
- ,_vertColour(Qt::black)
+ ,_vertColour(127, 127, 127) // 50% black
  ,_colourTheme(ColourTheme::Vibrant)
  ,_vbo(QOpenGLBuffer::VertexBuffer)
- ,_colbo(QOpenGLBuffer::VertexBuffer)
+ //,_colbo(QOpenGLBuffer::VertexBuffer)
  ,_idxbo(QOpenGLBuffer::IndexBuffer)
- ,_matbo(QOpenGLBuffer::VertexBuffer)
+ //,_matbo(QOpenGLBuffer::VertexBuffer)
  //,_normmatbo(QOpenGLBuffer::VertexBuffer)
  ,_program(0)
  ,_context(0)
@@ -52,14 +52,14 @@ void GLNetworkWindow::setNetworkData(Network::layoutData netData)
   if (_vbo.isCreated())
     _vbo.destroy();
   
-  if (_colbo.isCreated())
-    _colbo.destroy();
+  //if (_colbo.isCreated())
+  //  _colbo.destroy();
   
   if (_idxbo.isCreated())
     _idxbo.destroy();
   
-  if (_matbo.isCreated())
-    _matbo.destroy();
+  //if (_matbo.isCreated())
+  //  _matbo.destroy();
 
   //if (_normmatbo.isCreated())
   //  _normmatbo.destroy();
@@ -79,76 +79,26 @@ void GLNetworkWindow::setNetworkData(Network::layoutData netData)
   size_t colourSize = _colours.size() * sizeof(QVector3D); // TODO: add transparency: make this 4D
   /*_vbo.allocate(positionSize * 2); // positions, colours
   _vbo.write(0, _vertices.constData(), positionSize);*/
-  _vbo.allocate(_vertices.constData(), positionSize);
-  //_vbo.write(positionSize, _colours.constData(), positionSize);
+  _vbo.allocate(_vertices.constData(), positionSize + colourSize);
+  _vbo.write(positionSize, _colours.constData(), colourSize);
   //_vbo.write(positionSize * 2, _normals.constData(), positionSize);
   
   
   // TODO write a separate shader for network edges. They don't need to reflect light the same way as the nodes
   glVertexAttribPointer(_positionAttr, 3, GL_FLOAT, GL_FALSE, 0, 0);
   //glVertexAttribPointer(_colourAttr, 3, GL_FLOAT, GL_FALSE, 0, (void*)positionSize);
-  //glVertexAttribPointer(_normalAttr, 3, GL_FLOAT, GL_FALSE, 0, (void*)(positionSize * 2));
   glEnableVertexAttribArray(_positionAttr);
-  //glEnableVertexAttribArray(1);
-  //glEnableVertexAttribArray(2);
+  //glEnableVertexAttribArray(_colourAttr);
   
   
-  _vbo.release();
     
   
   _idxbo.create();
   _idxbo.bind();
   _idxbo.setUsagePattern(QOpenGLBuffer::StreamDraw);
   _idxbo.allocate(_indices.constData(), _indices.size() * sizeof(GLuint));
-  _idxbo.release();
   
-  _matbo.create();
-  _matbo.bind();
-  _matbo.setUsagePattern(QOpenGLBuffer::StreamDraw);
-  _matbo.allocate(layout()->vertexCount() * (4 * sizeof(QVector4D) + 3 * sizeof(QVector3D)));
-  qDebug() << "really allocated:" << layout()->vertexCount() * (4 * sizeof(QVector4D) + 3 * sizeof(QVector3D)) << "size:" << _matbo.size();
-  
-  // 4 columns for each matrix
-  size_t normalOffset = layout()->vertexCount() * sizeof(QVector4D);
-  for (unsigned i = 0; i < layout()->vertexCount(); i++)
-  {   
-    glVertexAttribPointer(_modelToCameraAttr + i, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(QVector4D), (void*)(i * sizeof(QVector4D)));
-    glEnableVertexAttribArray(_modelToCameraAttr + i);
-    _func->glVertexAttribDivisor(_modelToCameraAttr + i, 1);    
-
-    glVertexAttribPointer(_normalModelToCameraAttr + i, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(QVector3D), (void*)(normalOffset + i * sizeof(QVector3D)));
-    glEnableVertexAttribArray(_normalModelToCameraAttr + i);
-    _func->glVertexAttribDivisor(_normalModelToCameraAttr + i, 1);    
-
-    
-  }
-
-//   GLfloat *tmp = new GLfloat[16];
-//   
-//   QMatrix4x4 identity;
-//   _matbo.write(0, identity.constData(), 16 * sizeof(GLfloat));
-//   _matbo.read(0, tmp, 16 * sizeof(GLfloat));
-//   
-//   qDebug() << "should be identity mat:";
-//   for (unsigned i = 0; i < 16; i+=4)
-//     qDebug() << tmp[i] << tmp[i + 1] << tmp[i + 2] << tmp[i + 3];
-//     
-//   delete [] tmp;
-
- /*_normmatbo.create();
-  _normmatbo.bind();
-  _normmatbo.setUsagePattern(QOpenGLBuffer::StreamDraw);
-  _normmatbo.allocate(layout()->vertexCount() * 3 * sizeof(QVector3D));
-  qDebug() << "normal matrix BO, really allocated:" << layout()->vertexCount() * 3 * sizeof(QVector3D) << "size:" << _normmatbo.size();
-  for (unsigned i = 0; i < layout()->vertexCount(); i++)
-  {
-    glVertexAttribPointer(_normalModelToCameraAttr + i, 4, GL_FLOAT, GL_FALSE, 3 * sizeof(QVector3D), (void*) (i * sizeof(QVector3D)));
-    glEnableVertexAttribArray(_normalModelToCameraAttr + i);
-    _func->glVertexAttribDivisor(_normalModelToCameraAttr + i, 1);    
-  }
-    
-  _normmatbo.release();*/
-  _vao.release();  
+   _vao.release();  
   
   // Check this! Need to make sure new network is drawn when new data is set
   if (isExposed())
@@ -159,62 +109,34 @@ void GLNetworkWindow::setNetworkData(Network::layoutData netData)
   }
 }
 
-/*static const char *vertexShaderSource =
-    "#version 330\n"
-    "attribute highp vec4 position;\n"
-    //"attribute lowp vec3 normal;\n"
-    //"attribute lowp vec4 colour;\n"
-    "varying lowp vec4 col;\n" // output
-    "uniform highp mat4 modelToCamera;\n"
-    "uniform highp mat4 cameraToClip;\n"
-    "uniform lowp mat3 normalModelToCamera;\n"
-    "uniform lowp vec3 dirToLight;\n"
-    "uniform lowp vec4 lightIntensity;\n"
-    "uniform lowp vec4 ambientLight;\n"
-    "void main() {\n"
-    "   gl_Position = cameraToClip * (modelToCamera * position);\n"
-    "   vec3 normal = vec3(position.x, position.y, position.z);\n"
-    "   vec4 colour = vec4(1,0,0,1);\n"
-    "   vec3 normCamSpace = normalize(normalModelToCamera * normal);\n"
-    "   float cosAngIncidence = dot(normCamSpace, dirToLight);\n"
-    "   cosAngIncidence = clamp(cosAngIncidence, 0, 1);\n"
-    "   col = lightIntensity * colour * cosAngIncidence + colour * ambientLight;\n"
-    "}\n";
-
-// Crappy fragment shader is fine for now, but TODO don't interpolate colour
-static const char *fragmentShaderSource =
-    "#version 330\n"
-    "varying lowp vec4 col;\n"
-    "void main() {\n"
-    "   gl_FragColor = col;\n"
-    "}\n";*/
 
 // TODO write setupShaders()
 void GLNetworkWindow::initializeGL()
 {
 
-  //const GLubyte *glslVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);  
-  //qDebug() << "GLSL version:" << (const char*)glslVersion;
+  const GLubyte *glslVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);  
+  qDebug() << "GLSL version:" << (const char*)glslVersion;
   QString vertShaderSrcStr("#version 330\n"
     "layout(location = 0) in vec4 position;\n"
-    "layout(location = 1) in mat4 modelToCamera;\n" // actually 4 locations (columns)
-    "layout(location = 5) in mat3 normalModelToCamera;\n"
+    "layout(location = 1) in vec4 colour;\n"
+    //"layout(location = 1) in mat4 modelToCamera;\n" // actually 4 locations (columns)
+    //"layout(location = 5) in mat3 normalModelToCamera;\n"
     "smooth out vec4 col;\n"
-    //"uniform mat4 modelToCamera;\n"
+    "uniform mat4 modelToCamera;\n"
     "uniform mat4 cameraToClip;\n"
-    //"uniform mat3 normalModelToCamera;\n"
+    "uniform mat3 normalModelToCamera;\n"
     "uniform vec3 dirToLight;\n"
     "uniform vec4 lightIntensity;\n"
     "uniform vec4 ambientLight;\n"
     "void main() {\n"
     "   gl_Position = cameraToClip * (modelToCamera * position);\n"
     "   vec3 normal = vec3(position.x, position.y, position.z);\n"
-    "   vec4 colour = vec4(1,0,0,1);\n"
+    //"   vec4 colour = vec4(1,0,0,1);\n"
     "   vec3 normCamSpace = normalize(normalModelToCamera * normal);\n"
     "   float cosAngIncidence = dot(normCamSpace, dirToLight);\n"
     "   cosAngIncidence = clamp(cosAngIncidence, 0, 1);\n"
     "   col = lightIntensity * colour * cosAngIncidence + colour * ambientLight;\n"
-    "}\n");//.arg(7));//layout()->vertexCount() + 1));
+    "}\n");
   
   QString fragShaderSrcStr("#version 330\n"
     "smooth in vec4 col;\n"
@@ -231,17 +153,17 @@ void GLNetworkWindow::initializeGL()
   _program->bind();
   
   _positionAttr = _program->attributeLocation("position");
-  //_colourAttr = _program->attributeLocation("colour");
-  _modelToCameraAttr = _program->attributeLocation("modelToCamera");
-  _normalModelToCameraAttr = _program->attributeLocation("normalModelToCamera");
+  _colourAttr = _program->attributeLocation("colour");
+  //_modelToCameraAttr = _program->attributeLocation("modelToCamera");
+  //_normalModelToCameraAttr = _program->attributeLocation("normalModelToCamera");
   
   //_normalAttr = _program->attributeLocation("normal");
  
-  //_modelToCameraUniform = _program->uniformLocation("modelToCamera");
+  _modelToCameraUniform = _program->uniformLocation("modelToCamera");
   _dirToLightUniform = _program->uniformLocation("dirToLight");
   _lightIntensityUniform = _program->uniformLocation("lightIntensity");
   _ambientLightUniform = _program->uniformLocation("ambientLight");
-  //_normalModelToCameraUniform = _program->uniformLocation("normalModelToCamera");
+  _normalModelToCameraUniform = _program->uniformLocation("normalModelToCamera");
   _cameraToClipUniform = _program->uniformLocation("cameraToClip");
   
   _program->release();
@@ -348,56 +270,27 @@ void GLNetworkWindow::render(QPainter *painter)
 
   _program->bind();
   _vao.bind();
-  //_matbo.bind();
-  qDebug() << "in render, after binding VAO, buffer size:" << _matbo.size();
 
-  GLfloat *tmp = new GLfloat[16 * layout()->vertexCount()];
-  
-  QMatrix4x4 identity;
-  _matbo.write(0, identity.constData(), 16 * sizeof(GLfloat));
-  _matbo.read(0, tmp, 16 * sizeof(GLfloat));
-  
-  qDebug() << "should be identity mat:";
-  for (unsigned i = 0; i < 16; i+=4)
-    qDebug() << tmp[i] << tmp[i + 1] << tmp[i + 2] << tmp[i + 3];
-    
-  //delete [] tmp;
-
-  
   QMatrix4x4 modelToCamera;
   modelToCamera.translate(-1, -1, -2);
   double scaleFactor = 1.0/_worldScale;
   modelToCamera.scale(scaleFactor);  
   
-  /*QMatrix3x3 normalModelToCamera;
-    for (int j = 0; j < 3; j++)
-      for (int k = 0; k < 3; k++)
-        normalModelToCamera.data()[j * 3 + k] = modelToCamera.constData()[j * 4 + k];*/
-
-  //_program->setUniformValue(_modelToCameraUniform, modelToCamera);
   _program->setUniformValue(_lightIntensityUniform, QVector4D(0.8, 0.8, 0.8, 0.8));
   _program->setUniformValue(_ambientLightUniform, QVector4D(0.2, 0.2, 0.2, 0.2));
   _program->setUniformValue(_dirToLightUniform, QVector3D(0.866, 0.5, 0.0));
-  //_program->setUniformValue(_normalModelToCameraUniform, normalModelToCamera);
-  //glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0);
-    
-  //for (unsigned i = 0; i < layout()->vertexCount(); i++)
-  //  _func->glDrawElementsBaseVertex(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0, i * _verticesPerSphere);
-  
-
- 
   
   double minVertRad = _vertRadUnit * 2 / 3;
   
-  qDebug() << "before writing, buffer size: " << _matbo.size();
-  
-  size_t normalOffset = layout()->vertexCount() * 4 * sizeof(QVector4D);
+  size_t colourOffset = _vertices.size() * sizeof(QVector3D);
+  size_t colourSize = _vertices.size() * sizeof(QVector3D);
+  GLfloat *tmp = new GLfloat[_vertices.size() * 3];
   
   for (unsigned i = 0; i < layout()->vertexCount(); i++)
   {
     
     // TODO rotate model according to camera position; Rotate normals as well. Normalize normals?
-    // With one copy of sphere positions, won't need normals anymore
+    // With one copy of sphere positions, won't need normals anymore?
     
     double freq = (double)(model()->index(i, 0).data(NetworkItem::SizeRole).toUInt());
     double radius = qMax(_vertRadUnit * sqrt(freq), minVertRad);
@@ -414,50 +307,27 @@ void GLNetworkWindow::render(QPainter *painter)
       for (int j = 0; j < 3; j++)
         for (int k = 0; k < 3; k++)
           normalModelToCamera.data()[j * 3 + k] = vertModelToCamera.constData()[j * 4 + k];
-        
-    if (i == 0)
-      qDebug() << "normalModelToCamera:" << sizeof(normalModelToCamera);
-        
-    //_matbo.write(start, data, size);
-    _matbo.write(i * 4 * sizeof(QVector4D), vertModelToCamera.constData(), 4 * sizeof(QVector4D));//sizeof(QMatrix4x4));
-    _matbo.write(normalOffset + i * 3 * sizeof(QVector3D), normalModelToCamera.constData(), 3 * sizeof(QVector3D));
-    //_normmatbo.write(i * 3 * sizeof(QVector3D), normalModelToCamera.constData(), 3 *  sizeof(QVector3D));//sizeof(QMatrix3x3));
-    
-    qDebug() << "matrix" << i << vertModelToCamera;
-    qDebug() << "from buffer:";
-    //_matbo.read(i * 4 * sizeof(QVector4D), tmp, 16 * sizeof(GLfloat));
-    
-    _matbo.read(0, tmp, (i + 1) * 16 * sizeof(GLfloat));
-    //qDebug() << "allocated:" << layout()->vertexCount() * 4 * sizeof(QVector4D) << "size:" << _matbo.size() << "reading:" << (i + 1) * 16 * sizeof(GLfloat) << "bits.";
-    
-    for (unsigned j = 0; j < 16 * (i + 1); j+=4)
-      qDebug() << tmp[j] << tmp[j + 1] << tmp[j + 2] << tmp[j + 3];
-
  
-    //_program->setUniformValue(_modelToCameraUniform, vertModelToCamera);
-    //_program->setUniformValue(_normalModelToCameraUniform, normalModelToCamera);
+    _program->setUniformValue(_modelToCameraUniform, vertModelToCamera);
+    _program->setUniformValue(_normalModelToCameraUniform, normalModelToCamera);
     //_func->glDrawElementsBaseVertex(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0, i * _verticesPerSphere);
+    glVertexAttribPointer(_colourAttr, 3, GL_FLOAT, GL_FALSE, 0, (void*)(colourOffset + i * colourSize));
     
-    //_func->glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0);
+    _vbo.read(colourOffset + i * colourSize, tmp, colourSize);
+    qDebug() << "colour data:";
+    for (unsigned j = 0; j < _vertices.size() * 3; j+=3)
+      qDebug() << tmp[j] << tmp[j + 1] << tmp[j + 2];
     
-    /*if (i == 0)
-    {
-      qDebug() << "vertices/colours for sphere 0:";
-      for (unsigned j = 0; j < _verticesPerSphere; j++)
-        qDebug() << vertModelToCamera * _vertices.at(j) << _colours.at(j);
-    }*/
+    glEnableVertexAttribArray(_colourAttr);
+    _func->glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0);
+    glDisableVertexAttribArray(_colourAttr);
+
   }
-  
-  //GLfloat * tmp = new GLfloat[layout()->vertexCount() * 4 * 4];
-  
-  /*_matbo.read(0, tmp, layout()->vertexCount() * 4 * 4 * sizeof(GLfloat));
-  
-  for (unsigned i = 0; i < 4 * layout()->vertexCount(); i++)
-    qDebug() << tmp[i * 4] << tmp[i * 4 + 1] << tmp[i * 4 + 2] << tmp[i * 4 + 3];*/
   
   delete [] tmp;
 
-  _func->glDrawElementsInstanced(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0, layout()->vertexCount());
+
+  //_func->glDrawElementsInstanced(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0, layout()->vertexCount());
   
   
   
@@ -497,13 +367,13 @@ void GLNetworkWindow::generateModel()
   
   const QVector3D & layoutSize = layout()->southEast3D();  
   _worldScale = qMax(qMax(layoutSize.x(), layoutSize.y()), layoutSize.z()) / 2.0;
-  /*double minVertRad = _vertRadUnit * 2 / 3;
+  //double minVertRad = _vertRadUnit * 2 / 3;
   
   for (unsigned i = 0; i < layout()->vertexCount(); i++)
   {        
-    //_colours << vertexColours(i, latIndices, nlat);
+    _colours << vertexColours(i, latIndices, nlat);
     //_normals << sphereNormals;
-    unsigned offset = (unsigned)_vertices.size();
+    /*unsigned offset = (unsigned)_vertices.size();
     
     double freq = (double)(model()->index(i, 0).data(NetworkItem::SizeRole).toUInt());
     double radius = _vertRadUnit * sqrt(freq);//model()->index(i, 0).data(NetworkItem::SizeRole).toUInt());
@@ -526,7 +396,8 @@ void GLNetworkWindow::generateModel()
     
     //for (unsigned j = 0; j < sphereIndices.size(); j++)
     //  _indices.push_back(sphereIndices.at(j) + offset);
-  }*/
+    */
+  }
   
   _vertices << spherePositions;
   _indices << sphereIndices;

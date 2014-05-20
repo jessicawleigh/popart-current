@@ -82,21 +82,21 @@ private:
   
   QOpenGLVertexArrayObject _vao;
   QOpenGLBuffer _vbo;
-  QOpenGLBuffer _colbo;
+  //QOpenGLBuffer _colbo;
   QOpenGLBuffer _idxbo;
-  QOpenGLBuffer _matbo;
+  //QOpenGLBuffer _matbo;
   //QOpenGLBuffer _normmatbo;
   QOpenGLShaderProgram *_program;
   size_t _matOffset;
   
   GLuint _positionAttr;
-  GLuint _modelToCameraAttr;
-  GLuint _normalModelToCameraAttr;
+  //GLuint _modelToCameraAttr;
+  //GLuint _normalModelToCameraAttr;
   GLuint _colourAttr;
   //GLuint _normalAttr;
   
-  //GLuint _modelToCameraUniform;
-  //GLuint _normalModelToCameraUniform;
+  GLuint _modelToCameraUniform;
+  GLuint _normalModelToCameraUniform;
   GLuint _cameraToClipUniform;
   GLuint _dirToLightUniform;
   GLuint _lightIntensityUniform;
