@@ -25,6 +25,8 @@
 
 ColourTheme::Theme NetworkView::_defaultTheme = ColourTheme::Greyscale;
 
+
+//TODO set some of these values before body of function begins
 NetworkView::NetworkView(QWidget * parent)
   : QAbstractItemView(parent), 
   _vertexSections(),

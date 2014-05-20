@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 
+#include <QApplication>
 #include <QThread>
 //#include <QTime>
 
@@ -15,7 +16,7 @@ const double NetworkLayout::MINVERTSIZE = 4.0 / 9;
 
 
 NetworkLayout::NetworkLayout(NetworkModel *model, double width, double height, double depth)
-  : _southEast(), _northWest()
+  : _southEast(), _northWest()//, _bounds({QVector3D(-1,-1,-1),QVector3D(-1,-1,-1)})
 {
   _model = model;
   _width = width;
@@ -73,10 +74,33 @@ void NetworkLayout::shuffleVertices()
   {
     double x = qrand() % (int)_width;
     double y = qrand() % (int)_height;
-    double z = 0;
+    double z = _is3Dlayout ? qrand() % (int)_depth : 0;
+
     
+    //double vrad = 0.5 * NetworkItem::VERTRAD * sqrt(_model->index(0, 0).data(NetworkItem::SizeRole).toDouble());
+    //QVector3D vmin = QVector3D(x, y, z) - vrad;
+    //QVector3D vmax = QVector3D(x, y, z) + vrad;
+    
+    /*if (i == 0)
+    {
+      _bounds.min = vmin;
+      _bounds.max = vmax;
+    }
+    
+    else
+    {
+      _bounds.min.setX(qMin(_bounds.min.x(), vmin.x()));
+      _bounds.min.setY(qMin(_bounds.min.y(), vmin.y()));
+      _bounds.min.setZ(qMin(_bounds.min.z(), vmin.z()));
+
+      _bounds.max.setX(qMax(_bounds.max.x(), vmax.x()));
+      _bounds.max.setY(qMax(_bounds.max.y(), vmax.y()));
+      _bounds.max.setZ(qMax(_bounds.max.z(), vmax.z()));
+      
+    }*/
 
     //_vertexPositions.push_back(QPointF(15 * (i + 10 + pow(-1., i)), 15 * (i + 10 + pow(-1., i + 1))));
+    //x = i * 20; y = i * 20; z =_is3Dlayout ? i * 20 : 0;
     _vertexPositions.push_back(QVector3D(x, y, z));
 
   }  
@@ -263,7 +287,8 @@ void NetworkLayout::optimise()
 
   emit progressChanged(100);
   //cout << "Time elapsed: " << timer.elapsed() << endl;
-  thread()->exit();
+  if (thread() != QApplication::instance()->thread())
+    thread()->exit();
 }
 
 void NetworkLayout::getNegGrad()
@@ -640,7 +665,7 @@ unsigned NetworkLayout::edgeCount() const
   return _edgeList.size();
 }
 
-QPointF NetworkLayout::edgeStart(unsigned edgeId) const
+const QVector3D & NetworkLayout::edgeStart3D(unsigned edgeId) const
 {
   if (edgeId >= _edgeList.size())  
   {
@@ -655,10 +680,15 @@ QPointF NetworkLayout::edgeStart(unsigned edgeId) const
   //startPoint.rx() += vrad;
   //startPoint.ry() += vrad;
     
-  return startPoint.toPointF();
+  return startPoint;//.toPointF();
 }
 
-QPointF NetworkLayout::edgeEnd(unsigned edgeId) const
+QPointF NetworkLayout::edgeStart(unsigned edgeId) const
+{
+  return edgeStart3D(edgeId).toPointF();
+}
+
+const QVector3D & NetworkLayout::edgeEnd3D(unsigned edgeId) const
 {
   if (edgeId >= _edgeList.size())
   {
@@ -675,23 +705,34 @@ QPointF NetworkLayout::edgeEnd(unsigned edgeId) const
   //endPoint.rx() += vrad;
   //endPoint.ry() += vrad;
     
-  return endPoint.toPointF();
+  return endPoint;//.toPointF();
 
 }
+
+QPointF NetworkLayout::edgeEnd(unsigned edgeId) const
+{
+  return edgeEnd3D(edgeId).toPointF();
+}
+
 
 unsigned NetworkLayout::vertexCount() const
 {
   return _vertexPositions.size();
 }
 
-QPointF NetworkLayout::vertexCoords(unsigned vertId) const
+const QVector3D & NetworkLayout::vertexCoords3D(unsigned vertId) const
 {
   if (vertId >= _vertexPositions.size())
   {
     throw HapAppError("Vertex index out of range");
   }
   
-  return _vertexPositions.at(vertId).toPointF();
+  return _vertexPositions.at(vertId);//.toPointF();
+}
+
+QPointF NetworkLayout::vertexCoords(unsigned vertId) const
+{
+  return vertexCoords3D(vertId).toPointF();
 }
 
 /*double NetworkLayout::vertexSize(unsigned vertId)

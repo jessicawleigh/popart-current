@@ -3,6 +3,7 @@
 #include <vector>
 using namespace std;
 
+
 QVector<QColor> initTheme(QColor *array, int ncols)
 {
   vector<QColor> tmp;
@@ -11,6 +12,22 @@ QVector<QColor> initTheme(QColor *array, int ncols)
   QVector<QColor> vect = QVector<QColor>::fromStdVector(tmp);
 
   return vect;
+}
+
+QMap<ColourTheme::Theme, QVector<QColor> > initThemeMap()
+{
+  QMap<ColourTheme::Theme, QVector<QColor> > themeMap;
+  
+  themeMap[ColourTheme::Greyscale] = ColourTheme::greyscale();
+  themeMap[ColourTheme::Camo] = ColourTheme::camo();
+  themeMap[ColourTheme::Pastelle] = ColourTheme::pastelle();
+  themeMap[ColourTheme::Vibrant] = ColourTheme::vibrant();
+  themeMap[ColourTheme::Spring] = ColourTheme::spring();
+  themeMap[ColourTheme::Summer] = ColourTheme::summer();
+  themeMap[ColourTheme::Autumn] = ColourTheme::autumn();
+  themeMap[ColourTheme::Winter] = ColourTheme::winter();
+  
+  return themeMap;
 }
 
 #define NCOLS 10
@@ -78,4 +95,41 @@ const QVector<QColor> ColourTheme::_winter = initTheme(winterarray, NCOLS);
     /*initTheme((QColor[NCOLS]){QColor(128, 0, 0), QColor(0, 85, 68), QColor(51, 51, 51), QColor(198, 175, 233),
                               QColor(22, 80, 22), Qt::black, QColor(102, 0, 128), Qt::white, QColor(51, 0, 128),
                               QColor(100, 255, 255)}, NCOLS);*/
+
+const QMap<ColourTheme::Theme,QVector<QColor> > ColourTheme::_themeMap = initThemeMap();
+const QColor ColourTheme::_defaultColour = Qt::black;
+
+ColourTheme::ColourTheme()
+{
+  _theme = _themeMap[Greyscale];
+}
+
+ColourTheme::ColourTheme(ColourTheme::Theme theme)
+{
+  _theme = _themeMap[theme];
+}
+
+const QColor & ColourTheme::colour(int colourIdx)
+{
+  if (_theme.size() == 0)
+    return _defaultColour;
+  
+  return _theme.at(colourIdx % _theme.size());
+}
+
+void ColourTheme::setColour(int idx, const QColor & col)
+{
+  for (int i = 0; idx >= _theme.size(); i++)
+  {
+    _theme.push_back(colour(i));
+  }
+  
+  _theme[idx] = col;
+}
+
+void ColourTheme::setTheme(ColourTheme::Theme theme)
+{
+  _theme = _themeMap[theme];
+}
+
 

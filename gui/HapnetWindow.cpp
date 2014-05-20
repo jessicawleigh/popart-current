@@ -30,6 +30,7 @@
 #include <QStatusBar>
 #include <QStringList>
 #include <QStyle>
+#include <QSurfaceFormat>
 #include <QTableWidgetItem>
 #include <QTextStream>
 #include <QTime>
@@ -112,6 +113,9 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   
   _centralContainer = new QStackedWidget(this);
   setCentralWidget(_centralContainer);
+  
+  //GLNetworkWindow *window = new GLNetworkWindow;
+  // Need to create context BEFORE setting surface format.
 
   _netModel = 0;
   _netView = new NetworkView(this);
@@ -139,6 +143,14 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
    connect(_mapView, SIGNAL(seqColourChangeRequested(int)), this, SLOT(changeColour(int)));
    connect(_mapView, SIGNAL(locationSet(unsigned, std::pair<float,float>)), this, SLOT(updateTraitLocation(unsigned, std::pair<float,float>)));
 
+  _3DNetView = new GLNetworkWidget(this);//QWidget::createWindowContainer(window, this);
+  _centralContainer->addWidget(_3DNetView);
+  _centralContainer->setCurrentIndex(2);
+  
+  // should be connected to a signal or an event
+  //window->drawGL();
+   
+   
   _stats = 0;
   _alModel = 0;
   _alView = new AlignmentView(this);
@@ -705,6 +717,7 @@ void HapnetWindow::openAlignment()
             _g->associateTraits(_traitVect);
             _netModel = new NetworkModel(_g); 
             _netView->setModel(_netModel, true);
+            _3DNetView->setModel(_netModel, true);
             loadNetAttributes();
             toggleNetActions(true);      
           }
@@ -3135,6 +3148,7 @@ void HapnetWindow::displayNetwork()
       _drawThread->start();*/
 
       _netView->setModel(_netModel);
+      _3DNetView->setModel(_netModel);
       
       //connect(_netView, SIGNAL(networkDrawn()), this, SLOT(saveNexusFile()));
     }

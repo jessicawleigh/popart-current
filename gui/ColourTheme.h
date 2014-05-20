@@ -3,12 +3,20 @@
 
 
 #include <QColor>
+#include <QMap>
 #include <QVector>
 
 class ColourTheme
 {
 public:
   typedef enum {Greyscale, Camo, Pastelle, Vibrant, Spring, Summer, Autumn, Winter}  Theme;
+  
+  ColourTheme();
+  ColourTheme(Theme);
+  
+  const QColor & colour(int);
+  void setColour(int, const QColor &);
+  void setTheme(Theme);
 
   static const QVector<QColor> & greyscale() { return _greyscale; };
   static const QVector<QColor> & camo() { return _camo; };
@@ -28,6 +36,10 @@ private:
   const static QVector<QColor> _summer;
   const static QVector<QColor> _autumn;
   const static QVector<QColor> _winter;
+  
+  QVector<QColor> _theme;
+  const static QMap<Theme, QVector<QColor> > _themeMap;
+  const static QColor _defaultColour;
 
 };
 

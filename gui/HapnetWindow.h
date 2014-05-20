@@ -25,6 +25,7 @@
 #include "AlignmentModel.h"
 #include "Assistant.h"
 #include "GeoTrait.h"
+#include "GLNetworkWidget.h"
 #include "MapView.h"
 #include "NetworkView.h"
 #include "NetworkModel.h"
@@ -98,6 +99,7 @@ private:
   QStackedWidget *_centralContainer;
   NetworkView *_netView;
   MapView *_mapView;
+  GLNetworkWidget *_3DNetView;
   NetworkModel *_netModel;
   AlignmentModel *_alModel;
   AlignmentView *_alView;

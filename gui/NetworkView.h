@@ -55,7 +55,7 @@ public:
   //typedef enum {Greyscale, Camo, Pastelle, Vibrant, Spring, Summer, Autumn, Winter}  ColourTheme;
   virtual QModelIndex indexAt(const QPoint &) const;
   virtual void scrollTo(const QModelIndex &, ScrollHint = EnsureVisible);
-  virtual void setModel(QAbstractItemModel *, bool=false);
+  virtual void setModel(QAbstractItemModel *, bool=false); 
   void clearModel();
 
   unsigned defaultIterations() const { return _defaultIterations; };

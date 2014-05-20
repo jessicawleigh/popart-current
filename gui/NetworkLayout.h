@@ -21,6 +21,10 @@ class NetworkLayout : public QObject
 Q_OBJECT
 
 public:
+  
+  //typedef struct {QVector3D min; QVector3D max; } Bounds3D;
+  //typedef struct {QPointF min; QPointF max; } Bounds;
+  
   NetworkLayout(NetworkModel *, double, double, double=0);
   virtual ~NetworkLayout();
 
@@ -31,17 +35,25 @@ public:
   
   unsigned edgeCount() const;
   QPointF edgeStart(unsigned) const;
+  const QVector3D & edgeStart3D(unsigned) const;
   QPointF edgeEnd(unsigned) const;
+  const QVector3D & edgeEnd3D(unsigned) const;
   unsigned edgeStartIdx(unsigned edgeId) const { return _edgeList.at(edgeId).start; };
   unsigned edgeEndIdx(unsigned edgeId) const { return _edgeList.at(edgeId).end; };
   double edgeWeight(unsigned edgeId) const { return _edgeList.at(edgeId).prefLength / NetworkItem::EDGELENGTH; };
   unsigned vertexCount() const;
   QPointF vertexCoords(unsigned vertId) const;
+  const QVector3D & vertexCoords3D(unsigned vertId) const;
   QPointF northWest() const { return _northWest.toPointF(); };
+  const QVector3D & northWest3D() const { return _northWest; };
   QPointF southEast() const { return _southEast.toPointF(); };
+  const QVector3D & southEast3D() const { return _southEast; };
   void centreVertices();
   void zeroVertices();
   void translateVertices(const QPointF & );
+  
+  //const Bounds3D & bounds3D() const { return _bounds; };
+  //Bounds bounds() const { Bounds bounds2D = {_bounds.min.toPointF(), _bounds.max.toPointF()}; return bounds2D; };
   
   double howGood() { return _howGood; };
   
@@ -189,6 +201,7 @@ private:
 
   QVector3D _southEast;
   QVector3D _northWest;
+  //Bounds3D _bounds;
 
   double _prevGradMag2;
   double _stepSize;
