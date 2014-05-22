@@ -76,24 +76,18 @@ private:
   QVector<QVector3D> _vertices;
   QVector<QVector3D> _edgeVertices;
   QVector<QVector3D> _colours;
-  //QVector<QVector3D> _normals;
   QVector<unsigned> _indices;
   unsigned _verticesPerSphere;
   
   QOpenGLVertexArrayObject _vao;
   QOpenGLBuffer _vbo;
-  //QOpenGLBuffer _colbo;
+  QList<QOpenGLBuffer*> _colourBuffers;
   QOpenGLBuffer _idxbo;
-  //QOpenGLBuffer _matbo;
-  //QOpenGLBuffer _normmatbo;
   QOpenGLShaderProgram *_program;
   size_t _matOffset;
   
   GLuint _positionAttr;
-  //GLuint _modelToCameraAttr;
-  //GLuint _normalModelToCameraAttr;
   GLuint _colourAttr;
-  //GLuint _normalAttr;
   
   GLuint _modelToCameraUniform;
   GLuint _normalModelToCameraUniform;
@@ -104,18 +98,13 @@ private:
     
   QOpenGLContext *_context;
   QOpenGLPaintDevice *_device;
-  // Note: need only >= 3.1
-  QOpenGLFunctions_3_3_Core *_func; // TODO template this class, e.g, class GLNetworkWindow<T> : public QWindow, protected <T>
   
   double _aspect;
   double _worldScale;
   
   const QVector4D LIGHTINTENSITY;
   const QVector4D AMBIENTLIGHT;
-  const QVector3D LIGHTDIRECTION;
-  
-  //bool _initialised;
-  
+  const QVector3D LIGHTDIRECTION;  
 };
 
 
