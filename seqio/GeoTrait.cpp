@@ -15,6 +15,8 @@
 #include <sstream>
 using namespace std;
 
+const double GeoTrait::PI = std::atan(1) * 4;
+
 vector<pair<float,float> > GeoTrait::_centroids;
 vector<unsigned> GeoTrait::_clusters;
 

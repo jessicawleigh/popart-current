@@ -3,7 +3,7 @@
 #include <QScrollArea>
 //#include <QAbstractItemView>
 #include <QModelIndex>
-//#include <QPoint>
+#include <QPoint>
 #include <QProgressDialog>
 #include <QThread>
 
@@ -45,7 +45,7 @@ private:
   NetworkLayout *_layout;
   QThread *_layoutThread;
   QProgressDialog *_progress;
-  
+
   unsigned _defaultIterations;
   
 private slots:

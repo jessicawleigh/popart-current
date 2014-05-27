@@ -673,14 +673,15 @@ const QVector3D & NetworkLayout::edgeStart3D(unsigned edgeId) const
   }
   
   unsigned idx = _edgeList.at(edgeId).start;
-  double vrad = 0.5 * NetworkItem::VERTRAD * sqrt(_model->index(idx, 0).data(NetworkItem::SizeRole).toDouble());
-  vrad = max(vrad, NetworkItem::VERTRAD / 3.0);
+  //double vrad = 0.5 * NetworkItem::VERTRAD * sqrt(_model->index(idx, 0).data(NetworkItem::SizeRole).toDouble());
+  //vrad = max(vrad, NetworkItem::VERTRAD / 3.0);
 
-  QVector3D startPoint = _vertexPositions.at(idx) + QVector3D(vrad, vrad, vrad);
+  //QVector3D startPoint = _vertexPositions.at(idx) + QVector3D(vrad, vrad, vrad);
   //startPoint.rx() += vrad;
   //startPoint.ry() += vrad;
     
-  return startPoint;//.toPointF();
+  //return startPoint;//.toPointF();
+  return _vertexPositions.at(idx);
 }
 
 QPointF NetworkLayout::edgeStart(unsigned edgeId) const
@@ -697,15 +698,16 @@ const QVector3D & NetworkLayout::edgeEnd3D(unsigned edgeId) const
   
     
   unsigned idx = _edgeList.at(edgeId).end;
-  double vrad = 0.5 * NetworkItem::VERTRAD * sqrt(_model->index(idx, 0).data(NetworkItem::SizeRole).toDouble());
-  vrad = max(vrad, NetworkItem::VERTRAD / 3);
+  //double vrad = 0.5 * NetworkItem::VERTRAD * sqrt(_model->index(idx, 0).data(NetworkItem::SizeRole).toDouble());
+  //vrad = max(vrad, NetworkItem::VERTRAD / 3);
   
-  QVector3D endPoint = _vertexPositions.at(idx) + QVector3D(vrad, vrad, vrad);
+  //QVector3D endPoint = _vertexPositions.at(idx) + QVector3D(vrad, vrad, vrad);
 
   //endPoint.rx() += vrad;
   //endPoint.ry() += vrad;
     
-  return endPoint;//.toPointF();
+  //return endPoint;//.toPointF();
+  return _vertexPositions.at(idx);
 
 }
 

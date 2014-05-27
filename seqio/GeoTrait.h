@@ -10,7 +10,7 @@
 #include <vector>
 using namespace std;
 
-#define PI (std::atan(1) * 4)
+//#define PI (std::atan(1) * 4)
 #define radians(deg)  ((deg * PI) / 180)
 #define degrees(rad)  ((rad * 180) / PI)
 
@@ -100,6 +100,7 @@ private:
   static std::vector<std::string> _statClustNames;
   
   static vector<GeoTrait *> _statGeoTraits;
+  const static double PI;
   
 #ifdef NET_QT
 public slots:

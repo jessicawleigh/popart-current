@@ -161,3 +161,4 @@ void GLNetworkWidget::setWidgetMinWidth(int newWidth)
   qDebug() << "set width to:" << newWidth;
   
 }
+
