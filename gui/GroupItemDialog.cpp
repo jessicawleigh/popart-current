@@ -5,7 +5,9 @@
 #include <QMessageBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QInputDialog>
 #include <QItemSelection>
+#include <QLineEdit>
 #include <QListWidgetItem>
 #include <QMenu>
 #include <QModelIndexList>
@@ -247,6 +249,7 @@ void GroupItemDialog::deassignItems(const QList<QPair<QString,int> > & itemData)
   }
 }
 
+
 void GroupItemDialog::checkAndAccept()
 {  
 
@@ -338,6 +341,7 @@ void UnsortedListWidget::renameGroup(QString oldName, QString newName)
   
   if (idx >= 0)
     _groupNames.replace(idx, newName);
+    
 }
 
 void UnsortedListWidget::contextMenuEvent(QContextMenuEvent *event)
@@ -463,7 +467,8 @@ GroupedTreeWidget::GroupedTreeWidget(QWidget *parent)
   _suppressRenameEvent = false;
   setDropIndicatorShown(true);
   
-  connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(renameGroup(QTreeWidgetItem *, int)));
+  // JWL: I don't think this is right... just needs to be connected to the relevant context menu item
+  //connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(renameGroup(QTreeWidgetItem *, int)));
     /*QStyledItemDelegate *delegate = dynamic_cast<QStyledItemDelegate *>(_groupView->itemDelegate());
   if (! delegate)
     qDebug() << "not a QStyledItemDelegate!";*/
@@ -496,8 +501,8 @@ void GroupedTreeWidget::contextMenuEvent(QContextMenuEvent *event)
   
   else
   {
-    //QAction *renameGroupAct = menu.addAction("Rename group");
-    
+    QAction *renameGroupAct = menu.addAction("Rename group");
+    connect (renameGroupAct, SIGNAL(triggered()), this, SLOT(renameSelectedGroup()));
     
     QAction *deleteGroupAct = menu.addAction("Delete group");
     connect(deleteGroupAct, SIGNAL(triggered()), this, SLOT(deleteSelectedGroups()));
@@ -510,7 +515,7 @@ void GroupedTreeWidget::contextMenuEvent(QContextMenuEvent *event)
     if (item->isLocked())//->isDisabled())
     {
       ///deleteGroupsAct->setText("(Group is locked)");
-      //renameGroupAct->setEnabled(false);
+      renameGroupAct->setEnabled(false);
       deleteGroupAct->setEnabled(false);
       lockGroupAct->setText("Unlock group");
     }
@@ -633,6 +638,57 @@ void GroupedTreeWidget::deleteSelectedGroups()
   emit itemsRemoved(_deassignedItems);
 }
 
+void GroupedTreeWidget::renameSelectedGroup()
+{
+  
+  QList<QTreeWidgetItem *> groupItemList = selectedItems();
+  
+  if (groupItemList.empty())  
+    return;
+               
+  GroupedTreeWidgetItem *groupItem = dynamic_cast<GroupedTreeWidgetItem *>(groupItemList.first());
+  
+  if (! groupItem)
+    qDebug() << "couldn't cast to GroupedTreeWidgetItem";
+  
+  else
+  {
+    
+    // Why do I need oldName? I think this is a holdover from the old way I thought of doing things.
+    QString oldName = groupItem->data(0, Qt::DisplayRole).toString();
+    //QString oldName = groupItem->oldText();
+    
+    bool accepted = false;
+    
+    QString newName = QInputDialog::getText(this, QString("Rename group %1").arg(oldName), "New name:", QLineEdit::Normal, QString(), &accepted);
+    
+    if (accepted)
+    {  
+      bool nameExists = false;
+          
+      foreach (QTreeWidgetItem *otherItem, findItems(newName, Qt::MatchExactly))
+      {
+        if (otherItem != groupItem)
+        {
+          nameExists = true;
+          break;
+        }
+      }
+      
+      if (nameExists)
+        QMessageBox::warning(this, "Group Exists", QString("A group named %1 has already been defined").arg(newName));
+
+      else
+      {
+        groupItem->setData(0, Qt::DisplayRole, newName);
+               
+        emit groupNameChanged(oldName, newName);
+      } 
+    }    
+  }
+  
+}
+
 /*bool GroupedTreeWidget::isLocked(QTreeWidgetItem *groupItem) const
 {
   return groupItem->checkState(0) == Qt::Checked;
@@ -687,9 +743,11 @@ void GroupedTreeWidget::deassignSelectedItem()
 
 }
 
-void GroupedTreeWidget::renameGroup(QTreeWidgetItem *item, int) // don't need second "column" argument, always one col
+/*void GroupedTreeWidget::renameGroup(QTreeWidgetItem *item, int) // don't need second "column" argument, always one col
 {
   if (_suppressRenameEvent)  return; // prevents recursive calls to this slot
+  
+  qDebug() << "calling renamegroup";
 
   GroupedTreeWidgetItem *groupItem = dynamic_cast<GroupedTreeWidgetItem *>(item);
   
@@ -722,18 +780,21 @@ void GroupedTreeWidget::renameGroup(QTreeWidgetItem *item, int) // don't need se
       emit groupNameChanged(oldName, newName);
     }
   }
-}
+  
+  else
+    qDebug() << "but doing nothing, no group to rename?";
+}*/
 
 GroupedTreeWidgetItem::GroupedTreeWidgetItem(const QStringList &strings)
- : QTreeWidgetItem(strings, QTreeWidgetItem::UserType), _locked(false), _oldText(strings.front())
+ : QTreeWidgetItem(strings, QTreeWidgetItem::UserType), _locked(false)//, _oldText(strings.front())
 {}
 
 GroupedTreeWidgetItem::GroupedTreeWidgetItem(GroupedTreeWidget *parent, const QStringList &strings)
- : QTreeWidgetItem(parent, strings, QTreeWidgetItem::UserType), _locked(false), _oldText(strings.front())
+ : QTreeWidgetItem(parent, strings, QTreeWidgetItem::UserType), _locked(false)//, _oldText(strings.front())
 {}
 
 GroupedTreeWidgetItem::GroupedTreeWidgetItem(GroupedTreeWidgetItem *parent, const QStringList &strings)
- : QTreeWidgetItem(parent, strings, QTreeWidgetItem::UserType), _locked(false), _oldText(strings.front())
+ : QTreeWidgetItem(parent, strings, QTreeWidgetItem::UserType), _locked(false)//, _oldText(strings.front())
 {}
 
 bool GroupedTreeWidgetItem::isLocked() const
@@ -759,7 +820,7 @@ void GroupedTreeWidgetItem::setLocked(bool lock)
     setIcon(0, QIcon());
 }
 
-QString GroupedTreeWidgetItem::oldText() const
+/*QString GroupedTreeWidgetItem::oldText() const
 {
   return _oldText;
 }
@@ -772,4 +833,4 @@ void GroupedTreeWidgetItem::setOldText(const QString & text)
 void GroupedTreeWidgetItem::updateOldText()
 {
   _oldText = data(0, Qt::DisplayRole).toString();
-}
+}*/

@@ -266,8 +266,10 @@ void MapView::lookupLocation(HapLocation *location)
 {
   SearchRunnerManager* manager = new SearchRunnerManager(_mapWidget->model(), this);
   //manager->setModel( _mapWidget->model() );
+  
+  const QString tmpstr(location->name());
 
-  QVector<GeoDataPlacemark *> searchResult = manager->searchPlacemarks(location->name());
+  QVector<GeoDataPlacemark *> searchResult;// = manager->searchPlacemarks(tmpstr);//location->name());
 
   if (searchResult.size() == 1)
   {

@@ -125,7 +125,8 @@ private slots:
   void toggleLockSelectedGroup();
   void deassignSelectedItem();
   void deleteSelectedGroups();
-  void renameGroup(QTreeWidgetItem *, int);
+  void renameSelectedGroup();
+  //void renameGroup(QTreeWidgetItem *, int);
     
 signals:
   void itemsRemoved(const QList<QPair<QString,int> > &);
@@ -145,16 +146,16 @@ public:
   
   bool isLocked() const;
   void setLocked(bool);
-  QString oldText() const;
-  void setOldText(const QString &);
-  void updateOldText();
+  //QString oldText() const;
+  //void setOldText(const QString &);
+  //void updateOldText();
   //void unlock();
   
 private:
   //void constructItem();
   bool _locked;
   static std::auto_ptr<QIcon> _lockedIcon;// = 0; 
-  QString _oldText;
+  //QString _oldText;
 };
 
 
