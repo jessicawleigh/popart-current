@@ -7,6 +7,7 @@
 
 #include "MapView.h"
 
+// Qt headers
 #include <QtAlgorithms>
 #include <QButtonGroup>
 #include <QComboBox>
@@ -23,17 +24,18 @@
 #include <QRadioButton>
 #include <QSvgGenerator>
 
-#include <marble/GeoDataDocument.h>
-#include <marble/GeoDataCoordinates.h>
-#include <marble/GeoDataLineString.h>
-#include <marble/GeoDataLinearRing.h>
-#include <marble/GeoDataTreeModel.h>
-#include <marble/GeoDataStyle.h>
-#include <marble/GeoDataIconStyle.h>
-#include <marble/GeoDataLineStyle.h>
-#include <marble/GeoDataPolyStyle.h>
-#include <marble/MarbleModel.h>
-#include <marble/SearchRunnerManager.h>
+// Marble headers
+#include <GeoDataDocument.h>
+#include <GeoDataCoordinates.h>
+#include <GeoDataLineString.h>
+#include <GeoDataLinearRing.h>
+#include <GeoDataTreeModel.h>
+#include <GeoDataStyle.h>
+#include <GeoDataIconStyle.h>
+#include <GeoDataLineStyle.h>
+#include <GeoDataPolyStyle.h>
+#include <MarbleModel.h>
+#include <SearchRunnerManager.h>
 using namespace Marble;
 
 #include <iostream>
@@ -267,9 +269,9 @@ void MapView::lookupLocation(HapLocation *location)
   SearchRunnerManager* manager = new SearchRunnerManager(_mapWidget->model(), this);
   //manager->setModel( _mapWidget->model() );
   
-  const QString tmpstr(location->name());
+  //const QString tmpstr(location->name());
 
-  QVector<GeoDataPlacemark *> searchResult;// = manager->searchPlacemarks(tmpstr);//location->name());
+  QVector<GeoDataPlacemark *> searchResult = manager->searchPlacemarks(location->name());
 
   if (searchResult.size() == 1)
   {

@@ -14,10 +14,12 @@
 #include "NetworkView.h"
 #include "Trait.h"
 
-#include <marble/GeoDataCoordinates.h>
-#include <marble/GeoDataPlacemark.h>
-#include <marble/MarbleWidget.h>
+// Marble headers
+#include <GeoDataCoordinates.h>
+#include <GeoDataPlacemark.h>
+#include <MarbleWidget.h>
 
+// Qt headers
 #include <QBrush>
 #include <QContextMenuEvent>
 #include <QFont>

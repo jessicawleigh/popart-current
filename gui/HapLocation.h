@@ -3,8 +3,10 @@
 
 #include "Trait.h"
 
-#include <marble/GeoDataCoordinates.h>
+// Marble headers
+#include <GeoDataCoordinates.h>
 
+// Qt headers
 #include <QMap>
 #include <QObject>
 #include <QString>

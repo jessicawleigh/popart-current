@@ -3,12 +3,14 @@
 
 #include "HapLocation.h"
 
-#include <marble/GeoPainter.h>
-#include <marble/LayerInterface.h>
-#include <marble/MarbleWidget.h>
-#include <marble/MarbleMap.h>
-#include <marble/MarbleModel.h>
+// Marble headers
+#include <GeoPainter.h>
+#include <LayerInterface.h>
+#include <MarbleWidget.h>
+#include <MarbleMap.h>
+#include <MarbleModel.h>
 
+// Qt headers
 #include <QBrush>
 #include <QMap>
 #include <QEvent>

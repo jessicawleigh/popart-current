@@ -1,9 +1,11 @@
 #include "HapLayer.h"
 #include "NetworkItem.h"
 
-#include <marble/GeoDataCoordinates.h>
-#include <marble/ViewportParams.h>
+// Marble headers
+#include <GeoDataCoordinates.h>
+#include <ViewportParams.h>
 
+// Qt headers
 #include <QAction>
 #include <QBrush>
 #include <QColor>
