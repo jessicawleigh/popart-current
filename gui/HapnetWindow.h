@@ -67,7 +67,7 @@ private:
   bool writeNexusTrees(ostream &);
   bool writeNexusNetwork(ostream &);
   bool writeNexusTraits(ostream &);
-  bool writeGeoData(ostream &, const vector<GeoTrait *> &);
+  bool writeGeoData(ostream &, const vector<Trait *> &);
   bool writeTraitData(ostream &, const vector<Trait *> &);
   bool loadTableFromFile(const QString &);
   void askAndCloseAlignment();
@@ -117,6 +117,8 @@ private:
   std::vector<bool> _mask;
   std::vector<unsigned> _badSeqs;
   std::vector<Trait *> _traitVect;
+  std::vector<Trait *> _geoTagVect;
+  std::vector<Trait *> * _activeTraitVect;
   std::vector<ParsimonyTree *> _treeVect;
   std::vector<std::string> _groupVect;
   std::vector<std::string> _geoGroupVect;

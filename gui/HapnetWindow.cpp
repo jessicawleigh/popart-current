@@ -81,7 +81,7 @@ using namespace std;
 //   this would allow exception details to be written to "detailedText"
 
 HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
-  : QMainWindow(parent, flags), _debug(true)
+  : QMainWindow(parent, flags), _debug(true), _activeTraitVect(& _traitVect), _traitGroups(& _groupVect)
 {
   _clipboard = QApplication::clipboard();
   _history = new QUndoStack(this);
@@ -192,7 +192,7 @@ HapnetWindow::~HapnetWindow()
     cout << "still running? " << _netThread->isRunning() << endl;
     //_netThread->wait();
   }*/
-  
+    
   closeTraits();
   closeAlignment();
 }
@@ -631,8 +631,8 @@ void HapnetWindow::openAlignment()
   {  
     if (! _alignment.empty())
     {
-       closeAlignment();
-       closeTraits();
+      closeAlignment();
+      closeTraits();
     }
 
     // TODO check whether these functions can produce traits exceptions that aren't caught
@@ -649,7 +649,6 @@ void HapnetWindow::openAlignment()
       statusBar()->showMessage(tr("Loaded file %1").arg(_filename));
       //_networkMenu->setEnabled(true);
       
-      //if (traitsuccess)  _stats->setFreqsFromTraits(_traitVect);
       QFileInfo fileInfo(_filename);
       setWindowTitle(tr("PopART: %1").arg(fileInfo.fileName()));
       toggleAlignmentActions(true);
@@ -677,12 +676,12 @@ void HapnetWindow::openAlignment()
         
         if (traitsuccess)
         {
-          _tModel = new TraitModel(_traitVect);
+          _tModel = new TraitModel(*_activeTraitVect);
           _tView->setModel(_tModel);
 
           if (_view == Map)
           {
-            _mapView->addHapLocations(_traitVect);
+            _mapView->addHapLocations(*_activeTraitVect);
             _mapTraitsSet = true;
           }
 
@@ -702,7 +701,7 @@ void HapnetWindow::openAlignment()
           
           try
           {
-            _g->associateTraits(_traitVect);
+            _g->associateTraits(*_activeTraitVect);
             _netModel = new NetworkModel(_g); 
             _netView->setModel(_netModel, true);
             loadNetAttributes();
@@ -726,11 +725,11 @@ void HapnetWindow::openAlignment()
         QAbstractItemModel *tmpModel = _tView->model();
         if (traitsuccess)
         {
-          _tModel = new TraitModel(_traitVect);
+          _tModel = new TraitModel(*_activeTraitVect);
           _tView->setModel(_tModel);
           if (_view == Map)
           {
-            _mapView->addHapLocations(_traitVect);
+            _mapView->addHapLocations(*_activeTraitVect);
             _mapTraitsSet = true;
           }
 
@@ -1306,6 +1305,29 @@ bool HapnetWindow::loadTraitsFromParser()
   
   try
   {
+    if (parser->hasTraits())
+    {
+      const vector<Trait*> &traits = parser->traitVector();
+      for (unsigned i = 0; i < traits.size(); i++)
+      {
+        GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
+        if (gt)
+          _traitVect.push_back(new GeoTrait(*gt));
+        else
+          _traitVect.push_back(new Trait(*(traits.at(i))));
+      }
+      
+    }
+    
+    if (parser->hasGeoTags())
+    {
+      const vector<GeoTrait*> & gtv = parser->geoTraitVector();
+
+      for (unsigned i = 0; i < gtv.size(); i++)
+        _geoTagVect.push_back(new GeoTrait(*(gtv.at(i))));
+    }
+    
+    
     if (parser->hasTraits() && parser->hasGeoTags())
     {
       QDialog dlg(this);
@@ -1344,30 +1366,32 @@ bool HapnetWindow::loadTraitsFromParser()
       if (buttonGroup->checkedId() == 0)
       {
 
-        const vector<Trait*> &traits = parser->traitVector();
-        for (unsigned i = 0; i < traits.size(); i++)
-        {
-          GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
-          if (gt)
-            _traitVect.push_back(new GeoTrait(*gt));
-          else
-            _traitVect.push_back(new Trait(*(traits.at(i))));
-        }
+//         const vector<Trait*> &traits = parser->traitVector();
+//         for (unsigned i = 0; i < traits.size(); i++)
+//         {
+//           GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
+//           if (gt)
+//             _traitVect.push_back(new GeoTrait(*gt));
+//           else
+//             _traitVect.push_back(new Trait(*(traits.at(i))));
+//         }
         
         _activeTraits = Traits;
         _toggleTraitAct->setText(tr("Use GeoTags &groups"));
+        _activeTraitVect = &_traitVect;
         _traitGroups = &_groupVect;
       }
 
       else
       {
-        const vector<GeoTrait*> & gtv = parser->geoTraitVector();
-
-        for (unsigned i = 0; i < gtv.size(); i++)
-          _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
+//         const vector<GeoTrait*> & gtv = parser->geoTraitVector();
+// 
+//         for (unsigned i = 0; i < gtv.size(); i++)
+//           _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
 
         _activeTraits = GeoTags;
         _toggleTraitAct->setText(tr("Use Traits &groups"));
+        _activeTraitVect = &_geoTagVect;
         _traitGroups = &_geoGroupVect;
 
       }
@@ -1378,32 +1402,34 @@ bool HapnetWindow::loadTraitsFromParser()
     else if (parser->hasTraits())
     {
 
-      const vector<Trait*> &traits = parser->traitVector();
-      for (unsigned i = 0; i < traits.size(); i++)
-      {
-        GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
-        if (gt)
-          _traitVect.push_back(new GeoTrait(*gt));
-        else
-          _traitVect.push_back(new Trait(*(traits.at(i))));
-      }
+//       const vector<Trait*> &traits = parser->traitVector();
+//       for (unsigned i = 0; i < traits.size(); i++)
+//       {
+//         GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
+//         if (gt)
+//           _traitVect.push_back(new GeoTrait(*gt));
+//         else
+//           _traitVect.push_back(new Trait(*(traits.at(i))));
+//       }
       
       _activeTraits = Traits;
       _toggleTraitAct->setText(tr("Use GeoTags &groups"));
       _toggleTraitAct->setEnabled(false);
-        _traitGroups = &_groupVect;
+      _activeTraitVect = &_traitVect;
+      _traitGroups = &_groupVect;
     }
     
     else if (parser->hasGeoTags())
     {
-      const vector<GeoTrait*> & gtv = parser->geoTraitVector();
-      for (unsigned i = 0; i < gtv.size(); i++)
-        _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
+//       const vector<GeoTrait*> & gtv = parser->geoTraitVector();
+//       for (unsigned i = 0; i < gtv.size(); i++)
+//         _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
 
       _activeTraits = GeoTags;
       _toggleTraitAct->setText(tr("Use Traits &groups"));
       _toggleTraitAct->setEnabled(false);
-        _traitGroups = &_geoGroupVect;
+      _activeTraitVect = &_geoTagVect;
+      _traitGroups = &_geoGroupVect;
     }
     
     else
@@ -1413,6 +1439,7 @@ bool HapnetWindow::loadTraitsFromParser()
   catch (SeqParseError &spe)
   {
     _traitVect.clear();
+    _geoTagVect.clear();
     QMessageBox error;
     error.setIcon(QMessageBox::Critical);
     error.setText(tr("<b>Error parsing traits</b>"));
@@ -1530,7 +1557,6 @@ void HapnetWindow::closeAlignment()
   
   if (! _treeVect.empty())
     closeTrees();
-
 }
 
 void HapnetWindow::closeTrees()
@@ -1545,8 +1571,8 @@ void HapnetWindow::closeTraits()
 {
   toggleTraitActions(false);
   _traitGroupsSet = false;
-  _geoGroupVect.clear();
   _groupVect.clear();
+  _geoGroupVect.clear();
 
   if (! _traitVect.empty())
   {
@@ -1555,6 +1581,14 @@ void HapnetWindow::closeTraits()
     _traitVect.clear();
   }
 
+  if (! _geoTagVect.empty())
+  {
+    for (unsigned i = 0; i < _geoTagVect.size(); i++)
+      delete _geoTagVect.at(i);
+    _geoTagVect.clear();
+  }
+  
+  
   QAbstractItemModel *tmpModel = _tView->model();
     //_tModel = new TraitModel(_traitVect);
     _tView->setModel(0);//_tModel);
@@ -1623,7 +1657,7 @@ void HapnetWindow::importAlignment()
     if (! _alignment.empty())
        closeAlignment();
     
-    if (! _traitVect.empty())
+    if (! _activeTraitVect->empty())
       askAndCloseTraits();
 
     bool success = loadAlignmentFromFile(phylipname);
@@ -1689,6 +1723,7 @@ void HapnetWindow::importTraits()
     if (! _alignment.empty())
       askAndCloseAlignment();
     
+    // TODO 
     if (! _traitVect.empty())
       closeTraits();
 
@@ -1779,6 +1814,7 @@ void HapnetWindow::importTraits()
       }
       
       _activeTraits = Traits;
+      _activeTraitVect = &_traitVect;
       _traitGroups = &_groupVect;
 
       QAbstractItemModel *tmpModel = _tView->model();
@@ -1818,7 +1854,7 @@ void HapnetWindow::importGeoTags()
     if (! _alignment.empty())
       askAndCloseAlignment();
     
-    if (! _traitVect.empty())
+    if (! _geoTagVect.empty())
       closeTraits();
 
     _toggleTraitAct->setEnabled(false);
@@ -1947,47 +1983,49 @@ void HapnetWindow::importGeoTags()
 
 void HapnetWindow::updateTraitLocation(unsigned traitIdx, pair<float,float> location)
 {
-  GeoTrait *gt = dynamic_cast<GeoTrait *>(_traitVect.at(traitIdx));
+  GeoTrait *gt = dynamic_cast<GeoTrait *>(_activeTraitVect->at(traitIdx));
   
   if (gt)
     gt->setLocation(location);
-  else
+  
+  else // Trait previously had no location, make a GeoTrait from a base class Trait
   {
-    gt = new GeoTrait(location, *(_traitVect.at(traitIdx)));
-    delete _traitVect.at(traitIdx);
-    _traitVect.at(traitIdx) = gt;
+    gt = new GeoTrait(location, *(_activeTraitVect->at(traitIdx)));
+    delete _activeTraitVect->at(traitIdx);
+    _activeTraitVect->at(traitIdx) = gt;
   }
   
   // update location in parser
-  NexusParser * parser = dynamic_cast<NexusParser *>(Sequence::parser());
-  
-  if (parser)
-  {
-    if (_activeTraits == Traits)
-      parser->setTraitLocation(traitIdx, location);
-    
-    else
-      parser->setGeoTraitLocation(traitIdx, location);
-  }
+//   NexusParser * parser = dynamic_cast<NexusParser *>(Sequence::parser());
+//   
+//   if (parser)
+//   {
+//     if (_activeTraits == Traits)
+//       parser->setTraitLocation(traitIdx, location);
+//     
+//     else
+//       parser->setGeoTraitLocation(traitIdx, location);
+//   }
 }
 
 void HapnetWindow::finaliseClustering()
 {   
   const vector<GeoTrait*> & geoTraits = GeoTrait::statTrait->getClusterResult();
   
-  _traitVect.assign(geoTraits.begin(), geoTraits.end());
+  _geoTagVect.assign(geoTraits.begin(), geoTraits.end());
   
   _activeTraits = GeoTags;
+  _activeTraitVect = &_geoTagVect;
   _traitGroups = &_geoGroupVect;
   
   QAbstractItemModel *tmpModel = _tView->model();
-  _tModel = new TraitModel(_traitVect);
+  _tModel = new TraitModel(_geoTagVect);
   _tView->setModel(_tModel);
   delete tmpModel;
   
   if (_view == Map)
   {
-    _mapView->addHapLocations(_traitVect);
+    _mapView->addHapLocations(_geoTagVect);
     _mapTraitsSet = true;
   }
   
@@ -2322,65 +2360,71 @@ bool HapnetWindow::writeNexusTraits(ostream &nexfile)
 {
   if (_traitVect.empty())
     return true;
+  
+  if (! _traitVect.empty())
+    writeTraitData(nexfile, _traitVect);
+  
+  if (! _geoTagVect.empty())
+    writeGeoData(nexfile, _geoTagVect);
 
-  NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
-
-  if (! nexParser)
-  {
-    //return false;
-    GeoTrait *gt = dynamic_cast<GeoTrait*>(_traitVect.at(0));
-    
-    if (gt)
-    {
-      vector<GeoTrait *> gtv;
-      
-      for (unsigned i = 0; i < _traitVect.size(); i++)
-        gtv.push_back(dynamic_cast<GeoTrait *>(_traitVect.at(i)));
-      
-      writeGeoData(nexfile, gtv);
-    }
-    
-    else
-      writeTraitData(nexfile, _traitVect);
-    
-  }
-
-  if (_activeTraits == Traits)
-  {
-
-    if (! writeTraitData(nexfile, _traitVect))
-      return false;
-
-
-    if (nexParser && nexParser->hasGeoTags())
-    {
-      const vector<GeoTrait*> & gtv = nexParser->geoTraitVector();
-      if (! writeGeoData(nexfile, gtv))
-        return false;
-    }
-  }
-
-  else
-  {
-
-    vector<GeoTrait*> gtv;
-
-    for (unsigned i = 0; i < _traitVect.size(); i++)
-    {
-      GeoTrait *gt = dynamic_cast<GeoTrait *>(_traitVect.at(i));
-      if (! gt)
-        return false;
-
-      gtv.push_back(gt);
-    }
-
-    if (! writeGeoData(nexfile, gtv))
-      return false;
-
-    if (nexParser && nexParser->hasTraits())
-      if (! writeTraitData(nexfile, nexParser->traitVector()))
-        return false;
-  }
+//   NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
+// 
+//   if (! nexParser)
+//   {
+//     //return false;
+//     GeoTrait *gt = dynamic_cast<GeoTrait*>(_traitVect.at(0));
+//     
+//     if (gt)
+//     {
+//       vector<GeoTrait *> gtv;
+//       
+//       for (unsigned i = 0; i < _traitVect.size(); i++)
+//         gtv.push_back(dynamic_cast<GeoTrait *>(_traitVect.at(i)));
+//       
+//       writeGeoData(nexfile, gtv);
+//     }
+//     
+//     else
+//       writeTraitData(nexfile, _traitVect);
+//     
+//   }
+// 
+//   if (_activeTraits == Traits)
+//   {
+// 
+//     if (! writeTraitData(nexfile, _traitVect))
+//       return false;
+// 
+// 
+//     if (nexParser && nexParser->hasGeoTags())
+//     {
+//       const vector<GeoTrait*> & gtv = nexParser->geoTraitVector();
+//       if (! writeGeoData(nexfile, gtv))
+//         return false;
+//     }
+//   }
+// 
+//   else
+//   {
+// 
+//     vector<GeoTrait*> gtv;
+// 
+//     for (unsigned i = 0; i < _traitVect.size(); i++)
+//     {
+//       GeoTrait *gt = dynamic_cast<GeoTrait *>(_traitVect.at(i));
+//       if (! gt)
+//         return false;
+// 
+//       gtv.push_back(gt);
+//     }
+// 
+//     if (! writeGeoData(nexfile, gtv))
+//       return false;
+// 
+//     if (nexParser && nexParser->hasTraits())
+//       if (! writeTraitData(nexfile, nexParser->traitVector()))
+//         return false;
+//   }
 
 
   return true;
@@ -2466,7 +2510,7 @@ bool HapnetWindow::writeTraitData(ostream &nexfile, const vector<Trait *> &trait
 }
 
 
-bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<GeoTrait *> &geotraits)
+bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<Trait *> &geotraits)
 {
   /*NexusParser *nexParser = dynamic_cast<NexusParser*>(Sequence::parser());
 
@@ -2483,13 +2527,16 @@ bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<GeoTrait *> &geot
     nexfile << "ClustLatitude";
     for (unsigned i = 0; i < geotraits.size(); i++)
     {
-      nexfile << ' ' << geotraits.at(i)->latitude();
+      GeoTrait *gt = dynamic_cast<GeoTrait *>(geotraits.at(i));
+      if (! gt)  return false;
+      nexfile << ' ' << gt->latitude();
     }
     nexfile << ';' << endl;
     nexfile << "ClustLongitude";
     for (unsigned i = 0; i < geotraits.size(); i++)
     {
-      nexfile << ' ' << geotraits.at(i)->longitude();
+      GeoTrait *gt = dynamic_cast<GeoTrait *>(geotraits.at(i));
+      nexfile << ' ' << gt->longitude();
     }
     nexfile << ';' << endl;
 
@@ -2510,10 +2557,12 @@ bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<GeoTrait *> &geot
     string seqname = _alignment.at(i)->name();
     for (unsigned j = 0; j < geotraits.size(); j++)
     {
+      GeoTrait *gt = dynamic_cast<GeoTrait *>(geotraits.at(j));
+
       try
       {
-        vector<unsigned> counts = geotraits.at(j)->seqCounts(seqname);
-        vector<pair<float,float> > locations = geotraits.at(j)->seqLocations(seqname);
+        vector<unsigned> counts = gt->seqCounts(seqname);
+        vector<pair<float,float> > locations = gt->seqLocations(seqname);
 
         if (counts.size() != locations.size())
           return false;
@@ -3126,7 +3175,7 @@ void HapnetWindow::displayNetwork()
     //cout <<  *_g << endl;
     try
     {
-      _g->associateTraits(_traitVect);
+      _g->associateTraits(*_activeTraitVect);
       _netModel = new NetworkModel(_g);
       /*_msgText = tr("<b>Error drawing network.</b>");
       _progress->show();
@@ -3288,9 +3337,9 @@ void HapnetWindow::toggleView()
     //_netView->hide();//setVisible(false);
     _centralContainer->setCurrentIndex(1);
 
-    if (! _mapTraitsSet && _traitVect.size() > 0)
+    if (! _mapTraitsSet && _activeTraitVect->size() > 0)
     {
-      _mapView->addHapLocations(_traitVect);
+      _mapView->addHapLocations(*_activeTraitVect);
       _mapTraitsSet = true;
     }
     _toggleViewAct->setText(tr("Switch to network view"));
@@ -3336,17 +3385,24 @@ void HapnetWindow::toggleActiveTraits()
   if (! np)
     showErrorDlg("Both Traits and GeoTags should be loaded from a Nexus file to enable toggling", "Please report this as a bug.");
 
+  if (_stats) 
+  {
+    delete _stats;
+    _stats = 0;
+  }
+
+  
   if (_activeTraits == Traits)
   {
     _activeTraits = GeoTags;
     _toggleTraitAct->setText(tr("Use Traits &populations"));
 
-    closeTraits();
-
-    const vector<GeoTrait*> & gtv = np->geoTraitVector();
-    
-    for (unsigned i = 0; i < gtv.size(); i++)
-      _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
+//     closeTraits();
+// 
+//     const vector<GeoTrait*> & gtv = np->geoTraitVector();
+//     
+//     for (unsigned i = 0; i < gtv.size(); i++)
+//       _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
     
     if (_geoGroupVect.empty())
       _traitGroupsSet = false;
@@ -3354,8 +3410,9 @@ void HapnetWindow::toggleActiveTraits()
     else
       _traitGroupsSet = true;
 
+    _activeTraitVect = &_geoTagVect;
     _traitGroups = &_geoGroupVect;
-
+    toggleTraitActions(true);
   }
 
   else
@@ -3363,17 +3420,17 @@ void HapnetWindow::toggleActiveTraits()
     _activeTraits = Traits;
     _toggleTraitAct->setText(tr("Use GeoTags &populations"));
     
-    closeTraits();
-
-    const vector<Trait*> &traits = np->traitVector();
-    for (unsigned i = 0; i < traits.size(); i++)
-    {
-      GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
-      if (gt)
-        _traitVect.push_back(new GeoTrait(*gt));
-      else
-        _traitVect.push_back(new Trait(*(traits.at(i))));
-    }
+//     closeTraits();
+// 
+//     const vector<Trait*> &traits = np->traitVector();
+//     for (unsigned i = 0; i < traits.size(); i++)
+//     {
+//       GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
+//       if (gt)
+//         _traitVect.push_back(new GeoTrait(*gt));
+//       else
+//         _traitVect.push_back(new Trait(*(traits.at(i))));
+//     }
     
     if (_groupVect.empty())
       _traitGroupsSet = false;
@@ -3381,21 +3438,23 @@ void HapnetWindow::toggleActiveTraits()
     else
       _traitGroupsSet = true;
 
+    _activeTraitVect = &_traitVect;
     _traitGroups = &_groupVect;
+    toggleTraitActions(true);
       
   }
   
   if (_g)
-    _g->associateTraits(_traitVect);
+    _g->associateTraits(*_activeTraitVect);
   
   QAbstractItemModel *tmpModel = _tView->model();
-  _tModel = new TraitModel(_traitVect);
+  _tModel = new TraitModel(*_activeTraitVect);
   _tView->setModel(_tModel); 
   delete tmpModel;
   
   if (_view == Map)
   {
-    _mapView->addHapLocations(_traitVect);
+    _mapView->addHapLocations(*_activeTraitVect);
     _mapTraitsSet = true;
   }
   
@@ -3512,7 +3571,7 @@ void HapnetWindow::redrawNetwork()
 
 void HapnetWindow::setTraitGroups()
 {
-  if (_traitVect.empty()) 
+  if (_activeTraitVect->empty()) 
   {
     statusBar()->showMessage(tr("No traits read."));
     return;
@@ -3528,14 +3587,14 @@ void HapnetWindow::setTraitGroups()
       traitGroupMap[QString::fromStdString(_traitGroups->at(i))] = QList<QString>();
   }
   
-  for (unsigned i = 0; i < _traitVect.size(); i++)
+  for (unsigned i = 0; i < _activeTraitVect->size(); i++)
   {
-    traitStrings << QString::fromStdString(_traitVect.at(i)->name());
-    nameToTrait[traitStrings.last()] = _traitVect.at(i);
+    traitStrings << QString::fromStdString(_activeTraitVect->at(i)->name());
+    nameToTrait[traitStrings.last()] = _activeTraitVect->at(i);
     
     if (_traitGroupsSet)
     {
-      string groupName = _traitGroups->at(_traitVect.at(i)->group());
+      string groupName = _traitGroups->at(_activeTraitVect->at(i)->group());
       traitGroupMap[QString::fromStdString(groupName)] << traitStrings.last();
     }
   }
@@ -3571,16 +3630,17 @@ void HapnetWindow::setTraitGroups()
     }
     
     if (_stats)
-      _stats->setFreqsFromTraits(_traitVect);
+      _stats->setFreqsFromTraits(*_activeTraitVect);
     
     _traitGroupsSet = true;
   }
 }
 
+// TODO different colours for geotags and traits?
 void HapnetWindow::setTraitColour()
 {
   
-  if (_traitVect.empty()) 
+  if (_activeTraitVect->empty()) 
   {
     statusBar()->showMessage(tr("No traits read."));
     return;
@@ -3591,8 +3651,8 @@ void HapnetWindow::setTraitColour()
   
   QComboBox *comboBox = new QComboBox(&dlg);
   
-  for (unsigned i = 0; i < _traitVect.size(); i++)
-    comboBox->addItem(QString::fromStdString(_traitVect.at(i)->name()));
+  for (unsigned i = 0; i < _activeTraitVect->size(); i++)
+    comboBox->addItem(QString::fromStdString(_activeTraitVect->at(i)->name()));
   
   vlayout->addWidget(comboBox);
   
@@ -3751,7 +3811,7 @@ void HapnetWindow::doStatsSetup()
     
     _statThread->wait();*/
     _stats->setupStats();
-    if (! _traitVect.empty())  _stats->setFreqsFromTraits(_traitVect); 
+    if (! _activeTraitVect->empty())  _stats->setFreqsFromTraits(*_activeTraitVect); 
   }
   
   catch (StatsError &ste)
@@ -3853,7 +3913,7 @@ void HapnetWindow::showTajimaD()
 
 void HapnetWindow::showAmova()
 {
-  if (_traitVect.empty())
+  if (_activeTraitVect->empty())
   {
     showErrorDlg("<b>Sequences must have associated traits to perform analysis of molecular variance.<b>");
     return;
