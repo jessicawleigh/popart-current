@@ -312,6 +312,11 @@ void Statistics::setFreqsFromTraits(const vector<Trait *> & traitVect)
   }  
 }
 
+void Statistics::setAmovaPointer(amovatab &amovaref)
+{
+  _amovaresult = &amovaref;
+}
+
 void Statistics::computeDistances()
 {
   for (unsigned i = 0; i < _nseqs; i++)
@@ -546,17 +551,11 @@ double Statistics::betaCF(double a, double b, double x)
 
 // TODO write permutation-based significance assessment
 // Check that there's more than one group
-Statistics::amovatab Statistics::nestedAmova() const
+//Statistics::amovatab 
+void Statistics::nestedAmova()
 {
-/*	  int seed = time(0);
 
-	  ofstream seedfile("seed.out");
-	  seedfile << seed << endl;
-	  seedfile.close();
-      //seed = 1397546234;
-
-	  srand(seed);*/
-
+  emit progressUpdated(0);
   if (_traitMat.empty())
     throw StatsError("Traits must be associated prior to AMOVA calculation.");
 
@@ -593,8 +592,9 @@ Statistics::amovatab Statistics::nestedAmova() const
     ncopies.push_back(ni);
   }
   
-  amovatab result;
-  nestedAmovaPrivate(_traitMat, _traitGroups, result);
+  //amovatab result;
+  _amovaresult->nested = true;
+  nestedAmovaPrivate(_traitMat, _traitGroups, *_amovaresult);
   
   /*vector<double> tmpweights;
   int tmparray[] = {15, 32, 0, 6, 6, 0, 16, 29, 18, 42};
@@ -639,6 +639,9 @@ Statistics::amovatab Statistics::nestedAmova() const
   ofstream phifile("phi.out");
   phifile << "phiST\tphiSC\tphiCT\n";*/
   
+  double progressDouble = 0;
+  double progressIncr = 100. / Iterations;
+  
   for (unsigned i = 0; i < Iterations; i++)
   { 
     // phiST: how similar are individuals in populations relative to randomised populations?
@@ -649,8 +652,8 @@ Statistics::amovatab Statistics::nestedAmova() const
     //cout << "done with first permutation" << endl;
     nestedAmovaPrivate(traitMatCopyAll, _traitGroups, permutedResult);
     //cout << "finished nested amovaprivate." << endl;
-    if (permutedResult.sigma2_c < result.sigma2_c)  sigma2cSmaller++;
-    if (permutedResult.phiST.value > result.phiST.value)  phiSTbigger++;
+    if (permutedResult.sigma2_c < _amovaresult->sigma2_c)  sigma2cSmaller++;
+    if (permutedResult.phiST.value > _amovaresult->phiST.value)  phiSTbigger++;
     //sigmafile << permutedResult.sigma2_c << '\t';
     //phifile << permutedResult.phiST.value << '\t';
     
@@ -659,8 +662,8 @@ Statistics::amovatab Statistics::nestedAmova() const
     permuteInGroups(traitMatCopyGroups, _traitGroups, ncopiesByGroup);
     //cout << "done with second permutation" << endl;
     nestedAmovaPrivate(traitMatCopyGroups, _traitGroups, permutedResult);
-    if (permutedResult.sigma2_b > result.sigma2_b)  sigma2bBigger++;
-    if (permutedResult.phiSC.value > result.phiSC.value)  phiSCbigger++;
+    if (permutedResult.sigma2_b > _amovaresult->sigma2_b)  sigma2bBigger++;
+    if (permutedResult.phiSC.value > _amovaresult->phiSC.value)  phiSCbigger++;
     //sigmafile << permutedResult.sigma2_b << '\t';
     //phifile << permutedResult.phiSC.value << '\t';
     
@@ -669,23 +672,26 @@ Statistics::amovatab Statistics::nestedAmova() const
     random_shuffle(traitGroupsCopy.begin(), traitGroupsCopy.end());
     //cout << "done with third permutation" << endl;
     nestedAmovaPrivate(_traitMat, traitGroupsCopy, permutedResult);
-    if (permutedResult.sigma2_a > result.sigma2_a)  sigma2aBigger++;
-    if (permutedResult.phiCT.value > result.phiCT.value)  phiCTbigger++;
+    if (permutedResult.sigma2_a > _amovaresult->sigma2_a)  sigma2aBigger++;
+    if (permutedResult.phiCT.value > _amovaresult->phiCT.value)  phiCTbigger++;
     //sigmafile << permutedResult.sigma2_a << '\n';
     //phifile << permutedResult.phiCT.value << '\n';
     
     //sigmafile << permutedResult.sigma2_c << '\t' << permutedResult.sigma2_b << '\t' << permutedResult.sigma2_a << '\n';
     //phifile << permutedResult.phiST.value << '\t' << permutedResult.phiSC.value << '\t' << permutedResult.phiCT.value << '\n';
     
+    progressDouble += progressIncr;
+    
+    emit progressUpdated((int)(progressDouble + 0.5));
   }
   
   //sigmafile.close(); phifile.close();
       
       //test sigma2a by permuting populations among groups    
   
-  result.phiCT.prob = ((double)phiCTbigger)/Iterations;
-  result.phiSC.prob = ((double)phiSCbigger)/Iterations;
-  result.phiST.prob = ((double)phiSTbigger)/Iterations;
+  _amovaresult->phiCT.prob = ((double)phiCTbigger)/Iterations;
+  _amovaresult->phiSC.prob = ((double)phiSCbigger)/Iterations;
+  _amovaresult->phiST.prob = ((double)phiSTbigger)/Iterations;
   
   /*cout << "phiST: " << result.phiST.value << " phiSC: " << result.phiSC.value << " phiCT: " << result.phiCT.value << endl;
   cout << "sigma2c: " << result.sigma2_c << " sigma2b: " << result.sigma2_b << " sigma2a: " << result.sigma2_a << endl; 
@@ -696,7 +702,12 @@ Statistics::amovatab Statistics::nestedAmova() const
   
   
   //cout << "permutation count: " << permuteCount << endl;
-  return result;
+  //return result;
+
+#ifdef NET_QT
+  if (thread() != QApplication::instance()->thread())
+    thread()->exit();
+#endif
     
 }
 
@@ -970,15 +981,19 @@ void Statistics::nestedAmovaPrivate(const vector<vector<unsigned> > &popMat, con
 // TODO combine amova and nested amova?
 // 
 
-Statistics::amovatab Statistics::amova() const
+//Statistics::amovatab 
+void Statistics::amova()
 {
+  emit progressUpdated(0);
+
   if (_traitMat.empty())
     throw StatsError("Traits must be associated prior to AMOVA calculation.");
 
   //const unsigned Iterations = 1000;
 
-  amovatab result;
-  amovaPrivate(_traitMat, result);
+  //amovatab result;
+  _amovaresult->nested = false;
+  amovaPrivate(_traitMat, *_amovaresult);
   
   amovatab permutedResult;
   vector<vector<unsigned> > traitMatCopy(_traitMat);
@@ -996,19 +1011,31 @@ Statistics::amovatab Statistics::amova() const
   
   unsigned phiSTbigger = 0;
   
+  double progressDouble = 0;
+  double progressIncr = 100. / Iterations;
+  
   for (unsigned i = 0; i < Iterations; i++)
   {
     permuteAll(traitMatCopy, ncopies);
     amovaPrivate(traitMatCopy, permutedResult);
     //cout << permutedResult.phiST.value << endl;
     
-    if (permutedResult.phiST.value > result.phiST.value)
+    if (permutedResult.phiST.value > _amovaresult->phiST.value)
       phiSTbigger++;
+
+    progressDouble += progressIncr;
+    emit progressUpdated((int)(progressDouble + 0.5));
   }
   
-  result.phiST.prob = ((double)phiSTbigger)/Iterations;
+  _amovaresult->phiST.prob = ((double)phiSTbigger)/Iterations;
   
-  return result;
+  //return result;
+
+#ifdef NET_QT
+  if (thread() != QApplication::instance()->thread())
+    thread()->exit();
+#endif
+  
 }
 
 void Statistics::amovaPrivate(const std::vector<std::vector<unsigned> > &popMat, amovatab &result) const
@@ -1104,7 +1131,7 @@ void Statistics::amovaPrivate(const std::vector<std::vector<unsigned> > &popMat,
   result.ss_ag = NAN;
   result.ss_ap = Bk;
   result.ss_wp = Wk;
-  result.df_ag = NAN;
+  result.df_ag = 0;
   result.df_ap = dfb;
   result.df_wp = dfw;
   result.ms_ag = NAN;
@@ -1115,7 +1142,6 @@ void Statistics::amovaPrivate(const std::vector<std::vector<unsigned> > &popMat,
   result.sigma2_c = NAN;
   result.phiST.value = sigma2a / (sigma2a + sigma2b);
   result.phiCT.value = result.phiSC.value = NAN;
-  
 }
 
 Statistics::DiscreteDistribution::DiscreteDistribution(const vector <double> &weights)

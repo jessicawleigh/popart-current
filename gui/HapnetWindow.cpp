@@ -88,7 +88,8 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _netThread = new QThread(this);
   connect(_netThread, SIGNAL(finished()), this, SLOT(displayNetwork()));
 
-  _statThread = new QThread(this);
+  _amovaThread = new QThread(this);
+  connect(_amovaThread, SIGNAL(finished()), this, SLOT(showAmova()));
   
   _clusterThread = new QThread(this);
   connect(_clusterThread, SIGNAL(finished()), this, SLOT(finaliseClustering()));
@@ -388,7 +389,7 @@ void HapnetWindow::setupActions()
   
   _amovaAct = new QAction(tr("A&MOVA"), this);
   _amovaAct->setStatusTip(tr("Perform analysis of molecular variance"));
-  connect(_amovaAct, SIGNAL(triggered()), this, SLOT(showAmova()));
+  connect(_amovaAct, SIGNAL(triggered()), this, SLOT(computeAmova()));
   
   _allStatsAct = new QAction(tr("&All stats"), this);
   _allStatsAct->setStatusTip(tr("Compute all statistics"));
@@ -3811,6 +3812,8 @@ void HapnetWindow::doStatsSetup()
     
     _statThread->wait();*/
     _stats->setupStats();
+    _stats->setAmovaPointer(_amovaStat);
+    connect(_stats, SIGNAL(progressUpdated(int)), _progress, SLOT(setValue(int)));
     if (! _activeTraitVect->empty())  _stats->setFreqsFromTraits(*_activeTraitVect); 
   }
   
@@ -3911,7 +3914,7 @@ void HapnetWindow::showTajimaD()
   message.exec(); 
 }
 
-void HapnetWindow::showAmova()
+void HapnetWindow::computeAmova()
 {
   if (_activeTraitVect->empty())
   {
@@ -3920,18 +3923,21 @@ void HapnetWindow::showAmova()
   }
 
   if (! _stats)
-    doStatsSetup();
+    doStatsSetup(); 
   
   if (! _stats)
     return;
   
-  Statistics::amovatab amovaStat;
-  bool nestedAmovaPerformed = false;
-  
   if (_traitGroupsSet)
   {
-    amovaStat = _stats->nestedAmova();
-    nestedAmovaPerformed = true;
+
+    //_stats->nestedAmova(_amovaStat);
+    connect(_amovaThread, SIGNAL(started()), _stats, SLOT(nestedAmova()));
+    _progress->setLabelText("Computing nested AMOVA...");
+    _progress->show();
+    _stats->moveToThread(_amovaThread);
+    
+    _amovaThread->start();
   }
     
   else
@@ -3963,7 +3969,14 @@ void HapnetWindow::showAmova()
       return;
     
     else if (result == QMessageBox::DestructiveRole)  // perform simple amova
-      amovaStat = _stats->amova();
+    {
+      connect(_amovaThread, SIGNAL(started()), _stats, SLOT(amova()));
+      _progress->setLabelText("Computing simple AMOVA...");
+      _progress->show();
+      _stats->moveToThread(_amovaThread);
+      
+      _amovaThread->start();
+    }
       
     else 
     {
@@ -3972,12 +3985,23 @@ void HapnetWindow::showAmova()
       // if trait groups still not set, user must have cancelled, don't perform AMOVA
       if (! _traitGroupsSet)
         return;
-      amovaStat = _stats->nestedAmova();
-      nestedAmovaPerformed = true;
+      
+      connect(_amovaThread, SIGNAL(started()), _stats, SLOT(nestedAmova()));
+      _progress->setLabelText("Computing nested AMOVA...");
+      _progress->show();
+      _stats->moveToThread(_amovaThread);
+    
+      _amovaThread->start();
     }
   }
+}
+
+void HapnetWindow::showAmova()
+{
+  _progress->hide();
+  disconnect(_amovaThread, SIGNAL(started()), _stats, 0);
   
-  double sigmaTotal = amovaStat.sigma2_a + amovaStat.sigma2_b;
+  double sigmaTotal = _amovaStat.sigma2_a + _amovaStat.sigma2_b;
   double smallestP = 1.0 / Statistics::Iterations;
   
   //QMessageBox 
@@ -3986,69 +4010,69 @@ void HapnetWindow::showAmova()
   message.setText(tr("<b>Analysis of molecular variance</b>"));
 
   //QString infText(tr("F = %1<br>p(F %2 %1) = %3<br>&Phi;<sub>ST</sub> = %4").arg(QString::number(amovaStat.F, 'f', 3)).arg(QChar(0x2265)).arg(QString::number(amovaStat.prob, 'g', 3)).arg(amovaStat.phiST));
-  QString infText(QString("&Phi;<sub>ST</sub> = %1 Significance: p ").arg(QString::number(amovaStat.phiST.value, 'f', 5))); 
-  //%2").arg(QString::number(amovaStat.phiST.value, 'f', 5)).arg(QString::number(amovaStat.phiST.prob, 'f', 3)));
+  QString infText(QString("&Phi;<sub>ST</sub> = %1 Significance: p ").arg(QString::number(_amovaStat.phiST.value, 'f', 5))); 
+  //%2").arg(QString::number(_amovaStat.phiST.value, 'f', 5)).arg(QString::number(_amovaStat.phiST.prob, 'f', 3)));
   
-  if (amovaStat.phiST.prob < smallestP)
+  if (_amovaStat.phiST.prob < smallestP)
     infText += QString("&lt; %1").arg(smallestP);
     
   else
-    infText += QString("= %1").arg(QString::number(amovaStat.phiST.prob, 'g', 3));
+    infText += QString("= %1").arg(QString::number(_amovaStat.phiST.prob, 'g', 3));
     
   message.setInformativeText(infText);
   
   QString detText(QString("                  Sum of\nVariation    df  squares sigma^2 %variation\n\n"));
   
-  if (nestedAmovaPerformed)
+  if (_amovaStat.nested)//nestedAmovaPerformed)
   { 
-    sigmaTotal += amovaStat.sigma2_c;
+    sigmaTotal += _amovaStat.sigma2_c;
     
-    detText += QString("Among\ngroups%1").arg(amovaStat.df_ag, 9); 
-    detText += QString("%1").arg(QString::number(amovaStat.ss_ag, 'f', 3), 9);
-    detText += QString("%1").arg(QString::number(amovaStat.sigma2_a, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
+    detText += QString("Among\ngroups%1").arg(_amovaStat.df_ag, 9); 
+    detText += QString("%1").arg(QString::number(_amovaStat.ss_ag, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(_amovaStat.sigma2_a, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
 
-    detText += QString("Among\npopulations%1").arg(amovaStat.df_ap, 4);
-    detText += QString("%1").arg(QString::number(amovaStat.ss_ap, 'f', 3), 9);
-    detText += QString("%1").arg(QString::number(amovaStat.sigma2_b, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
+    detText += QString("Among\npopulations%1").arg(_amovaStat.df_ap, 4);
+    detText += QString("%1").arg(QString::number(_amovaStat.ss_ap, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(_amovaStat.sigma2_b, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
     
-    detText += QString("Within\npopulations%1").arg(amovaStat.df_wp, 4);
-    detText += QString("%1").arg(QString::number(amovaStat.ss_wp, 'f', 3), 9);
-    detText += QString("%1").arg(QString::number(amovaStat.sigma2_c, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_c / sigmaTotal, 'f', 5), 11);
+    detText += QString("Within\npopulations%1").arg(_amovaStat.df_wp, 4);
+    detText += QString("%1").arg(QString::number(_amovaStat.ss_wp, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(_amovaStat.sigma2_c, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_c / sigmaTotal, 'f', 5), 11);
     
-    detText += QString("TOTAL%1").arg(amovaStat.df_ag + amovaStat.df_ap + amovaStat.df_wp, 10);
-    detText += QString("%1").arg(QString::number(amovaStat.ss_ag + amovaStat.ss_ap + amovaStat.ss_wp, 'f', 3), 9);
+    detText += QString("TOTAL%1").arg(_amovaStat.df_ag + _amovaStat.df_ap + _amovaStat.df_wp, 10);
+    detText += QString("%1").arg(QString::number(_amovaStat.ss_ag + _amovaStat.ss_ap + _amovaStat.ss_wp, 'f', 3), 9);
     detText += QString("%1\n\n").arg(QString::number(sigmaTotal, 'f', 3), 8);
     
-    detText += QString("Fixation indices\n    Phi_ST: %1\n\n").arg(QString::number(amovaStat.phiST.value, 'f', 5));
-    detText += QString("    Phi_SC: %1\n\n").arg(QString::number(amovaStat.phiSC.value, 'f', 5));
-    detText += QString("    Phi_CT: %1\n\n").arg(QString::number(amovaStat.phiCT.value, 'f', 5));
+    detText += QString("Fixation indices\n    Phi_ST: %1\n\n").arg(QString::number(_amovaStat.phiST.value, 'f', 5));
+    detText += QString("    Phi_SC: %1\n\n").arg(QString::number(_amovaStat.phiSC.value, 'f', 5));
+    detText += QString("    Phi_CT: %1\n\n").arg(QString::number(_amovaStat.phiCT.value, 'f', 5));
     detText += QString("Significance (%1 permutations):\n").arg(Statistics::Iterations);
     detText += QString("    Phi_ST: Pr(random value > observed Phi_ST) ");
     
-    if (amovaStat.phiST.prob < smallestP)
+    if (_amovaStat.phiST.prob < smallestP)
       detText += QString("< %1").arg(smallestP);
       
     else
-      detText += QString("= %1").arg(QString::number(amovaStat.phiST.prob, 'g', 3));
+      detText += QString("= %1").arg(QString::number(_amovaStat.phiST.prob, 'g', 3));
 
     detText += QString("\n    Phi_SC: Pr(random value > observed Phi_SC) ");
     
-    if (amovaStat.phiSC.prob < smallestP)
+    if (_amovaStat.phiSC.prob < smallestP)
       detText += QString("< %1").arg(smallestP);
       
     else
-      detText += QString("= %1").arg(QString::number(amovaStat.phiSC.prob, 'g', 3));
+      detText += QString("= %1").arg(QString::number(_amovaStat.phiSC.prob, 'g', 3));
 
     detText += QString("\n    Phi_CT: Pr(random value > observed Phi_CT) ");
 
-    if (amovaStat.phiCT.prob < smallestP)
+    if (_amovaStat.phiCT.prob < smallestP)
       detText += QString("< %1").arg(smallestP);
       
     else
-      detText += QString("= %1").arg(QString::number(amovaStat.phiCT.prob, 'g', 3));
+      detText += QString("= %1").arg(QString::number(_amovaStat.phiCT.prob, 'g', 3));
     
     detText += QString("\n");
 
@@ -4057,29 +4081,29 @@ void HapnetWindow::showAmova()
   else
   {
     
-    detText += QString("Among\npopulations%1").arg(amovaStat.df_ap, 4); // .arg((uint)amovaStat.df_ap, (int)4, (int)10, QChar(' '));
-    detText += QString("%1").arg(QString::number(amovaStat.ss_ap, 'f', 3), 9);
-    detText += QString("%1").arg(QString::number(amovaStat.sigma2_a, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
+    detText += QString("Among\npopulations%1").arg(_amovaStat.df_ap, 4); // .arg((uint)_amovaStat.df_ap, (int)4, (int)10, QChar(' '));
+    detText += QString("%1").arg(QString::number(_amovaStat.ss_ap, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(_amovaStat.sigma2_a, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
     
-    detText += QString("Within\npopulations%1").arg(amovaStat.df_wp, 4);
-    detText += QString("%1").arg(QString::number(amovaStat.ss_wp, 'f', 3), 9);
-    detText += QString("%1").arg(QString::number(amovaStat.sigma2_b, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
+    detText += QString("Within\npopulations%1").arg(_amovaStat.df_wp, 4);
+    detText += QString("%1").arg(QString::number(_amovaStat.ss_wp, 'f', 3), 9);
+    detText += QString("%1").arg(QString::number(_amovaStat.sigma2_b, 'f', 3), 8);
+    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
     
-    detText += QString("TOTAL%1").arg(amovaStat.df_ap + amovaStat.df_wp, 10);
-    detText += QString("%1").arg(QString::number(amovaStat.ss_ap + amovaStat.ss_wp, 'f', 3), 9);
+    detText += QString("TOTAL%1").arg(_amovaStat.df_ap + _amovaStat.df_wp, 10);
+    detText += QString("%1").arg(QString::number(_amovaStat.ss_ap + _amovaStat.ss_wp, 'f', 3), 9);
     detText += QString("%1\n\n").arg(QString::number(sigmaTotal, 'f', 3), 8);
     
-    detText += QString("Fixation index\nPhi_ST: %1\n\n").arg(QString::number(amovaStat.phiST.value, 'f', 5));
+    detText += QString("Fixation index\nPhi_ST: %1\n\n").arg(QString::number(_amovaStat.phiST.value, 'f', 5));
     detText += QString("Significance (%1 permutations):\n").arg(Statistics::Iterations);
-    detText += QString("Phi_ST: Pr(random value > observed Phi_ST) ");//%1 %2").arg(QString::number(amovaStat.phiST.prob, 'g', 3));
+    detText += QString("Phi_ST: Pr(random value > observed Phi_ST) ");//%1 %2").arg(QString::number(_amovaStat.phiST.prob, 'g', 3));
     
-    if (amovaStat.phiST.prob < smallestP)
+    if (_amovaStat.phiST.prob < smallestP)
       detText += QString("< %1").arg(smallestP);
       
     else
-      detText += QString("= %1").arg(QString::number(amovaStat.phiST.prob, 'g', 3));
+      detText += QString("= %1").arg(QString::number(_amovaStat.phiST.prob, 'g', 3));
   }
   
 

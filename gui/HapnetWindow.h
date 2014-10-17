@@ -92,7 +92,7 @@ private:
   QUndoStack *_history;
   QThread *_netThread;
   //QThread *_drawThread;
-  QThread *_statThread;
+  QThread *_amovaThread;
   QThread *_clusterThread;
   QProgressDialog *_progress;
   QStackedWidget *_centralContainer;
@@ -124,6 +124,7 @@ private:
   std::vector<std::string> _geoGroupVect;
   std::vector<std::string> *_traitGroups;
   Statistics *_stats;
+  Statistics::amovatab _amovaStat;
   
   std::istream *_tabfile;
 
@@ -235,6 +236,7 @@ private slots:
   void showSegSites();
   void showParsimonySites();
   void showTajimaD();
+  void computeAmova();
   void showAmova();
   void showAllStats();
   void search();

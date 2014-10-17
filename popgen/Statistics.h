@@ -47,17 +47,20 @@ public:
     stat phiST;
     stat phiSC;
     stat phiCT;
+    
+    bool nested;
   } amovatab;
   
   Statistics(const std::vector<Sequence*> & = std::vector<Sequence*>(), const std::vector<bool> & = std::vector<bool>(), Sequence::CharType = Sequence::DNAType);
+    
   const std::map<Sequence, std::list<Sequence > > & mapIdenticalSeqs() { return _identicalSeqMap; };
   void setFreqsFromTraits(const std::vector<Trait *> &);
+  void setAmovaPointer(amovatab &);
   double nucleotideDiversity() const;
   unsigned nSegSites() const { return _nSegSites; };
   unsigned nParsimonyInformative() const { return _nParsimonyInformative; };
   stat TajimaD() const ;
-  amovatab nestedAmova() const;
-  amovatab amova() const;
+  
   
   const static unsigned Iterations = 1000;
 
@@ -65,6 +68,8 @@ public:
 public slots:
 #endif
   void setupStats();
+  void nestedAmova();
+  void amova();
 
 
 private:  
@@ -123,6 +128,7 @@ private:
   std::vector<unsigned> _orig2condidx;
   std::vector<std::vector<unsigned> > _distances;
   std::vector<std::vector<unsigned> > _traitMat;
+  amovatab *_amovaresult;
   std::vector<unsigned> _traitGroups;
   
   static unsigned permuteCount;
