@@ -35,7 +35,9 @@ public:
   virtual void resetParser();
   const std::vector<Tree *> & treeVector() const;
   const std::vector<Trait *> & traitVector() const;
+  const std::vector<std::string> & traitGroups() const;
   const std::vector<GeoTrait *> & geoTraitVector() const;
+  const std::vector<std::string> & geoGroups() const;
   void setTraitLocation(unsigned, std::pair<float,float>);
   void setGeoTraitLocation(unsigned, std::pair<float,float>);
   bool hasGeoTags() const { return _hasGeoTags; };
@@ -94,6 +96,7 @@ private:
     ClustLabels,
     ClustLongitude,
     ClustLatitude,
+    ClustPartition,
     Dimensions,
     Edges,
     Format,
@@ -103,6 +106,7 @@ private:
     TraitLabels,
     TraitLatitude,
     TraitLongitude,
+    TraitPartition,
     Translate,
     TreeKW,
     Unknown,
@@ -191,12 +195,15 @@ private:
   std::map<std::string, std::string> _treeTaxMap;
   std::vector<Tree *> _trees;
   std::vector<Trait *> _traits;
+  std::vector<std::string> _traitGroupLabels;
   
-  // Vectors for trait names and locations reused for GeoTags
+  // Vectors for trait names, groups, and locations reused for GeoTags
   std::vector<std::string> _traitNames;
   std::vector<std::pair<float,float> > _traitLocations;
+  std::vector<int> _traitGroups;
   std::vector<SeqGeoData> _geoTags;
   std::vector<GeoTrait *> _geoTagTraits;
+  std::vector<std::string> _geoGroupLabels;
   
   std::vector<double> _plotRect;
   GraphicsParams _netGraphicsParams;

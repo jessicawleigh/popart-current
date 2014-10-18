@@ -112,10 +112,13 @@ void NexusParser::resetParser()
   for (unsigned i = 0; i < _traits.size(); i++)
     delete _traits.at(i);
   _traits.clear();
+  _traitGroups.clear();
+  _traitGroupLabels.clear();
   
   for (unsigned i = 0; i < _geoTagTraits.size(); i++)
     delete _geoTagTraits.at(i);
   _geoTagTraits.clear();
+  _geoGroupLabels.clear();
 
   _traitNames.clear();
   _traitLocations.clear();
@@ -145,9 +148,11 @@ void NexusParser::setupMaps()
   _kwdMap["traitlabels"] = TraitLabels; 
   _kwdMap["traitlatitude"] = TraitLatitude;
   _kwdMap["traitlongitude"] = TraitLongitude;
+  _kwdMap["traitpartition"] = TraitPartition;
   _kwdMap["clustlabels"] = ClustLabels; 
   _kwdMap["clustlatitude"] = ClustLatitude;
-  _kwdMap["clustlongitude"] = ClustLongitude;  
+  _kwdMap["clustlongitude"] = ClustLongitude;
+  _kwdMap["clustpartition"] = ClustPartition;  
   _kwdMap["translate"] = Translate;
   _kwdMap["tree"] = TreeKW;
   _kwdMap["charstatelabels"] = CharstateLabels;
@@ -350,9 +355,19 @@ const vector<Trait *> & NexusParser::traitVector() const
   return _traits;
 }
 
+const vector<string> & NexusParser::traitGroups() const
+{
+  return _traitGroupLabels;
+}
+
 const vector<GeoTrait *> & NexusParser::geoTraitVector() const
 {
   return _geoTagTraits;
+}
+
+const vector<string> & NexusParser::geoGroups() const
+{
+  return _geoGroupLabels;
 }
 
 void NexusParser::setTraitLocation(unsigned idx, std::pair<float,float> coords)
@@ -373,6 +388,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
   vector<string> wordlist; 
   vector<string>::iterator worditer;
   string word;
+  unsigned groupcount;
 
 
   if (line == ";")  return;
@@ -431,8 +447,24 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     case End:
     {
       if (_currentBlock == NoBlock)  throw SeqParseError("End keyword found outside block!");
+      
+      if (_currentBlock == Traits)
+      {
+        if (! _traitGroups.empty())
+        {
+          for (unsigned i = 0; i < _traits.size(); i++)
+          {
+            if (_traitGroups.at(i) < 0)
+              throw SeqParseError("Some, but not all, GeoTag groups specified!");
+            _traits.at(i)->setGroup(_traitGroups.at(i));
+          }
+          
+          _traitGroups.clear();
 
-      if (_currentBlock == GeoTags)
+        }
+      }
+
+      else if (_currentBlock == GeoTags)
       {
         // TODO this
         // Check all sequences for cluster IDs
@@ -492,8 +524,10 @@ void NexusParser::parseLine(string line, Sequence &sequence)
               oss << "cluster" << (i+1);
             else
               oss << _traitNames.at(i);
+                        
             _geoTagTraits.push_back(new GeoTrait(clustCoords.at(i), oss.str()));
           }
+          
           
           geoTagIt = _geoTags.begin();
           
@@ -518,6 +552,19 @@ void NexusParser::parseLine(string line, Sequence &sequence)
           
           else if (_traitNames.empty())
             _geoTagTraits = GeoTrait::clusterSeqs(coordinates, seqnames, seqcounts, nclusts);*/
+        }
+        
+        // Change this: for either traits or geotraits, loop through list and assign groups HERE
+        if (! _traitGroups.empty())
+        {
+          for (unsigned i = 0; i < _geoTagTraits.size(); i++)
+          {
+            if (_traitGroups.at(i) < 0)
+              throw SeqParseError("Some, but not all, GeoTag groups specified!");
+            _geoTagTraits.at(i)->setGroup(_traitGroups.at(i));
+          }
+          
+          _traitGroups.clear();
         }
       }
         
@@ -932,7 +979,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             if (_currentBlock != Network)
               throw SeqParseError("LPos keyword only allowed in Network block.");
             
-            int commaPos = val.find_first_of(',');
+            size_t commaPos = val.find_first_of(',');
             
             if (commaPos == string::npos)
             {
@@ -1075,24 +1122,28 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             //ParserTools::eraseChars(traitstr, '\t');
           }
           
-          int counter = 0;
+          unsigned counter = 0;
           wordlist.clear();
           string sep(1, _traitSep);
           ParserTools::tokenise(wordlist, traitstr, sep);
           worditer = wordlist.begin();
-          int nsamples;
+          unsigned nsamples;
           istringstream iss;
          
           while (worditer != wordlist.end())
           {
             if (counter > _traitNames.size())  
               throw SeqParseError("Too many columns in Traits block.");
+            
             if (_traits.size() <= counter)
             {
+              Trait *t;
               if (_traitLocations.empty())
-                _traits.push_back(new Trait(_traitNames.at(counter)));
+                t = new Trait(_traitNames.at(counter));
               else
-                _traits.push_back(new GeoTrait(_traitLocations.at(counter), _traitNames.at(counter)));
+                t = new GeoTrait(_traitLocations.at(counter), _traitNames.at(counter));
+                            
+              _traits.push_back(t);
             }
             
             // treat missing trait data as 0 samples
@@ -1334,7 +1385,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             else
             {
               if (_seqSeqVect.size() <= taxIdx)
-                throw new SeqParseError("More seq names than specified by nseq.");
+                throw SeqParseError("More seq names than specified by nseq.");
               _seqSeqVect.at(taxIdx) += seq;
               
               
@@ -1430,7 +1481,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             else
             {
               if (_seqSeqVect.size() <= taxIdx)
-                throw new SeqParseError("More seq names than specified by nseq.");
+                throw SeqParseError("More seq names than specified by nseq.");
               _seqSeqVect.at(taxIdx) += seq;
             }
             
@@ -1577,7 +1628,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     {
       unsigned nitems = _currentKeyWord == TraitLongitude ? _ntraits : _nclusts;
       
-     wordlist.clear();
+      wordlist.clear();
       ParserTools::tokenise(wordlist, line);
       
       worditer = wordlist.begin();
@@ -1613,6 +1664,116 @@ void NexusParser::parseLine(string line, Sequence &sequence)
         }
         ++worditer;
       }
+      
+      break;
+    }
+    
+    case TraitPartition:
+    case ClustPartition:
+    {
+     // max groups is number of traits/clusters: check this
+      // min groups is 1 (make sure this doesn't make AMOVA upset)
+      // ignore the name given to the partition
+      // make sure parsing still works if partition written over multiple lines
+
+      unsigned nitems = _currentKeyWord == TraitPartition ? _ntraits : _nclusts;
+        _traitGroups.assign(nitems, -1);
+
+      vector<string> & labelvect = _currentKeyWord == TraitPartition ? _traitGroupLabels : _geoGroupLabels;
+      
+       wordlist.clear();
+      
+      ParserTools::tokenise(wordlist, line, "=,");
+      worditer = wordlist.begin();
+      
+      if (ParserTools::caselessfind("traitpartition", (*worditer)) != string::npos || ParserTools::caselessfind("clustpartition", (*worditer)) != string::npos)
+      {
+        ++worditer;
+        groupcount = 0;
+      }
+      
+
+      while (worditer != wordlist.end())
+      {        
+        word = *worditer;
+        if (word.at(word.length() - 1) == ';')  word.erase(word.length() - 1);
+        if (! word.empty()) 
+        {
+          size_t labelend = word.find(':');
+          if (labelend == string::npos)
+            throw SeqParseError("Error parsing trait/geotag groups: no label found");
+          
+          string label = word.substr(0, labelend);
+          string members = word.substr(labelend + 1);
+          ParserTools::strip(label);
+          ParserTools::strip(members);
+          
+          labelvect.push_back(label);
+          
+          size_t dashpos = members.find('-');
+          
+          while (dashpos != string::npos)
+          {
+            // clean up whitespace after a dash
+            size_t endspace = members.find_first_not_of(" \t", dashpos + 1);
+
+            if (endspace == string::npos)
+              throw SeqParseError("Invalid syntax for trait/geotag group");
+            
+            if (endspace > dashpos + 1)
+              members.replace(dashpos, endspace - dashpos, "-");
+
+            // clean up whitespace before a dash
+            endspace = members.find_last_not_of(" \t", dashpos - 1);
+            
+            if (endspace == string::npos)
+              throw SeqParseError("Invalid syntax for trait/geotag group");
+            
+            if (endspace < dashpos - 1)
+              members.replace(endspace + 1, dashpos - endspace, "-");
+            
+            dashpos = members.find('-', endspace + 2);
+          }
+                    
+          vector<string> memberlist;
+          
+          ParserTools::tokenise(memberlist, members);
+          
+          vector<string>::iterator memberiter = memberlist.begin();
+          
+          while (memberiter != memberlist.end())
+          {
+            istringstream iss(*memberiter);
+            
+            unsigned start, end;
+            char dash;
+            
+            iss >> start;
+            
+            if (iss.good())
+            {
+              iss >> dash >> end;
+              for (unsigned i = start; i <= end; i++)
+                _traitGroups.at(i - 1) = groupcount;
+            }
+            
+            else
+              _traitGroups.at(start - 1) = groupcount;
+              //cout << "got value: " << start << endl;
+            
+            ++memberiter;
+          }
+        }
+        
+        ++worditer;
+        groupcount++;
+      }
+        
+      
+      // break line on comma to get different groups; each should have the structure label\: ?\d ?- ?\d;? or label\: ?\d( \d)*;?
+      // break each token on : to get label in first token;
+      //   clean up \d ?- ?\d: strip any whitespace around dash
+      // then break on spaces. If the word can be converted to a number, set the cluster's group ID. Otherwise, look for two numbers and a dash, and set the range's group ID.
       
       break;
     }

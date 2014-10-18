@@ -1318,6 +1318,7 @@ bool HapnetWindow::loadTraitsFromParser()
           _traitVect.push_back(new Trait(*(traits.at(i))));
       }
       
+      _groupVect.assign(parser->traitGroups().begin(), parser->traitGroups().end());
     }
     
     if (parser->hasGeoTags())
@@ -1326,6 +1327,9 @@ bool HapnetWindow::loadTraitsFromParser()
 
       for (unsigned i = 0; i < gtv.size(); i++)
         _geoTagVect.push_back(new GeoTrait(*(gtv.at(i))));
+      
+      _geoGroupVect.assign(parser->geoGroups().begin(), parser->geoGroups().end());
+
     }
     
     
@@ -1452,6 +1456,9 @@ bool HapnetWindow::loadTraitsFromParser()
     //_errorMessage.showMessage("Error parsing traits.");
     return false;
   }
+  
+  if (! _traitGroups->empty())
+    _traitGroupsSet = true;
   
   return true;
 }
@@ -2359,8 +2366,8 @@ bool HapnetWindow::writeNexusAlignment(ostream &nexfile)
 
 bool HapnetWindow::writeNexusTraits(ostream &nexfile)
 {
-  if (_traitVect.empty())
-    return true;
+  //if (_traitVect.empty() && _geoTagVect.empty())
+  //  return true;
   
   if (! _traitVect.empty())
     writeTraitData(nexfile, _traitVect);
@@ -2475,11 +2482,61 @@ bool HapnetWindow::writeTraitData(ostream &nexfile, const vector<Trait *> &trait
 
   }
 
-  // geo data
   nexfile << "TraitLabels";
 
   for (unsigned i = 0; i < traits.size(); i++)
     nexfile << ' ' << traits.at(i)->name();
+  
+  if (! _groupVect.empty())
+  {
+    nexfile << ";\nTraitPartition popgroups =";
+    
+    for (unsigned i = 0; i < _groupVect.size(); i++)
+    {
+      if (i > 0)
+        nexfile << ',';
+      
+      nexfile << ' ' << _groupVect.at(i) << ':';
+      
+      unsigned startitem = 0;
+      bool inrange = false;
+      
+      for (unsigned j = 0; j < _traitVect.size(); j++)
+      {
+        if (_traitVect.at(j)->group() == i)
+        {
+          if (! inrange)
+          {
+            inrange = true;
+            startitem = j;
+          }
+        }
+        
+        else
+        {
+          if (inrange)
+          {
+            inrange = false;
+            
+            if (j > startitem + 1)
+              nexfile << ' ' << startitem + 1 << '-' << j;
+            
+            else
+              nexfile << ' ' << startitem + 1;
+          }
+        }
+      }
+      
+      if (_traitVect.back()->group() == i)
+      {
+        if (_traitVect.size() > startitem + 1)
+          nexfile << ' ' << startitem + 1 << '-' << _traitVect.size();
+        else
+          nexfile << ' ' << _traitVect.size();
+      }
+          
+    }
+  }
 
   nexfile << ";\nMatrix" << endl;
 
@@ -2549,9 +2606,58 @@ bool HapnetWindow::writeGeoData(ostream &nexfile, const vector<Trait *> &geotrai
   for (unsigned i = 0; i < geotraits.size(); i++)
     nexfile << ' ' << geotraits.at(i)->name();
 
+  if (! _geoGroupVect.empty())
+  {
+    nexfile << ";\nClustPartition popgroups =";
+    
+    for (unsigned i = 0; i < _geoGroupVect.size(); i++)
+    {
+      if (i > 0)
+        nexfile << ',';
+      
+      nexfile << ' ' << _geoGroupVect.at(i) << ':';
+      
+      unsigned startitem = 0;
+      bool inrange = false;
+      
+      for (unsigned j = 0; j < _geoTagVect.size(); j++)
+      {
+        if (_geoTagVect.at(j)->group() == i)
+        {
+          if (! inrange)
+          {
+            inrange = true;
+            startitem = j;
+          }
+        }
+        
+        else
+        {
+          if (inrange)
+          {
+            inrange = false;
+            
+            if (j > startitem + 1)
+              nexfile << ' ' << startitem + 1 << '-' << j;
+            
+            else
+              nexfile << ' ' << startitem + 1;
+          }
+        }
+      }
+      
+      if (_geoTagVect.back()->group() == i)
+      {
+        if (_geoTagVect.size() > startitem + 1)
+          nexfile << ' ' << startitem + 1 << '-' << _geoTagVect.size();
+        else
+          nexfile << ' ' << _geoTagVect.size();
+      }
+          
+    }
+  }
+
   nexfile << ";\nMatrix" << endl;
-
-
 
   for (unsigned i = 0; i < _alignment.size(); i++)
   {
