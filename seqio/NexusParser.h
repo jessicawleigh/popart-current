@@ -27,6 +27,15 @@
 
 class NexusParser : public SeqParser {
 public:
+  
+  typedef struct
+  {
+    unsigned eid;
+    unsigned from;
+    unsigned to;
+    double weight;
+  } EdgeData;  
+  
   NexusParser();
   virtual ~NexusParser();
 
@@ -44,7 +53,8 @@ public:
   bool hasTraits() const { return _hasTraits; };
   const std::vector<std::pair<double,double> > & netVertices() {return _vertices; };
   const std::vector<std::pair<double,double> > & netVLabels() {return _vLabels; };
-  const std::vector<std::pair<unsigned,unsigned> > & netEdges() { return _edges; }
+  //const std::vector<std::pair<unsigned,unsigned> > & netEdges() { return _edges; }
+  const std::vector<EdgeData> & netEdges() { return _edges; }
   const std::vector<double> & netPlotDim() { return _plotRect; };
   const std::string & netFont() { return _netGraphicsParams.font; };
   const std::string & netLegendFont() { return _netGraphicsParams.legendFont; };
@@ -209,7 +219,8 @@ private:
   std::vector<double> _plotRect;
   GraphicsParams _netGraphicsParams;
   std::vector<pair<double,double> > _vertices;
-  std::vector<pair<unsigned,unsigned> > _edges;
+  //std::vector<pair<unsigned,unsigned> > _edges;
+  std::vector<EdgeData> _edges;
   std::vector<pair<double,double> > _vLabels;
 
   //bool _geoDataSaved;

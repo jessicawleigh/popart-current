@@ -40,7 +40,7 @@ class MapView : public QWidget
 public:
   MapView(QWidget * = 0);
   virtual ~MapView();
-
+  //void checkFloatObjects() const;
   void addHapLocations(const std::vector<Trait *> &);
   ColourTheme::Theme colourTheme() const { return _currentTheme; };
   static ColourTheme::Theme defaultColourTheme() { return _defaultTheme; };

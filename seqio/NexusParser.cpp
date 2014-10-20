@@ -1833,7 +1833,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       if (ParserTools::lower(wordlist.front()) == "edges")
         break;
       
-      if (wordlist.size() != 3)
+      if (wordlist.size() < 3 && wordlist.size() > 4)
         throw SeqParseError("Invalid edge descriptor.");
       
       if (line.at(line.size() - 1) == ',')
@@ -1843,18 +1843,22 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       unsigned eid;
       unsigned from;
       unsigned to;
+      double weight = 1.0;
       
       iss >> eid;
       iss >> from;
       iss >> to;
       
+      if (iss.good())
+        iss >> weight;
+      
       if (iss.fail())
         throw SeqParseError("Invalid edge format.");
       
       if (_edges.size() < eid)
-        _edges.resize(eid, pair<unsigned,unsigned>(0,0));
+        _edges.resize(eid);//pair<unsigned,unsigned>(0,0));
       
-      _edges.at(eid - 1) = pair<unsigned,unsigned>(from,to);
+      _edges.at(eid - 1) = {.eid=eid, .from=from, .to=to, .weight=weight};//pair<unsigned,unsigned>(from,to);
       break;
     }
     

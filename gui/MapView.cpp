@@ -51,12 +51,20 @@ MapView::MapView(QWidget *parent)
   _externalLegend = false;
   _mapWidget = new MarbleWidget(this);
   setupWidget();
+  //checkFloatObjects();
 }
 
 MapView::~MapView()
 {
   if (! _locations.empty())  clearHapLocations();
 }
+
+/*void MapView::checkFloatObjects() const
+{
+  qDebug() << "show overview map?" << _mapWidget->showOverviewMap();
+  qDebug() << "show scale bar?" << _mapWidget->showScaleBar();
+  qDebug() << "show compass?" << _mapWidget->showCompass();
+}*/
 
 
 void MapView::setupWidget()

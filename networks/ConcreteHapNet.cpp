@@ -18,7 +18,7 @@ ConcreteHapNet::ConcreteHapNet(const Graph &g, const vector<Sequence*> & seqs, c
   for (unsigned i = 0; i < g.edgeCount(); i++)
   {
     const Edge *e = g.edge(i);
-    newEdge(vertex(e->from()->index()), vertex(e->to()->index()));
+    newEdge(vertex(e->from()->index()), vertex(e->to()->index()), e->weight());
   }
 }
 

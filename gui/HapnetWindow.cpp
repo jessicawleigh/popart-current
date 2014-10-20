@@ -659,7 +659,6 @@ void HapnetWindow::openAlignment()
         _alModel = new AlignmentModel(_alignment);
         _alView->setModel(_alModel);
 
-        //_alModel->setCharType(_datatype);
         _alModel->setCharType(_datatype);
         
         if (! _mask.empty())
@@ -744,7 +743,6 @@ void HapnetWindow::openAlignment()
         _alView->setModel(_alModel);
         _alModel->setCharType(_datatype);
         delete tmpModel;
-        //_alView->resizeColumnsToContents();
       }
     }
   }
@@ -1006,8 +1004,8 @@ bool HapnetWindow::loadNetFromParser()
   Graph g;
 
   const vector<pair<double,double> > & vertices = nexParser->netVertices();
-  const vector<pair<unsigned,unsigned> >  & edges = nexParser->netEdges();
-
+  const vector<NexusParser::EdgeData> & edges = nexParser->netEdges();
+  
   if (vertices.empty())
     return false;
 
@@ -1019,7 +1017,8 @@ bool HapnetWindow::loadNetFromParser()
 
 
   for (unsigned i = 0; i < edges.size(); i++)
-    g.newEdge(g.vertex(edges.at(i).first), g.vertex(edges.at(i).second));
+    g.newEdge(g.vertex(edges.at(i).from), g.vertex(edges.at(i).to), edges.at(i).weight);
+    //g.newEdge(g.vertex(edges.at(i).first), g.vertex(edges.at(i).second));
 
   if (_g)  delete _g;
   try
@@ -2813,7 +2812,7 @@ bool HapnetWindow::writeNexusNetwork(ostream &nexfile)
   for (unsigned i = 0; i < _g->edgeCount(); i++)
   {
     const Edge *e = _g->edge(i);
-    nexfile << (i + 1) << ' ' << e->from()->index() << ' ' << e->to()->index() << ',' << endl;
+    nexfile << (i + 1) << ' ' << e->from()->index() << ' ' << e->to()->index() << ' ' << e->weight() << ',' << endl;
   } 
   
   nexfile << ';' << endl;
@@ -3439,9 +3438,6 @@ void HapnetWindow::toggleView()
 {
   if (_view == Net)
   {
-    //_mapView->show();//setVisible(true);
-    //setCentralWidget(_mapView);
-    //_netView->hide();//setVisible(false);
     _centralContainer->setCurrentIndex(1);
 
     if (! _mapTraitsSet && _activeTraitVect->size() > 0)
@@ -3452,13 +3448,12 @@ void HapnetWindow::toggleView()
     _toggleViewAct->setText(tr("Switch to network view"));
     _view = Map;
     _toggleExternalLegendAct->setEnabled(true);
+    //qDebug() << "switched to map view.";
+    //_mapView->checkFloatObjects();
   }
 
   else
   {
-    //_netView->show();//setVisible(true);
-    //setCentralWidget(_netView);
-    //_mapView->hide(); //setVisible(false);
     _centralContainer->setCurrentIndex(0);
 
     _toggleViewAct->setText(tr("Switch to map view"));
@@ -3496,13 +3491,6 @@ void HapnetWindow::toggleActiveTraits()
   {
     _activeTraits = GeoTags;
     _toggleTraitAct->setText(tr("Use Traits &populations"));
-
-//     closeTraits();
-// 
-//     const vector<GeoTrait*> & gtv = np->geoTraitVector();
-//     
-//     for (unsigned i = 0; i < gtv.size(); i++)
-//       _traitVect.push_back(new GeoTrait(*(gtv.at(i))));
     
     if (_geoGroupVect.empty())
       _traitGroupsSet = false;
@@ -3519,18 +3507,6 @@ void HapnetWindow::toggleActiveTraits()
   {
     _activeTraits = Traits;
     _toggleTraitAct->setText(tr("Use GeoTags &populations"));
-    
-//     closeTraits();
-// 
-//     const vector<Trait*> &traits = np->traitVector();
-//     for (unsigned i = 0; i < traits.size(); i++)
-//     {
-//       GeoTrait *gt = dynamic_cast<GeoTrait *>(traits.at(i));
-//       if (gt)
-//         _traitVect.push_back(new GeoTrait(*gt));
-//       else
-//         _traitVect.push_back(new Trait(*(traits.at(i))));
-//     }
     
     if (_groupVect.empty())
       _traitGroupsSet = false;
@@ -3707,7 +3683,6 @@ void HapnetWindow::setTraitGroups()
   
   if (groupsSuccess)
   {
-    //QMap<QString, QList<QString> > traitGroups = groupDlg.groups();
     _traitGroups->clear();
     
     QMap<QString, QList<QString> >::const_iterator mapIt = traitGroupMap.constBegin();
@@ -3716,20 +3691,15 @@ void HapnetWindow::setTraitGroups()
     while (mapIt != traitGroupMap.constEnd())
     {
       _traitGroups->push_back(mapIt.key().toStdString());
-      
-      //cout << "group " << mapIt.key().toStdString() << "(" << groupIdx << "):";
-      
+            
       foreach (QString str, mapIt.value())
       {
-        //cout << ' ' << str.toStdString();
         Trait *t = nameToTrait[str];
         t->setGroup(groupIdx);
-        //cout << '=' << t->name();
       }
       
       ++mapIt;
       groupIdx++;
-      //cout << endl;
     }
     
     if (_stats)
