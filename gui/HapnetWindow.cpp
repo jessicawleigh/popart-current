@@ -3491,13 +3491,6 @@ void HapnetWindow::toggleActiveTraits()
 
   if (! np)
     showErrorDlg("Both Traits and GeoTags should be loaded from a Nexus file to enable toggling", "Please report this as a bug.");
-
-  if (_stats) 
-  {
-    delete _stats;
-    _stats = 0;
-  }
-
   
   if (_activeTraits == Traits)
   {
@@ -3551,6 +3544,9 @@ void HapnetWindow::toggleActiveTraits()
       
   }
   
+  if (_stats)
+    _stats->setFreqsFromTraits(*_activeTraitVect);
+
   if (_g)
     _g->associateTraits(*_activeTraitVect);
   

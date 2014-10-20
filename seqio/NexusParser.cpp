@@ -194,7 +194,7 @@ Sequence & NexusParser::getSeq(istream &input, Sequence &sequence)
   strblockmap::const_iterator blockResult;
   strkwdmap::const_iterator kwdResult;
 
-  if (! _interleave || _seqidx < 0)
+  if ((! _interleave) || _seqidx < 0)
   {
     while (input.good())
     {
@@ -236,7 +236,10 @@ Sequence & NexusParser::getSeq(istream &input, Sequence &sequence)
             if (word.at(word.length() - 1) == ';')  word.erase(word.length() - 1);
             kwdResult = _kwdMap.find(word);
             if (kwdResult == _kwdMap.end())
+            {
               _currentKeyWord = Unknown;
+              _kwdText = *worditer;
+            }
 
             else
               _currentKeyWord = kwdResult->second;
@@ -266,7 +269,7 @@ Sequence & NexusParser::getSeq(istream &input, Sequence &sequence)
                 {
 
                   if (_topSeq.empty())  _topSeq.setSeq(sequence.seq());
-  
+
                   else
                   {
                     string fixedseq = sequence.seq();
@@ -302,6 +305,7 @@ Sequence & NexusParser::getSeq(istream &input, Sequence &sequence)
     }
   }
   
+  // Clean up interleaved sequences once all sequences have been read.
   if (_interleave)
   {
     if (_seqidx < 0)
@@ -1065,6 +1069,12 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       if (_currentBlock == Other)  return;
       else if (_currentBlock == Traits)
       {
+        if (_traitNames.empty())
+          throw SeqParseError("Traits block must contain a TraitLabels directive!");
+        
+        if (_traitNames.size() != _ntraits)
+          throw SeqParseError("Number of TraitLabels does not match ntraits!");
+        
         if (ParserTools::caselessfind("matrix", line) == string::npos)
         {
           if (line.at(line.length() - 1) == ';')
@@ -1132,8 +1142,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
          
           while (worditer != wordlist.end())
           {
-            if (counter > _traitNames.size())  
-              throw SeqParseError("Too many columns in Traits block.");
+            if (counter >= _ntraits)
+              throw SeqParseError("Too many columns in Traits block (should match ntraits).");
             
             if (_traits.size() <= counter)
             {
@@ -1168,6 +1178,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       
       else if (_currentBlock == GeoTags)
       {
+        if (! _traitNames.empty() && _traitNames.size() != _nclusts)
+          throw SeqParseError("Number of GeoTag ClustLabels does not match nclusts!");
         if (ParserTools::caselessfind("matrix", line) == string::npos)
         {
           if (line.at(line.length() - 1) == ';')
@@ -1324,7 +1336,7 @@ void NexusParser::parseLine(string line, Sequence &sequence)
             // if there's a TaxLabels block, and no newtaxa directive, check that this label matches
             // TODO count taxa that don't match to make sure they don't exceed newtaxa ntax
             int taxIdx = -1;
-            if (_taxLabels && ! _newTaxa)
+            if ((_taxLabels && ! _newTaxa) || (_interleave && _taxonVect.size() == nSeq()))
             {
               map<string, int>::iterator taxIt = _taxonIndexMap.find(seqname);
               
@@ -1420,16 +1432,14 @@ void NexusParser::parseLine(string line, Sequence &sequence)
 
               else
               {
-                //string 
                 seqname = line.substr(0, nameend);
-                //string 
                 seq = line.substr(nameend);
                 ParserTools::eraseChars(seq, ' ');
                 ParserTools::eraseChars(seq, '\t');
               }
 
               
-              if (_taxLabels && ! _newTaxa)
+              if ((_taxLabels && ! _newTaxa) || (_interleave && _taxonVect.size() == nSeq()))
               {
                 map<string, int>::iterator taxIt = _taxonIndexMap.find(seqname);
                 
@@ -2058,8 +2068,11 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       /*if (_currentBlock != Other &&
       _currentBlock != Assumptions &&
       _currentBlock != Sets)*/
+      
+      ostringstream oss;
+      oss << "Unknown keyword: " << _kwdText;
       if (_currentBlock == Data || _currentBlock == Taxa || _currentBlock == Characters || _currentBlock == Trees || _currentBlock == Traits)
-        warn("Unknown keyword.");
+        warn(oss.str());
         //throw SeqParseError("Unknown keyword!");
     }
     break;
@@ -2067,7 +2080,9 @@ void NexusParser::parseLine(string line, Sequence &sequence)
     default:
     {
       /* This should never happen */
-      throw SeqParseError("Invalid keyword!");
+      ostringstream oss;
+      oss << "Invalid keyword. Line: " << line;
+      throw SeqParseError(oss.str());
     }
     break;
   }

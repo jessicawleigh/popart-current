@@ -176,6 +176,7 @@ private:
   unsigned _nedges;
   bool _hasGeoTags;
   bool _hasTraits;  
+  std::string _kwdText;
   const std::string *_keystr;
   std::string *_treestr;
   
