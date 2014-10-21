@@ -134,8 +134,10 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
 
    _mapView = new MapView(this);
    //_mapView->setVisible(false);
+   //_mapView->hideUnwantedFloatItems();
    _centralContainer->addWidget(_mapView);
    _mapTraitsSet = false;
+   
    connect(_mapView, SIGNAL(positionChanged(const QString &)), sbar, SLOT(showMessage(const QString &)));
    connect(_mapView, SIGNAL(seqColourChangeRequested(int)), this, SLOT(changeColour(int)));
    connect(_mapView, SIGNAL(locationSet(unsigned, std::pair<float,float>)), this, SLOT(updateTraitLocation(unsigned, std::pair<float,float>)));

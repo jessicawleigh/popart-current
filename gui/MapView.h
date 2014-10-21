@@ -24,6 +24,7 @@
 #include <QContextMenuEvent>
 #include <QFont>
 #include <QLabel>
+#include <QShowEvent>
 #include <QSlider>
 #include <QString>
 #include <QVector>
@@ -40,7 +41,6 @@ class MapView : public QWidget
 public:
   MapView(QWidget * = 0);
   virtual ~MapView();
-  //void checkFloatObjects() const;
   void addHapLocations(const std::vector<Trait *> &);
   ColourTheme::Theme colourTheme() const { return _currentTheme; };
   static ColourTheme::Theme defaultColourTheme() { return _defaultTheme; };
@@ -58,9 +58,13 @@ public slots:
   void savePDFFile(const QString &filename) const;
   void savePNGFile(const QString &filename) const;  
   void saveSVGFile(const QString &filename) const;
+  
+//protected:
+//  virtual void showEvent (QShowEvent *);
 
 private:
   void setupWidget();
+  void hideUnwantedFloatItems();
   void clearHapLocations();
   void lookupLocation(HapLocation*);
   void updateColours();

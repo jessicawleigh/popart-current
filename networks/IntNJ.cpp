@@ -176,6 +176,7 @@ void IntNJ::computeGraph()
             const Edge *e_j = w_j->sharedEdge(path.at(j - 1)); 
             unsigned dvwj = pathLength(v, w_j);
             
+            // Look for ways to add vertices along e_i or e_j
             for (unsigned x_i = 0; x_i < e_i->weight(); x_i++)
             {
               

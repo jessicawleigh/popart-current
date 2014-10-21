@@ -25,6 +25,7 @@
 #include <QSvgGenerator>
 
 // Marble headers
+#include <AbstractFloatItem.h>
 #include <GeoDataDocument.h>
 #include <GeoDataCoordinates.h>
 #include <GeoDataLineString.h>
@@ -64,6 +65,13 @@ MapView::~MapView()
   qDebug() << "show overview map?" << _mapWidget->showOverviewMap();
   qDebug() << "show scale bar?" << _mapWidget->showScaleBar();
   qDebug() << "show compass?" << _mapWidget->showCompass();
+}
+
+void MapView::checkFloatItems() const
+{
+  foreach ( AbstractFloatItem * floatItem, _mapWidget->floatItems() )
+    if (floatItem)
+      qDebug() << "float item:" << floatItem->nameId();
 }*/
 
 
@@ -71,9 +79,11 @@ void MapView::setupWidget()
 {
   _mapWidget->setProjection(Mercator);
   _mapWidget->setMapThemeId("earth/plain/plain.dgml");
-  _mapWidget->setShowOverviewMap(false);
+  // doesn't work, not sure why
+  /*_mapWidget->setShowOverviewMap(false);
   _mapWidget->setShowScaleBar(false);
-  _mapWidget->setShowCompass(false);
+  _mapWidget->setShowCompass(false);*/
+  hideUnwantedFloatItems();
 
   _zoomSlider = new QSlider(Qt::Horizontal, this);
   _zoomSlider->setMinimum(1000);
@@ -112,8 +122,21 @@ void MapView::setupWidget()
 //   
 //   _mapWidget->model()->treeModel()->addDocument(doc);
   
-  
 
+}
+
+void MapView::hideUnwantedFloatItems()
+{
+  //qDebug() << "hiding unwanted float items.";
+  
+  foreach (AbstractFloatItem * floatItem, _mapWidget->floatItems())
+  {
+    if (floatItem && (floatItem->nameId() == "overviewmap" || 
+                      floatItem->nameId() == "scalebar" ||
+                      floatItem->nameId() == "compass" ||
+                      floatItem->nameId() == "navigation"))
+      floatItem->setVisible(false);
+  }
 }
 
 
@@ -201,9 +224,11 @@ void MapView::setExternalLegend(bool external)
 void MapView::setTheme(const QString &theme)
 {
   _mapWidget->setMapThemeId(QString("earth/%1/%1.dgml").arg(theme));
-  _mapWidget->setShowOverviewMap(false);
+  
+  hideUnwantedFloatItems();
+  /*_mapWidget->setShowOverviewMap(false);
   _mapWidget->setShowScaleBar(false);
-  _mapWidget->setShowCompass(false);
+  _mapWidget->setShowCompass(false);*/
   
   if (theme == "bluemarble")
   {
@@ -592,6 +617,12 @@ void MapView::resetMapToolTip(const QString &toolTip)
 {
   _mapWidget->setToolTip("");
 }
+
+/*void MapView::showEvent(QShowEvent *event)
+{
+  qDebug() << "show event.";
+  QWidget::showEvent(event);
+}*/
 
 
 
