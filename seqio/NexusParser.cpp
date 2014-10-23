@@ -1845,6 +1845,8 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       unsigned to;
       double weight = 1.0;
       
+      EdgeData *edata;
+      
       iss >> eid;
       iss >> from;
       iss >> to;
@@ -1858,7 +1860,12 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       if (_edges.size() < eid)
         _edges.resize(eid);//pair<unsigned,unsigned>(0,0));
       
-      _edges.at(eid - 1) = {.eid=eid, .from=from, .to=to, .weight=weight};//pair<unsigned,unsigned>(from,to);
+      edata = & _edges.at(eid - 1);
+      edata->eid = eid;
+      edata->from = from;
+      edata->to = to;
+      edata->weight = weight;
+      // = {.eid=eid, .from=from, .to=to, .weight=weight};//pair<unsigned,unsigned>(from,to);
       break;
     }
     

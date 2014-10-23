@@ -916,7 +916,7 @@ void Statistics::nestedAmovaPrivate(const vector<vector<unsigned> > &popMat, con
   for (unsigned p = 0; p < npop; p++)
   {
     sswp += popSSW.at(p) / (2 * popSizes.at(p));
-    unsigned pop2size = pow(popSizes.at(p), 2);
+    unsigned pop2size = pow((double)(popSizes.at(p)), 2);
     sumPop2sizes += pop2size;
     groupPop2sizes.at(popGroups[p]) += pop2size;
   }
@@ -924,7 +924,7 @@ void Statistics::nestedAmovaPrivate(const vector<vector<unsigned> > &popMat, con
   for (unsigned g = 0; g < ngroup; g++)
   {   
     ssap += groupSSW.at(g) / (2 * groupSizes.at(g));
-    sumGroup2sizes += pow(groupSizes.at(g), 2);//group2size;
+    sumGroup2sizes += pow((double)(groupSizes.at(g)), 2);//group2size;
     //sumGroupPop2sizes += groupPop2sizes.at(g);
     
     n -= ((double)groupPop2sizes.at(g)) / groupSizes.at(g);
