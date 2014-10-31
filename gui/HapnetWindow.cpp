@@ -97,6 +97,7 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   //_drawThread = new QThread(this);
   //connect(_drawThread, SIGNAL(finished()), this, SLOT(finaliseDisplay()));
   //connect(_drawThread, SIGNAL(started()), this, SLOT(setModel()));
+  _citationDlg = new CitationDialog(this);
 
   _progress = new QProgressDialog(this);
   _progress->setMinimum(0);
@@ -438,6 +439,9 @@ void HapnetWindow::setupActions()
   _assistantAct->setShortcut(QKeySequence::HelpContents);
   connect(_assistantAct, SIGNAL(triggered()), this, SLOT(showDocumentation()));
   
+  _citationAct = new QAction(tr("How To &Cite"), this);
+  connect(_citationAct, SIGNAL(triggered()), _citationDlg, SLOT(show()));
+  
   _aboutAct = new QAction(tr("&About"), this);
   connect(_aboutAct, SIGNAL(triggered()), this, SLOT(about()));
 
@@ -535,6 +539,7 @@ void HapnetWindow::setupMenus()
   
   QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
   helpMenu->addAction(_assistantAct);
+  helpMenu->addAction(_citationAct);
   helpMenu->addAction(_aboutAct);
   helpMenu->addAction(_aboutQtAct);
   

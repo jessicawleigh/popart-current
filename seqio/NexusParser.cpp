@@ -2148,6 +2148,7 @@ void NexusParser::putSeq(ostream &output, const Sequence &sequence)
   {
     output << ";\nEnd;" << endl;
     _seqWriteCount = 0;
+    _headerWritten = false;
   }
 }
 

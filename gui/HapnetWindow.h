@@ -24,6 +24,7 @@
 #include "AlignmentView.h"
 #include "AlignmentModel.h"
 #include "Assistant.h"
+#include "CitationDialog.h"
 #include "GeoTrait.h"
 #include "MapView.h"
 #include "NetworkView.h"
@@ -94,6 +95,7 @@ private:
   //QThread *_drawThread;
   QThread *_amovaThread;
   QThread *_clusterThread;
+  CitationDialog *_citationDlg;
   QProgressDialog *_progress;
   QStackedWidget *_centralContainer;
   NetworkView *_netView;
@@ -196,6 +198,7 @@ private:
   QAction *_taxBoxAct;
   
   QAction *_assistantAct;
+  QAction *_citationAct;
   QAction *_aboutAct;
   QAction *_aboutQtAct;
   
