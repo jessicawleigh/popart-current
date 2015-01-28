@@ -3123,12 +3123,13 @@ void HapnetWindow::buildIntNJ()
   QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
   QHBoxLayout *hlayout = new QHBoxLayout;
   
-  QLabel *label = new QLabel("Reticulation tolerance", &dlg);
+  QLabel *label = new QLabel("Reticulation tolerance (between 0 and 1)", &dlg);
   hlayout->addWidget(label);
   
-  QSpinBox *spinBox = new QSpinBox(&dlg);
-  spinBox->setRange(0, 10);
-  spinBox->setValue(1);
+  QDoubleSpinBox *spinBox = new QDoubleSpinBox(&dlg);
+  spinBox->setRange(0, 1);
+  spinBox->setValue(0.5);
+  spinBox->setSingleStep(0.1);
   hlayout->addWidget(spinBox);
   
   vlayout->addLayout(hlayout);
@@ -3150,7 +3151,7 @@ void HapnetWindow::buildIntNJ()
   if (result == QDialog::Rejected)
     return;
 
-  unsigned epsilon = spinBox->value();
+  double alpha = spinBox->value();
     
   toggleNetActions(false);
   toggleAlignmentActions(false);
@@ -3160,7 +3161,7 @@ void HapnetWindow::buildIntNJ()
   _netView->clearModel();
 
   _progress->setLabelText("Inferring Integer Neighbor-Joining network...");
-  inferNetwork(Inj, epsilon);
+  inferNetwork(Inj, alpha);
 
 }
 
@@ -3231,7 +3232,7 @@ void HapnetWindow::inferNetwork(HapnetWindow::HapnetType netType, QVariant argum
       break;
     case Inj:
       errorText = "Error inferring Integer Neighbor-Joining Network!";
-      _g = new IntNJ(_goodSeqs, _mask, argument.toUInt());
+      _g = new IntNJ(_goodSeqs, _mask, argument.toDouble());
       break;
     case Tsw:
       errorText = "Error inferring Tight Span Walker network!";

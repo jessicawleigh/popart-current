@@ -13,7 +13,7 @@ class IntNJ : public HapNet
 {
 public:
   //const static int EPSILON = 1;
-  IntNJ(const std::vector<Sequence *> &, const std::vector<bool> &, unsigned = 1);
+  IntNJ(const std::vector<Sequence *> &, const std::vector<bool> &, double = 0);
   virtual ~IntNJ();
   
   virtual size_t nseqs() const;
@@ -26,6 +26,7 @@ protected:
   
 private:
   typedef std::priority_queue<VertContainer*, std::vector<VertContainer*>, VCPtrComparitor> VCPQ;
+  typedef struct { unsigned from; unsigned to; double weight; } EdgeDescriptor;
 
   void integerNJ();
   void NJReduce(std::vector<double> &, unsigned, unsigned, unsigned, double *, double *);
@@ -35,9 +36,9 @@ private:
   
   bool isLegal(const Vertex *, const Edge *, unsigned, const Vertex *, const Edge *, unsigned, unsigned);
   
-  unsigned *_distances;
-  const unsigned _epsilon;
   const unsigned _leafCount;
+  const double _alpha;
+  unsigned *_distances;
   unsigned _internalVertCount;
 };
 

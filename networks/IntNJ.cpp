@@ -9,8 +9,8 @@
 #include <iostream>
 using namespace std;
 
-IntNJ::IntNJ(const vector<Sequence *> & seqs, const vector<bool> & mask, unsigned epsilon)
-  : HapNet::HapNet(seqs, mask), _leafCount(HapNet::nseqs()), _epsilon(epsilon)
+IntNJ::IntNJ(const vector<Sequence *> & seqs, const vector<bool> & mask, double alpha)
+  : HapNet::HapNet(seqs, mask), _leafCount(HapNet::nseqs()), _alpha(alpha)
 {
   _distances = 0;
   _internalVertCount = 0;
@@ -107,14 +107,14 @@ void IntNJ::computeGraph()
   {
     for (unsigned j = 0; j < i; j++)
     {
-      unsigned cost = pathLength(vertex(i), vertex(j)) - distance(i,j);
-      if (cost == 0)  continue;
+      unsigned excess = pathLength(vertex(i), vertex(j)) - distance(i,j);
+      if (excess == 0)  continue;
       
-      map<unsigned, VertContainer*>::iterator mapIt = dist2pairs.find(cost);
+      map<unsigned, VertContainer*>::iterator mapIt = dist2pairs.find(excess);
        
       if (mapIt == dist2pairs.end())
       {
-        vcptr = new VertContainer(cost);         
+        vcptr = new VertContainer(excess);         
         vcptr->addPair(vertex(i), vertex(j));
         pairsByDist.push(vcptr);
         dist2pairs[vcptr->distance()] = vcptr;
@@ -140,11 +140,11 @@ void IntNJ::computeGraph()
     {
       Vertex *u = vertex((*pairIt)[0]->index());
       Vertex *v = vertex((*pairIt)[1]->index());
-      int actualCost = (int)(pathLength(u, v)) - distance(u->index(), v->index());
+      int actualExcess = (int)(pathLength(u, v)) - distance(u->index(), v->index());
       
-      if (actualCost < 0)  throw NetworkError("Path length is shorter than allowed!");
+      if (actualExcess < 0)  throw NetworkError("Path length is shorter than allowed!");
       
-      if (actualCost > 0)
+      if (actualExcess > 0)
       {
         vector<Vertex *> path;
         path.push_back(u);
@@ -208,8 +208,10 @@ void IntNJ::computeGraph()
           }
         } // end for i...
         
-        Vertex *x, *y;
-        if (minNewLength < (actualCost + _epsilon)) //numeric_limits<unsigned>::max())
+        // Old code: consider only the "excess reduction" for the pair of sequences in question
+        /*Vertex *x, *y;
+        if (_alpha * actualExcess > (1 - _alpha) * minNewLength)
+          //(minNewLength < (actualExcess + _epsilon)) //numeric_limits<unsigned>::max())
         {
           if (offset[0] == 0)
             x = vertex(intermediates[0]->from()->index());
@@ -244,7 +246,122 @@ void IntNJ::computeGraph()
           
           newEdge(x, y, minNewLength);
         }
+        */
+        // New code: consider "excess reduction" over all pairs after adding the new path
+        unsigned oldExcess = 0;
         
+        for (unsigned i = 0; i < _leafCount; i++)
+        {
+          for (unsigned j = 0; j < i; j++)
+          {
+            oldExcess += pathLength(vertex(i), vertex(j)) - distance(i,j);
+          }        
+        }
+        
+        list<EdgeDescriptor> deletedEdges;
+        list<const Edge *> addedEdges;
+        list<const Vertex *> addedVertices;
+        
+        
+        Vertex *x, *y;
+        const Edge *e;
+        //if (_alpha * actualExcess > (1 - _alpha) * minNewLength)
+          //(minNewLength < (actualExcess + _epsilon)) //numeric_limits<unsigned>::max())
+        //{
+        if (offset[0] == 0)
+          x = vertex(intermediates[0]->from()->index());
+          
+        else if (offset[0] == intermediates[0]->weight())
+          x = vertex(intermediates[0]->to()->index());
+        
+        // need to add a new vertex at offset
+        else
+        {
+          x = newVertex("");
+          addedVertices.push_back(x);
+          e = newEdge(x, vertex(intermediates[0]->to()->index()), intermediates[0]->weight() - offset[0]);
+          addedEdges.push_back(e);
+          e = newEdge(vertex(intermediates[0]->from()->index()), x, offset[0]);
+          addedEdges.push_back(e);
+
+          EdgeDescriptor ed;
+          e = intermediates[0];
+          ed.from = e->from()->index();
+          ed.to = e->to()->index();
+          ed.weight = e->weight();
+          removeEdge(e->index());//intermediates[0]->index());
+          deletedEdges.push_back(ed);
+        }
+        
+        if (offset[1] == 0)
+          y = vertex(intermediates[1]->from()->index());
+          
+        else if (offset[1] == intermediates[1]->weight())
+          y = vertex(intermediates[1]->to()->index());
+        
+        // need to add a new vertex at offset
+        else
+        {
+          y = newVertex("");
+          addedVertices.push_back(y);
+          e = newEdge(y, vertex(intermediates[1]->to()->index()), intermediates[1]->weight() - offset[1]);
+          addedEdges.push_back(e);
+          e = newEdge(vertex(intermediates[1]->from()->index()), y, offset[1]);
+          addedEdges.push_back(e);
+
+          EdgeDescriptor ed;
+          e = intermediates[1];
+          ed.from = e->from()->index();
+          ed.to = e->to()->index();
+          ed.weight = e->weight();
+          removeEdge(e->index());//intermediates[1]->index());
+          deletedEdges.push_back(ed);
+        }
+        
+        
+        newEdge(x, y, minNewLength);
+        //}
+        
+                
+        unsigned newExcess = 0;
+        
+        for (unsigned i = 0; i < _leafCount; i++)
+        {
+          for (unsigned j = 0; j < i; j++)
+          {
+            newExcess += pathLength(vertex(i), vertex(j)) - distance(i,j);
+          }        
+        }
+  
+        // If excess isn't sufficiently reduced, delete the new path
+        if (_alpha * (oldExcess - newExcess) < (1 - _alpha) * minNewLength)
+        {
+          // remove new edges
+          // remove new vertices
+          // add deleted edges
+          
+          list<const Edge *>::const_iterator edgeIt = addedEdges.begin();
+          while (edgeIt != addedEdges.end())
+          {
+            removeEdge((*edgeIt)->index());
+            ++edgeIt;
+          }
+          
+          list<const Vertex *>::const_iterator vertIt = addedVertices.begin();
+          while (vertIt != addedVertices.end())
+          {
+            removeVertex((*vertIt)->index());
+            ++vertIt;
+          }
+          
+          list<EdgeDescriptor>::const_iterator edIt = deletedEdges.begin();
+          
+          while (edIt != deletedEdges.end())
+          {
+            newEdge(vertex(edIt->from), vertex(edIt->to), edIt->weight);
+            ++edIt;
+          }
+        }
       }
       
       ++pairIt;
