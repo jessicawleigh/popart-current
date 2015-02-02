@@ -1,7 +1,11 @@
 #ifndef CITATIONDIALOG_H
 #define CITATIONDIALOG_H
 
+#include <QAbstractButton>
+#include <QButtonGroup>
 #include <QDialog>
+#include <QMap>
+#include <QPlainTextEdit>
 #include <QString>
 #include <QStringList>
 
@@ -15,6 +19,8 @@ private:
   class CitationRecord
   {
   public:
+    enum CitationFormat {Mla, Apa, Chicago, BibTeX, EndNote, RefMan, RefWorks};
+
     CitationRecord(const QString &, const QString &, const QString &, unsigned, const QString & = 0, int = -1, int = -1, int = -1, int = -1);
     
     void addAuthor(const QString &);
@@ -33,8 +39,12 @@ private:
     int issue() const { return _issue; };
     int startPage() const { return _startP; };
     int endPage() const { return _endP; };
-    
+
+    QString formatCitation(CitationFormat) const;
+
   private:
+    static QString formatAuthor(const QString &, CitationFormat);
+
     QString _leadAuthor;
     QStringList _authors;
     QString _title;
@@ -48,8 +58,14 @@ private:
   };
   
   void setupCitations();
-  
-  
+
+  QMap<QString,CitationRecord> _citations;
+  QButtonGroup _checkboxes;
+  QPlainTextEdit *_citationDisplay;
+
+private slots:
+  void updateCitationDisplay(bool);
+
 };
 
 #endif
