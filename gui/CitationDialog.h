@@ -19,15 +19,21 @@ private:
   class CitationRecord
   {
   public:
-    enum CitationFormat {Mla, Apa, Chicago, BibTeX, EndNote, RefMan, RefWorks};
+    enum CitationFormat {Apa, BibTeX, EndNote, RIS, LastName};
+    enum CitationType {Article, Book};
 
-    CitationRecord(const QString &, const QString &, const QString &, unsigned, const QString & = 0, int = -1, int = -1, int = -1, int = -1);
+    CitationRecord(const QString &, const QString &, const QString &, unsigned, const QString & = 0, int = -1, int = -1, int = -1, int = -1, CitationType = Article, const QString & = "", const QString & = "", const QString & = "");
     
     void addAuthor(const QString &);
     void setAbbrevJ(const QString &);
     void setVol(unsigned);
     void setIssue(unsigned);
+    void setChapter(unsigned);
     void setPages(unsigned, int);
+    void setType(CitationType);
+    void setPublisher(const QString &);
+    void setLocation(const QString &);
+    void addEditor(const QString &);
     
     const QString & leadAuthor() const { return _leadAuthor; };
     const QStringList & authors() const { return _authors; };
@@ -37,13 +43,20 @@ private:
     unsigned year() const { return _year; };
     int vol() const { return _vol; };
     int issue() const { return _issue; };
+    int chapter() const { return _issue; };
     int startPage() const { return _startP; };
     int endPage() const { return _endP; };
+    CitationType type() const { return _type; };
+    const QString & publisher() const { return _publisher; };
+    const QString & location() const { return _location; };
+    const QStringList & editors() const { return _editors; };
 
     QString formatCitation(CitationFormat) const;
+    QString formatBookCitation(CitationFormat) const;
 
   private:
     static QString formatAuthor(const QString &, CitationFormat);
+    static QString formatEditor(const QString &, CitationFormat);
 
     QString _leadAuthor;
     QStringList _authors;
@@ -55,16 +68,23 @@ private:
     int _issue;
     int _startP;
     int _endP;
+    CitationType _type;
+    QString _publisher;
+    QString _location;
+    QStringList _editors;
   };
   
   void setupCitations();
 
   QMap<QString,CitationRecord> _citations;
   QButtonGroup _checkboxes;
+  QButtonGroup _radioButtons;
   QPlainTextEdit *_citationDisplay;
+  CitationRecord::CitationFormat _currentFormat;
 
 private slots:
   void updateCitationDisplay(bool);
+  void updateCurrentFormat(bool);
 
 };
 
