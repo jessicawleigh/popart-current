@@ -13,12 +13,14 @@ class IntNJ : public HapNet
 {
 public:
   //const static int EPSILON = 1;
-  IntNJ(const std::vector<Sequence *> &, const std::vector<bool> &, double = 0);
+  IntNJ(const std::vector<Sequence *> &, const std::vector<bool> &, double = 0, int = 1);
   virtual ~IntNJ();
   
   virtual size_t nseqs() const;
   virtual const std::string & seqName(unsigned, bool=false) const;
   virtual const std::string & seqSeq(unsigned, bool=false) const;
+  void setUseRetTol(bool useRetTol) { _useRetTol = useRetTol; };
+  bool useRetTol() const { return _useRetTol; };
   
 protected:
   virtual void computeGraph();
@@ -37,9 +39,11 @@ private:
   bool isLegal(const Vertex *, const Edge *, unsigned, const Vertex *, const Edge *, unsigned, unsigned);
   
   const unsigned _leafCount;
-  const double _alpha;
+  double _alpha;
+  const int _epsilon;
   unsigned *_distances;
   unsigned _internalVertCount;
+  bool _useRetTol;
 };
 
 

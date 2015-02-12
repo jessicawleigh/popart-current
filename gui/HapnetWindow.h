@@ -37,6 +37,10 @@
 #include "Sequence.h"
 #include "ParsimonyTree.h"
 
+
+typedef struct { double alpha; int epsilon; bool useRetTol; } IntNJArg;//QPair<double,int> IntNJArg;
+Q_DECLARE_METATYPE(IntNJArg);  
+
 class HapnetWindow : public QMainWindow
 {
   Q_OBJECT
@@ -268,6 +272,8 @@ private slots:
   void graphicsMove(QList<QPair<QGraphicsItem *, QPointF> >);
   void showDocumentation();
   void about();
+
+  //void tmpSlot();
 
   //QPlainTextEdit *_messageConsole;
   

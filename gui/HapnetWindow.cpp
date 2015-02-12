@@ -94,9 +94,6 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _clusterThread = new QThread(this);
   connect(_clusterThread, SIGNAL(finished()), this, SLOT(finaliseClustering()));
 
-  //_drawThread = new QThread(this);
-  //connect(_drawThread, SIGNAL(finished()), this, SLOT(finaliseDisplay()));
-  //connect(_drawThread, SIGNAL(started()), this, SLOT(setModel()));
   _citationDlg = new CitationDialog(this);
 
   _progress = new QProgressDialog(this);
@@ -125,8 +122,6 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   connect(_netView, SIGNAL(itemsMoved(QList<QPair<QGraphicsItem *, QPointF> >)), this, SLOT(graphicsMove(QList<QPair<QGraphicsItem *, QPointF> > )));
   connect(_netView, SIGNAL(legendItemClicked(int)), this, SLOT(changeColour(int)));
   connect(_netView, SIGNAL(networkDrawn()), this, SLOT(finaliseDisplay()));
-  //connect(_netView, SIGNAL(progressUpdated(int)), _progress, SLOT(setValue(int)));
-  //connect(_netView, SIGNAL(caughtException(const QString &)), this, SLOT(showNetError(const QString &)));
 
   /*_messageConsole = new QPlainTextEdit(this);
   _messageConsole->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -134,7 +129,6 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _messageConsole->setMinimumHeight(0);*/
 
    _mapView = new MapView(this);
-   //_mapView->setVisible(false);
    //_mapView->hideUnwantedFloatItems();
    _centralContainer->addWidget(_mapView);
    _mapTraitsSet = false;
@@ -450,6 +444,12 @@ void HapnetWindow::setupActions()
 
 }
 
+/*void HapnetWindow::tmpSlot()
+{
+  qDebug() << "network menu enabled?" << _networkMenu->isEnabled();
+  qDebug() << "msn act enabled?" << _msnAct->isEnabled();
+}*/
+
 void HapnetWindow::setupMenus()
 {  
   QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
@@ -501,7 +501,6 @@ void HapnetWindow::setupMenus()
   _networkMenu->addAction(_tswAct);
   _networkMenu->addAction(_tcsAct);
   //_networkMenu->addAction(_umpAct);
-  //_networkMenu->setEnabled(false);
   
   _viewMenu = menuBar()->addMenu(tr("&View"));
   _viewMenu->addAction(_toggleViewAct);
@@ -655,7 +654,6 @@ void HapnetWindow::openAlignment()
     if (success)
     {
       statusBar()->showMessage(tr("Loaded file %1").arg(_filename));
-      //_networkMenu->setEnabled(true);
       
       QFileInfo fileInfo(_filename);
       setWindowTitle(tr("PopART: %1").arg(fileInfo.fileName()));
@@ -1680,7 +1678,6 @@ void HapnetWindow::importAlignment()
     {
       _filename = QString("%1.%2").arg(phylipname).arg("nex");
       statusBar()->showMessage(tr("Imported file %1").arg(phylipname));
-      //_networkMenu->setEnabled(true);
 
       QFileInfo fileInfo(phylipname);
       setWindowTitle(tr("PopART: %1").arg(fileInfo.fileName()));
@@ -2182,8 +2179,6 @@ void HapnetWindow::updateTable()
 
   QStringList headerList;
 
-  //qDebug() << "header list:" << headerList;
-
   _table->setRowCount(_tp->rows());
   _table->setColumnCount(_tp->columns());
 
@@ -2229,7 +2224,6 @@ void HapnetWindow::updateTable()
     }
   }
 
-  //qDebug() << "table dimensions:" << _table->rowCount() << _table->columnCount();
 
 
   _table->resizeColumnsToContents();
@@ -2978,13 +2972,6 @@ void HapnetWindow::buildMSN()
     return;
   
   unsigned epsilon = spinBox->value();
-  
-  toggleNetActions(false);
-  toggleAlignmentActions(false);
-  _closeAct->setEnabled(false);
-  _openAct->setEnabled(false);
-  
-  _netView->clearModel();
 
   _progress->setLabelText("Inferring Minimum Spanning Network...");
 
@@ -3025,13 +3012,6 @@ void HapnetWindow::buildMJN()
     return;
 
   unsigned epsilon = spinBox->value();
-  
-  toggleNetActions(false);
-  toggleAlignmentActions(false);
-  _closeAct->setEnabled(false);
-  _openAct->setEnabled(false);
-  
-  _netView->clearModel();
   
   _progress->setLabelText("Inferring Median Joining Network...");
   inferNetwork(Mjn, epsilon);
@@ -3091,13 +3071,6 @@ void HapnetWindow::buildAPN()
     
     double ancestorFreq = spinBox->value();
     
-    toggleNetActions(false);
-    toggleAlignmentActions(false);
-    _closeAct->setEnabled(false);
-    _openAct->setEnabled(false);
-    
-    _netView->clearModel();
-
     _progress->setLabelText("Inferring Ancestral Parsimony network...");
 
     inferNetwork(Apn, ancestorFreq);
@@ -3123,19 +3096,33 @@ void HapnetWindow::buildIntNJ()
   QVBoxLayout *vlayout = new QVBoxLayout(&dlg);
   QHBoxLayout *hlayout = new QHBoxLayout;
   
-  QLabel *label = new QLabel("Reticulation tolerance (between 0 and 1)", &dlg);
+  QLabel *label = new QLabel("Reticulation tolerance", &dlg);// (between 0 and 1)", &dlg);
   hlayout->addWidget(label);
   
-  QDoubleSpinBox *spinBox = new QDoubleSpinBox(&dlg);
-  spinBox->setRange(0, 1);
-  spinBox->setValue(0.5);
-  spinBox->setSingleStep(0.1);
+  QDoubleSpinBox *dspinBox = new QDoubleSpinBox(&dlg);
+  dspinBox->setRange(0, 1);
+  dspinBox->setValue(0.5);
+  dspinBox->setSingleStep(0.1);
+  hlayout->addWidget(dspinBox);
+
+  QSpinBox *spinBox = new QSpinBox(&dlg);
+  spinBox->setMinimum(0);
+  spinBox->setValue(1);
+  spinBox->setVisible(false);
   hlayout->addWidget(spinBox);
   
   vlayout->addLayout(hlayout);
+    
+  hlayout = new QHBoxLayout;
+  QCheckBox *checkbox = new QCheckBox("Use old reticulation tolerance?", &dlg);
+  checkbox->setToolTip(tr("If selected, uses old-style values (integers %1 0)").arg(QChar(0x2265)));
+  connect(checkbox, SIGNAL(toggled(bool)), spinBox, SLOT(setVisible(bool)));
+  connect(checkbox, SIGNAL(toggled(bool)), dspinBox, SLOT(setHidden(bool)));
+  hlayout->addWidget(checkbox, 0, Qt::AlignRight);
+
+  vlayout->addLayout(hlayout);
   
   hlayout = new QHBoxLayout;
-  
   hlayout->addStretch(1);
   QPushButton *okButton = new QPushButton(style()->standardIcon(QStyle::SP_DialogOkButton), "OK", &dlg);
   connect(okButton, SIGNAL(clicked()), &dlg, SLOT(accept()));
@@ -3145,35 +3132,25 @@ void HapnetWindow::buildIntNJ()
   hlayout->addWidget(cancelButton, 0, Qt::AlignRight);
   
   vlayout->addLayout(hlayout);
-  
+
   int result = dlg.exec();
   
   if (result == QDialog::Rejected)
     return;
 
-  double alpha = spinBox->value();
-    
-  toggleNetActions(false);
-  toggleAlignmentActions(false);
-  _closeAct->setEnabled(false);
-  _openAct->setEnabled(false);
-  
-  _netView->clearModel();
+  IntNJArg args;
+  args.alpha = dspinBox->value();
+  args.epsilon = spinBox->value();
+  args.useRetTol = checkbox->isChecked();
 
   _progress->setLabelText("Inferring Integer Neighbor-Joining network...");
-  inferNetwork(Inj, alpha);
+  
+  inferNetwork(Inj, QVariant::fromValue(args));
 
 }
 
 void HapnetWindow::buildTSW()
 {
-  toggleNetActions(false);
-  toggleAlignmentActions(false);
-  _closeAct->setEnabled(false);
-  _openAct->setEnabled(false);
-  
-  _netView->clearModel();
-
   _progress->setLabelText("Inferring Tight Span Walker network...");
 
   inferNetwork(Tsw);
@@ -3181,12 +3158,6 @@ void HapnetWindow::buildTSW()
 
 void HapnetWindow::buildTCS()
 {
-  toggleNetActions(false);
-  toggleAlignmentActions(false);
-  _closeAct->setEnabled(false);
-  _openAct->setEnabled(false);
-  
-  _netView->clearModel();
 
   _progress->setLabelText("Inferring TCS network...");
   inferNetwork(Tcs);
@@ -3231,9 +3202,18 @@ void HapnetWindow::inferNetwork(HapnetWindow::HapnetType netType, QVariant argum
       _g = new ParsimonyNet(_goodSeqs, _mask, _treeVect, 0, argument.toDouble());
       break;
     case Inj:
-      errorText = "Error inferring Integer Neighbor-Joining Network!";
-      _g = new IntNJ(_goodSeqs, _mask, argument.toDouble());
-      break;
+      {
+        errorText = "Error inferring Integer Neighbor-Joining Network!";
+        IntNJArg args = argument.value<IntNJArg>();//QPair<double,int> >();
+        _g = new IntNJ(_goodSeqs, _mask, args.alpha, args.epsilon);
+
+        IntNJ *intnjG = dynamic_cast<IntNJ*>(_g);
+
+        if (intnjG)
+          intnjG->setUseRetTol(args.useRetTol);
+
+        break;
+      }
     case Tsw:
       errorText = "Error inferring Tight Span Walker network!";
       _g = new TightSpanWalker(_goodSeqs, _mask);
@@ -3242,6 +3222,14 @@ void HapnetWindow::inferNetwork(HapnetWindow::HapnetType netType, QVariant argum
       break;
 
   }
+
+  // copied over from network build* functions
+  toggleNetActions(false);
+  toggleAlignmentActions(false);
+  _closeAct->setEnabled(false);
+  _openAct->setEnabled(false);
+  
+  _netView->clearModel();
 
   _success = true;
   // set error message in case of exception
@@ -3291,15 +3279,8 @@ void HapnetWindow::displayNetwork()
     {
       _g->associateTraits(*_activeTraitVect);
       _netModel = new NetworkModel(_g);
-      /*_msgText = tr("<b>Error drawing network.</b>");
-      _progress->show();
-
-      _netView->moveToThread(_drawThread);
-      _drawThread->start();*/
 
       _netView->setModel(_netModel);
-      
-      //connect(_netView, SIGNAL(networkDrawn()), this, SLOT(saveNexusFile()));
     }
 
     catch (NetworkError &e)
@@ -3312,17 +3293,12 @@ void HapnetWindow::displayNetwork()
   //toggleAlignmentActions(true);
   //_closeAct->setEnabled(true);
   //_openAct->setEnabled(true);
-  //cout << "returning from displayNetwork" << endl;
   
 }
 
-/*void HapnetWindow::setModel()
-{
-  _netView->setModel(_netModel);
-}*/
-
 void HapnetWindow::finaliseDisplay()
 {
+
   toggleNetActions(true);
   toggleAlignmentActions(true);
   _closeAct->setEnabled(true);
@@ -4203,7 +4179,6 @@ void HapnetWindow::showAmova()
   //message.setStandardButtons(QMessageBox::Ok); 
   //message.setDefaultButton(QMessageBox::Ok);
   //message.setFixedWidth(1000);
-  //qDebug() << "message width: " << message.width() << "height: " << message.height();
 
   message.exec(); 
 }
@@ -4354,7 +4329,6 @@ void HapnetWindow::search()
 
 void HapnetWindow::toggleAlignmentActions(bool enable)
 {
-  
   QList<QAction *> netActions = _networkMenu->actions();
   QList<QAction *>::iterator netIt = netActions.begin();
   
@@ -4364,7 +4338,7 @@ void HapnetWindow::toggleAlignmentActions(bool enable)
     ++netIt;
   }
   
-  _networkMenu->setEnabled(enable);
+  //_networkMenu->setEnabled(enable);
 
   QList<QAction *> statsActions = _statsMenu->actions();
   QList<QAction *>::iterator statsIt = statsActions.begin();
@@ -4375,7 +4349,7 @@ void HapnetWindow::toggleAlignmentActions(bool enable)
     ++statsIt;
   }
   
-  _statsMenu->setEnabled(enable);
+  //_statsMenu->setEnabled(enable);
 
   _closeAct->setEnabled(enable);
   

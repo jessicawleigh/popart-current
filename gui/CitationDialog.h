@@ -6,6 +6,7 @@
 #include <QDialog>
 #include <QMap>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QString>
 #include <QStringList>
 
@@ -80,11 +81,15 @@ private:
   QButtonGroup _checkboxes;
   QButtonGroup _radioButtons;
   QPlainTextEdit *_citationDisplay;
+  QPushButton *_displayCiteButton;
   CitationRecord::CitationFormat _currentFormat;
 
 private slots:
   void updateCitationDisplay(bool);
   void updateCurrentFormat(bool);
+  void toggleDisplayCitations(bool);
+  void saveCitations();
+  //void copySelection();
 
 };
 

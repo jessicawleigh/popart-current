@@ -2,15 +2,20 @@
 
 #include <QCheckBox>
 #include <QBoxLayout>
+#include <QFile>
+#include <QFileDialog>
 #include <QGroupBox>
 #include <QLabel>
+#include <QMessageBox>
 #include <QRadioButton>
+#include <QTextStream>
 
 #include <QDebug>
 
 CitationDialog::CitationDialog(QWidget * parent, Qt::WindowFlags flags)
  : QDialog(parent, flags), _currentFormat(CitationDialog::CitationRecord::Apa) 
 {
+  setModal(true);
   setupCitations();
 
   _checkboxes.setExclusive(false);
@@ -75,19 +80,37 @@ CitationDialog::CitationDialog(QWidget * parent, Qt::WindowFlags flags)
   hlayout->addWidget(groupBox);
   mainlayout->addLayout(hlayout);
 
+  _citationDisplay->setVisible(false);
   mainlayout->addWidget(_citationDisplay);
   updateCitationDisplay(true);
 
   //connect(&_checkboxes, SIGNAL(buttonReleased(QAbstractButton *)), this, SLOT(updateCitationDisplay(QAbstractButton *)));
-  
-  // checkboxes to select methods that need to be cited
-  // show/hide selectable (not editable) text area
-  // select all, copy
-  // button to copy all (selected) citations
-  // allow output of different formats, similar to Google Scholar
 
-  qDebug() << "unicode version:" << QChar().unicodeVersion();
-  qDebug() << "endash character:" << QChar(0x2013);
+  hlayout = new QHBoxLayout;
+  _displayCiteButton = new QPushButton("S&how citations", this);
+  _displayCiteButton->setCheckable(true);
+  _displayCiteButton->setChecked(false);
+  connect(_displayCiteButton, SIGNAL(toggled(bool)), this, SLOT(toggleDisplayCitations(bool)));
+  hlayout->addWidget(_displayCiteButton);
+
+  QPushButton *button = new QPushButton("&Save citations", this);
+  connect(button, SIGNAL(pressed()), this, SLOT(saveCitations()));
+  hlayout->addWidget(button);
+
+  button = new QPushButton("Select &all", this);
+  button->setEnabled(false);
+  connect(button, SIGNAL(pressed()), _citationDisplay, SLOT(selectAll()));
+  connect(_displayCiteButton, SIGNAL(toggled(bool)), button, SLOT(setEnabled(bool)));
+  hlayout->addWidget(button);
+
+  button = new QPushButton("&Copy", this);
+  button->setEnabled(false);
+  connect(button, SIGNAL(pressed()), _citationDisplay, SLOT(copy()));//this, SLOT(copySelection()));
+  connect(_displayCiteButton, SIGNAL(toggled(bool)), button, SLOT(setEnabled(bool)));
+  hlayout->addWidget(button);
+
+  mainlayout->addLayout(hlayout);
+
 }
 
 void CitationDialog::setupCitations()
@@ -132,8 +155,8 @@ void CitationDialog::setupCitations()
 void CitationDialog::updateCitationDisplay(bool checked)//QAbstractButton *button)
 {
 	//Q_UNUSED(button);
-	//Q_UNUSED(checked);
-  if (! checked)  return;
+	Q_UNUSED(checked);
+  //if (! checked)  return;
   
 	QStringList displayText;
 
@@ -145,7 +168,6 @@ void CitationDialog::updateCitationDisplay(bool checked)//QAbstractButton *butto
 
      	 if (citeIt != _citations.end())
      	 {
-     	 	 qDebug() << citeIt.value().title();
          const CitationRecord &cr = citeIt.value();
   	     displayText << cr.formatCitation(_currentFormat);
   	   }
@@ -162,20 +184,94 @@ void CitationDialog::updateCurrentFormat(bool checked)
 {
 
 	if (! checked)  return;
-	qDebug() << "button ID:" << _radioButtons.checkedId();
   _currentFormat = static_cast<CitationRecord::CitationFormat>(_radioButtons.checkedId());
 
 	updateCitationDisplay(true);
+}
+
+void CitationDialog::toggleDisplayCitations(bool display)
+{
+	_citationDisplay->setVisible(display);
+
+	if (display)
+  	_displayCiteButton->setText("&Hide citations");
+  else
+  	_displayCiteButton->setText("S&how citations");
+
+  adjustSize();
+}
+
+/*void CitationDialog::copySelection()
+{
+	//qDebug() << "all text:"  << _citationDisplay->toPlainText();
+	//qDebug() << "selected text:" << _citationDisplay->textCursor().selectedText();
+	//qDebug() << "document's text:" << _citationDisplay->document()->toPlainText();
+	_citationDisplay->copy();
+}*/
+
+void CitationDialog::saveCitations()
+{
+	QString defaultName("popart_citations.");
+	QString filter;
+
+	switch (_currentFormat)
+	{
+		case CitationRecord::BibTeX:
+		  defaultName += "bib";
+		  filter = "BibTeX file (*.bib)";
+		  break;
+		case CitationRecord::EndNote:
+		  defaultName += "enw";
+		  filter = "EndNote Tagged file (*.enw)";
+		  break;
+		case CitationRecord::RIS:
+		  defaultName += "ris";
+		  filter = "RIS file (*.ris)";
+		  break;
+		case CitationRecord::Apa:
+		default:
+		  defaultName += "txt";
+		  filter = "Text file (*.txt)";
+		  break;
+	}
+
+	filter += tr(";;All files (*)");
+
+  QString filename = QFileDialog::getSaveFileName(this, tr("Save Citations"), defaultName, filter);
+
+  if (! filename.isEmpty())
+  {
+  	QFile file (filename);
+
+  	if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+  	{
+  		QTextStream out(&file);
+  		out << _citationDisplay->toPlainText();
+  		file.close();
+  	}
+
+    else
+    {
+	    QMessageBox error;
+	    error.setIcon(QMessageBox::Critical);
+	    error.setText("<b>Citations not saved</b>");
+	    error.setInformativeText("Error saving citations to file");
+	    error.setStandardButtons(QMessageBox::Ok);
+	    error.setDefaultButton(QMessageBox::Ok);
+	    
+	    error.exec();
+    }
+  }
 }
 
 
 CitationDialog::CitationRecord::CitationRecord(const QString & author, const QString & title, const QString & journal, unsigned year, const QString & abbrevJ, int vol, int issue, int startP, int endP, CitationDialog::CitationRecord::CitationType type, const QString & publisher, const QString & location, const QString & editor)
  : _leadAuthor(author), _title(title), _journal(journal), _year(year), _abbrevJ(abbrevJ), _vol(vol), _issue(issue), _startP(startP), _endP(endP), _type(type), _publisher(publisher), _location(location)
 {
+  _authors.push_back(author);
+
 	if (! editor.isEmpty())
 		_editors.push_back(editor);
-
-
 }
 
 void CitationDialog::CitationRecord::addAuthor(const QString & author)
@@ -229,7 +325,6 @@ QString CitationDialog::CitationRecord::formatAuthor(const QString & author, Cit
 	int idx = author.indexOf(',');
 	if (idx < 0)
 	{
-		qDebug() << "comma not found"; 
 		return author;
 	}
 
@@ -377,8 +472,6 @@ QString CitationDialog::CitationRecord::formatCitation(CitationDialog::CitationR
 
 		  if (_vol >= 0)
 		  {
-		  	citation << QString(_vol);
-
 		  	if (_issue >= 0)
 		  		citation << QString(" %1(%2), ").arg(_vol).arg(_issue);
 
@@ -509,7 +602,7 @@ QString CitationDialog::CitationRecord::formatCitation(CitationDialog::CitationR
 	//citation << QString(" (%1). %2. %3, %4(%5), %6%7%8.").arg(_year).arg(_title).arg(_abbrevJ).arg(_vol).arg(_issue).arg(_startP).arg(QChar(0x2013)).arg(_endP);
 
 
-	return citation.join(QChar());
+	return citation.join("");
 }
 
 QString CitationDialog::CitationRecord::formatBookCitation(CitationDialog::CitationRecord::CitationFormat format) const
@@ -551,9 +644,10 @@ QString CitationDialog::CitationRecord::formatBookCitation(CitationDialog::Citat
       
 
       if (_editors.size() > 1)
-      	citation << "(Ed.), ";
+      	citation << " (Eds.), ";
       else
-      	citation << "(Eds.), ";
+      	citation << " (Ed.), ";
+
 
       citation << _journal; // actually a book title
 
@@ -714,7 +808,7 @@ QString CitationDialog::CitationRecord::formatBookCitation(CitationDialog::Citat
     }
 	}
 
-	return citation.join(QChar());
+	return citation.join("");
 }
 
 
