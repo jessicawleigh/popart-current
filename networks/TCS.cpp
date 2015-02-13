@@ -21,7 +21,9 @@ void TCS::computeGraph()
   vector<pair<const Vertex *, const Vertex*> > otherPairs;
   map<unsigned int, VertContainer*> dist2pairs;
   map<unsigned, VertContainer*>::iterator mapIt;
-  
+
+  int tmpcount = 0;
+
   
   for (unsigned i = 0; i < nseqs(); i++)
   {
@@ -38,17 +40,24 @@ void TCS::computeGraph()
         vcptr->addPair(vertex(j), vertex(i));
         pairsByDist.push(vcptr);
         dist2pairs[vcptr->distance()] = vcptr;
+        tmpcount++;
+        cout << "tmpcount: " << tmpcount << endl;
+        tmpcount = 0;
       }
       
       else
       {
         vcptr = mapIt->second;
         vcptr->addPair(vertex(j), vertex(i));
+        tmpcount++;
       }
     }
   }
+
+  cout << "tmpcount: " << tmpcount << endl;
   
   unsigned npairs = nseqs() * (nseqs() - 1) / 2;
+  cout << "npairs: " << npairs << " pairsByDist size: " << pairsByDist.size()  << endl;
   unsigned paircount = 0;
   /*vector<VertContainer*> temp;
   while (! pairsByDist.empty())
@@ -75,8 +84,10 @@ void TCS::computeGraph()
     
     VertContainer::Iterator pairIt = vcptr->begin();
     
+    tmpcount = 0;
     for (; pairIt != vcptr->end(); ++pairIt)
     {
+      tmpcount++;
       const Vertex *u = (*pairIt)[0];
       const Vertex *v = (*pairIt)[1];
       int compU = _componentIDs.at(u->index());
@@ -130,7 +141,8 @@ void TCS::computeGraph()
       }
       paircount++;
     } // end for pairIt...
-    
+    cout << "paircount: " << paircount << " tmpcount: " << tmpcount << endl;
+
     // if compA and compB haven't been set, no distinct components were found at distance M
     if (compA >= 0)
     {
