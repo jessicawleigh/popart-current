@@ -4086,17 +4086,17 @@ void HapnetWindow::showAmova()
     detText += QString("Among\ngroups%1").arg(_amovaStat.df_ag, 9); 
     detText += QString("%1").arg(QString::number(_amovaStat.ss_ag, 'f', 3), 9);
     detText += QString("%1").arg(QString::number(_amovaStat.sigma2_a, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
+    detText += QString("%1\n\n").arg(QString::number(100 * _amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
 
     detText += QString("Among\npopulations%1").arg(_amovaStat.df_ap, 4);
     detText += QString("%1").arg(QString::number(_amovaStat.ss_ap, 'f', 3), 9);
     detText += QString("%1").arg(QString::number(_amovaStat.sigma2_b, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
+    detText += QString("%1\n\n").arg(QString::number(100 * _amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
     
     detText += QString("Within\npopulations%1").arg(_amovaStat.df_wp, 4);
     detText += QString("%1").arg(QString::number(_amovaStat.ss_wp, 'f', 3), 9);
     detText += QString("%1").arg(QString::number(_amovaStat.sigma2_c, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_c / sigmaTotal, 'f', 5), 11);
+    detText += QString("%1\n\n").arg(QString::number(100 * _amovaStat.sigma2_c / sigmaTotal, 'f', 5), 11);
     
     detText += QString("TOTAL%1").arg(_amovaStat.df_ag + _amovaStat.df_ap + _amovaStat.df_wp, 10);
     detText += QString("%1").arg(QString::number(_amovaStat.ss_ag + _amovaStat.ss_ap + _amovaStat.ss_wp, 'f', 3), 9);
@@ -4140,12 +4140,12 @@ void HapnetWindow::showAmova()
     detText += QString("Among\npopulations%1").arg(_amovaStat.df_ap, 4); // .arg((uint)_amovaStat.df_ap, (int)4, (int)10, QChar(' '));
     detText += QString("%1").arg(QString::number(_amovaStat.ss_ap, 'f', 3), 9);
     detText += QString("%1").arg(QString::number(_amovaStat.sigma2_a, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
+    detText += QString("%1\n\n").arg(QString::number(100 * _amovaStat.sigma2_a / sigmaTotal, 'f', 5), 11);
     
     detText += QString("Within\npopulations%1").arg(_amovaStat.df_wp, 4);
     detText += QString("%1").arg(QString::number(_amovaStat.ss_wp, 'f', 3), 9);
     detText += QString("%1").arg(QString::number(_amovaStat.sigma2_b, 'f', 3), 8);
-    detText += QString("%1\n\n").arg(QString::number(_amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
+    detText += QString("%1\n\n").arg(QString::number(100 * _amovaStat.sigma2_b / sigmaTotal, 'f', 5), 11);
     
     detText += QString("TOTAL%1").arg(_amovaStat.df_ap + _amovaStat.df_wp, 10);
     detText += QString("%1").arg(QString::number(_amovaStat.ss_ap + _amovaStat.ss_wp, 'f', 3), 9);
