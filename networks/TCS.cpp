@@ -22,9 +22,6 @@ void TCS::computeGraph()
   map<unsigned int, VertContainer*> dist2pairs;
   map<unsigned, VertContainer*>::iterator mapIt;
 
-  int tmpcount = 0;
-
-  
   for (unsigned i = 0; i < nseqs(); i++)
   {
     newVertex(seqName(i), &seqSeq(i));
@@ -40,39 +37,20 @@ void TCS::computeGraph()
         vcptr->addPair(vertex(j), vertex(i));
         pairsByDist.push(vcptr);
         dist2pairs[vcptr->distance()] = vcptr;
-        tmpcount++;
-        cout << "tmpcount: " << tmpcount << endl;
-        tmpcount = 0;
       }
       
       else
       {
         vcptr = mapIt->second;
         vcptr->addPair(vertex(j), vertex(i));
-        tmpcount++;
       }
     }
   }
 
-  cout << "tmpcount: " << tmpcount << endl;
-  
   unsigned npairs = nseqs() * (nseqs() - 1) / 2;
-  cout << "npairs: " << npairs << " pairsByDist size: " << pairsByDist.size()  << endl;
   unsigned paircount = 0;
-  /*vector<VertContainer*> temp;
-  while (! pairsByDist.empty())
-  {
-    vcptr = pairsByDist.top();
-    pairsByDist.pop();
-    
-    temp.push_back(vcptr);
-  }
-  
-  for (unsigned i = 0; i < temp.size(); i++)
-    pairsByDist.push(temp.at(i));
-  
-  temp.clear();*/
-  
+
+
   while (! pairsByDist.empty())
   {
     int compA = -1, compB = -1;
@@ -84,10 +62,8 @@ void TCS::computeGraph()
     
     VertContainer::Iterator pairIt = vcptr->begin();
     
-    tmpcount = 0;
     for (; pairIt != vcptr->end(); ++pairIt)
     {
-      tmpcount++;
       const Vertex *u = (*pairIt)[0];
       const Vertex *v = (*pairIt)[1];
       int compU = _componentIDs.at(u->index());
@@ -139,25 +115,32 @@ void TCS::computeGraph()
       {
         otherPairs.push_back(pair<const Vertex *, const Vertex *>(u, v));
       }
-      paircount++;
     } // end for pairIt...
-    cout << "paircount: " << paircount << " tmpcount: " << tmpcount << endl;
 
     // if compA and compB haven't been set, no distinct components were found at distance M
+    // renumber components if they HAVE been set
     if (compA >= 0)
     {
+      unsigned compAsize = 0, compBsize = 0;
       for (unsigned i = 0 ; i < _componentIDs.size(); i++)
       {
+        if (i < nseqs())
+        {
+          if (_componentIDs.at(i) == compA)  compAsize++;
+          if (_componentIDs.at(i) == compB)  compBsize++;
+        }
         if (_componentIDs.at(i) < 0 || _componentIDs.at(i) == compB)
           _componentIDs.at(i) = compA;
         else if (_componentIDs.at(i) > compB)
           _componentIDs.at(i)--;
       }
+      
+      // count between-component pairs as components merge
+      paircount += compAsize * compBsize;
     }
     
     if (otherPairs.empty())
     {
-      //pairsByDist.pop();
       delete vcptr;
     }
     
@@ -172,7 +155,6 @@ void TCS::computeGraph()
       otherPairs.clear();
       pairsByDist.push(vcptr);
     }
-
     updateProgress(100.0 * paircount / npairs + 0.5);
   }  
 
@@ -210,6 +192,8 @@ void TCS::computeGraph()
       newEdge(u, w, newweight);
     }
   }
+  
+  updateProgress(100);
 }
 
 unsigned TCS::findIntermediates(pair<Vertex *, Vertex *> & intPair, const Vertex *u, const Vertex *v, unsigned dist)
