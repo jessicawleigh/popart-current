@@ -142,6 +142,7 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   _alView = new AlignmentView(this);
   _tModel = 0;
   _tView = new TraitView(this);
+  _nodeLabelsVisible = true;
   _traitGroupsSet = false;
   _tView->setSelectionBehavior(QAbstractItemView::SelectRows);
   _tView->setSelectionMode(QAbstractItemView::ContiguousSelection);
@@ -276,6 +277,11 @@ void HapnetWindow::setupActions()
   _backgroundColourAct->setStatusTip(tr("Change network background colour"));
   _backgroundColourAct->setEnabled(false);
   connect(_backgroundColourAct, SIGNAL(triggered()), this, SLOT(changeBackgroundColour()));
+
+  _hideLabelsAct = new QAction(tr("Hide labels"), this);
+  _hideLabelsAct->setStatusTip(tr("Hide network node labels"));
+  _hideLabelsAct->setEnabled(false);
+  connect(_hideLabelsAct, SIGNAL(triggered()), this, SLOT(toggleShowNodeLabels()));
 
   _legendFontAct = new QAction(tr("Set &legend font"), this);
   _legendFontAct->setStatusTip(tr("Change font used in legend"));
@@ -486,6 +492,7 @@ void HapnetWindow::setupMenus()
   editMenu->addAction(_edgeColourAct);
   editMenu->addAction(_backgroundColourAct);
   editMenu->addSeparator();
+  editMenu->addAction(_hideLabelsAct);
   editMenu->addAction(_labelFontAct);
   editMenu->addAction(_legendFontAct);
   
@@ -3537,6 +3544,25 @@ void HapnetWindow::changeBackgroundColour()
     _netView->setBackgroundColour(newColour);
 }
 
+void HapnetWindow::toggleShowNodeLabels()
+{
+  if (_nodeLabelsVisible)
+  {
+    _nodeLabelsVisible = false;
+    _hideLabelsAct->setText(tr("Show labels"));
+    _hideLabelsAct->setStatusTip(tr("Show network node labels"));
+  }
+
+  else
+  {
+    _nodeLabelsVisible = true;
+    _hideLabelsAct->setText(tr("Hide labels"));
+    _hideLabelsAct->setStatusTip(tr("Hide network node labels"));
+  }
+
+  _netView->setNodeLabelsVisible(_nodeLabelsVisible);
+}
+
 void HapnetWindow::changeLabelFont()
 {
   const QFont & oldFont = _netView->labelFont();
@@ -4381,6 +4407,7 @@ void HapnetWindow::toggleNetActions(bool enable)
   _vertexSizeAct->setEnabled(enable);
   _edgeColourAct->setEnabled(enable);
   _backgroundColourAct->setEnabled(enable);
+  _hideLabelsAct->setEnabled(enable);
   _labelFontAct->setEnabled(enable);
   _legendFontAct->setEnabled(enable);
   _redrawAct->setEnabled(enable);

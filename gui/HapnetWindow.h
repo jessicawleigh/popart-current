@@ -88,6 +88,7 @@ private:
   bool _hapnetRunning;
   ViewType _view;
   TraitType _activeTraits;
+  bool _nodeLabelsVisible;
   bool _mapTraitsSet;
   bool _traitGroupsSet;
   bool _externalLegend;
@@ -153,6 +154,7 @@ private:
   QAction *_vertexSizeAct;
   QAction *_edgeColourAct;
   QAction *_backgroundColourAct;
+  QAction *_hideLabelsAct;
   QAction *_labelFontAct;
   QAction *_legendFontAct;
   
@@ -260,6 +262,7 @@ private slots:
   void toggleExternalLegend();
   void updateTraitLocation(unsigned, std::pair<float,float>);
   void changeBackgroundColour();
+  void toggleShowNodeLabels();
   void changeLabelFont();
   void changeLegendFont();
   void changeMapTheme(QAction *);

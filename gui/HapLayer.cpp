@@ -293,11 +293,11 @@ bool HapLayer::eventFilter(QObject *object, QEvent *event)
     {
       for(unsigned i = 0; i < _clusters.size(); i++)
       {
-        qDebug() << "cluster" << i << _clustLabels.at(i);
+        //qDebug() << "cluster" << i << _clustLabels.at(i);
         const QRegion &clust = _clusters.at(i);
         if (clust.contains(cEvent->pos()))
         {
-          qDebug() << "clicked in cluster" << i << ", " << _clustLabels.at(i);
+          //qDebug() << "clicked in cluster" << i << ", " << _clustLabels.at(i);
           QMenu menu;
           _clickedInCluster = i;
           QAction *a = menu.addAction(tr("Change coordinates"));
@@ -450,7 +450,7 @@ void HapLayer::changeColour()
 
 void HapLayer::changeCoordinates()
 {
-  qDebug() << "emitting change coordinates for" << _clickedInCluster <<endl;
+  //qDebug() << "emitting change coordinates for" << _clickedInCluster <<endl;
   emit coordinateChangeTriggered(_clickedInCluster);
 }
 

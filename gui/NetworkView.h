@@ -91,6 +91,9 @@ public:
   QPointF legendPosition() const;
   void setLegendPosition(const QPointF &);
   void setLegendPosition(double, double);
+
+  bool nodeLabelsVisible() const { return _nodeLabelsVisible; };
+  void setNodeLabelsVisible(bool);
   
   const QFont & defaultFont() const { return _defaultFont; };
   void setDefaultFont(const QFont & font) { _defaultFont = font; };
@@ -191,6 +194,7 @@ private:
   ColourTheme::Theme _currentTheme;
   static ColourTheme::Theme _defaultTheme;// = Greyscale;
   //QVector<QPersistentModelIndex *> _modelIndices;
+  bool _nodeLabelsVisible;
   bool _showBarcharts;
   bool _showTaxBox;
   double _vertRadUnit;

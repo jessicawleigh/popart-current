@@ -21,6 +21,8 @@
 #include <QThread>
 #include <QVBoxLayout>
 
+#include <QDebug>
+
 #include <cmath>
 
 ColourTheme::Theme NetworkView::_defaultTheme = ColourTheme::Greyscale;
@@ -36,6 +38,7 @@ NetworkView::NetworkView(QWidget * parent)
   _legend = 0;
   _legendRotation = 0;
   _sceneClear = true;
+  _nodeLabelsVisible = true;
   _showBarcharts = false;
   _showTaxBox = false;
   _vertRadUnit = NetworkItem::VERTRAD;
@@ -423,18 +426,21 @@ void NetworkView::drawLayout()
     }
     
     // TODO background, font, text colour
-    QString label = model()->index(i,0).data(NetworkItem::LabelRole).toString();
-    labelItem = new LabelItem(label, vItem);
-    labelItem->setFont(labelFont());
-    QPointF newpos = vItem->boundingRect().topLeft();
-    newpos.rx() -= labelItem->boundingRect().width();
-    if (newpos.x() < 0)  newpos.setX(0);
-
-    labelItem->setPos(newpos);
-    labelItem->setFlags(QGraphicsItem::ItemIgnoresTransformations | QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemSendsGeometryChanges);
-    _labelItems.push_back(labelItem);
-    /*connect(labelItem, SIGNAL(moved(const QPointF &)), this, SLOT(captureMoveEvent(const QPointF &)));
-    connect(labelItem, SIGNAL(aboutToMove(QGraphicsItem *)), this, SLOT(prepareMoveEvent(QGraphicsItem *)));*/
+    if (_nodeLabelsVisible)
+    {
+      QString label = model()->index(i,0).data(NetworkItem::LabelRole).toString();
+      labelItem = new LabelItem(label, vItem);
+      labelItem->setFont(labelFont());
+      QPointF newpos = vItem->boundingRect().topLeft();
+      newpos.rx() -= labelItem->boundingRect().width();
+      if (newpos.x() < 0)  newpos.setX(0);
+  
+      labelItem->setPos(newpos);
+      labelItem->setFlags(QGraphicsItem::ItemIgnoresTransformations | QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemSendsGeometryChanges);
+      _labelItems.push_back(labelItem);
+      /*connect(labelItem, SIGNAL(moved(const QPointF &)), this, SLOT(captureMoveEvent(const QPointF &)));
+      connect(labelItem, SIGNAL(aboutToMove(QGraphicsItem *)), this, SLOT(prepareMoveEvent(QGraphicsItem *)));*/
+    }
   }
   
   for (unsigned i = 0; i < _layout->edgeCount(); i++)
@@ -574,6 +580,16 @@ void NetworkView::drawLegend()
     currentY += entryHeight;
   }
 }
+
+void NetworkView::setNodeLabelsVisible(bool visible) 
+{ 
+  _nodeLabelsVisible = visible;
+
+  //_theScene.update();
+  clearScene();
+  drawLayout();
+}
+
 
 void NetworkView::changeLabelFont(const QFont &font)
 {
