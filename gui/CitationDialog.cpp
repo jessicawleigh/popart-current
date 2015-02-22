@@ -31,8 +31,10 @@ CitationDialog::CitationDialog(QWidget * parent, Qt::WindowFlags flags)
   QVBoxLayout *mainlayout = new QVBoxLayout(this);
   QHBoxLayout *hlayout = new QHBoxLayout;
   QVBoxLayout *vlayout = new QVBoxLayout;
+  
+  mainlayout->addWidget(new QLabel("<b>If you use PopART, please cite our website:</b> http://popart.otago.ac.nz", this));
 
-  mainlayout->addWidget(new QLabel("<b>If you use PopART's network inference methods, please cite:</b>", this));
+  mainlayout->addWidget(new QLabel("<b>Please cite any network inference methods you use:</b>", this));
 
   QMap<QString, CitationRecord>::const_iterator citeIt = _citations.constBegin();
 
