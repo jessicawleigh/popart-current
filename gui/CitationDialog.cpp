@@ -4,6 +4,7 @@
 #include <QBoxLayout>
 #include <QFile>
 #include <QFileDialog>
+#include <QFrame>
 #include <QGroupBox>
 #include <QLabel>
 #include <QMessageBox>
@@ -33,8 +34,17 @@ CitationDialog::CitationDialog(QWidget * parent, Qt::WindowFlags flags)
   QVBoxLayout *vlayout = new QVBoxLayout;
   
   mainlayout->addWidget(new QLabel("<b>If you use PopART, please cite our website:</b> http://popart.otago.ac.nz", this));
-
-  mainlayout->addWidget(new QLabel("<b>Please cite any network inference methods you use:</b>", this));
+  mainlayout->addSpacing(2);
+  
+  QFrame *frame = new QFrame(this);
+  frame->setFrameShadow(QFrame::Sunken);
+  frame->setFrameShape(QFrame::HLine);
+  //frame->setHeight(3);
+  //frame->setLineWidth(1);
+  mainlayout->addWidget(frame);
+  mainlayout->addSpacing(2);
+  
+  mainlayout->addWidget(new QLabel("<b>Please cite any network inference methods<br>you use:</b>", this));
 
   QMap<QString, CitationRecord>::const_iterator citeIt = _citations.constBegin();
 
