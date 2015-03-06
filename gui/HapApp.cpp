@@ -1,10 +1,12 @@
 
 #include <QApplication>
+#include <QCoreApplication>
+#include <QDir>
 #include <QPixmap>
 #include <QScrollArea>
 #include <QSplashScreen>
+#include <QString>
 #include <QTimer>
-
 
 #include "HapnetWindow.h"
 #include "splash.h"
@@ -57,6 +59,12 @@
 int main(int argc, char **argv)
 {
   QApplication app(argc, argv);
+
+  #if defined(Q_OS_WIN)
+  QString pluginpath = QCoreApplication::applicationDirPath() + QDir::separator() + QLatin1String("plugins");
+  app.addLibraryPath(pluginpath);
+  #endif
+
   QPixmap pixmap(splash::popartsplash);
   QSplashScreen *splash = new QSplashScreen(pixmap, Qt::WindowStaysOnTopHint);
   splash->show();
