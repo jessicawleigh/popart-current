@@ -187,6 +187,7 @@ private:
   bool _hasGeoTags;
   bool _hasTraits;  
   std::string _kwdText;
+  std::string _warnedKwd;
   const std::string *_keystr;
   std::string *_treestr;
   

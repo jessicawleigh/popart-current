@@ -95,6 +95,7 @@ void PhylipSeqParser::resetParser()
   setCharType(DNAType);
   _seqsloaded = false;
   _headerwritten = false;
+  _lbaftername = false;
   _seqvect.clear();
 }
 
@@ -146,10 +147,22 @@ bool PhylipSeqParser::readSeqsVariant(istream &input, PhylipVariant var)
       ParserTools::rstrip(strippedline = line);
       if (strippedline.empty())
         continue;
+      
+      if (strippedline.size() <= NAMELENGTH)
+      {
+        // If a line break appears after name, treat this as sequential
+        // TODO figure out whether this is legal for interleaved as well!
+        _lbaftername = true;
+        _seqvect.clear();
+        input.seekg(start);
+        input.clear();
+        return false;
+      }
+      
       if (seqcount < nSeq())
       {
         name = strippedline.substr(0, NAMELENGTH);
-        ParserTools::strip(name);
+        ParserTools::strip(name); 
         string seq = strippedline.substr(NAMELENGTH);
         ParserTools::strip(seq);
         ParserTools::eraseChars(seq, ' ');
@@ -205,10 +218,17 @@ bool PhylipSeqParser::readSeqsVariant(istream &input, PhylipVariant var)
       {
         name = strippedline.substr(0, NAMELENGTH);
         ParserTools::strip(name);
-        string seq = strippedline.substr(NAMELENGTH);
-        ParserTools::strip(seq);
-        ParserTools::eraseChars(seq, ' ');
-        _seqvect.push_back(Sequence(name, seq));
+        
+        if (_lbaftername)
+          _seqvect.push_back(Sequence(name, ""));
+        
+        else
+        {
+          string seq = strippedline.substr(NAMELENGTH);
+          ParserTools::strip(seq);
+          ParserTools::eraseChars(seq, ' ');
+          _seqvect.push_back(Sequence(name, seq));
+        }
       }
 
       else

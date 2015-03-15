@@ -38,7 +38,7 @@ int SeqParser::nSeq() const
 string SeqParser::getWarning()
 {
   if (_warnings.empty())  return string();
-  
+    
   string w = _warnings.front();
   _warnings.pop();
   

@@ -79,6 +79,7 @@ void NexusParser::resetParser()
 
   _currentBlock = NoBlock;
   _currentKeyWord = NoKwd;
+  _warnedKwd = "";
   _seqidx = -1;
 
   setCharType(StandardType);//DNAType);
@@ -251,6 +252,7 @@ Sequence & NexusParser::getSeq(istream &input, Sequence &sequence)
                 throw SeqParseError("Semi-colon should appear at the end of a line!");
 
               _currentKeyWord = NoKwd;
+              _warnedKwd = "";
             }
           }
 
@@ -2080,10 +2082,18 @@ void NexusParser::parseLine(string line, Sequence &sequence)
       _currentBlock != Assumptions &&
       _currentBlock != Sets)*/
       
+      // no need to warn for the same unknown keyword more than once in a row
+      if (_warnedKwd == _kwdText)
+        break;
+      
       ostringstream oss;
       oss << "Unknown keyword: " << _kwdText;
       if (_currentBlock == Data || _currentBlock == Taxa || _currentBlock == Characters || _currentBlock == Trees || _currentBlock == Traits)
+      {
+        //_currentKeyWord = NoKwd;
         warn(oss.str());
+        _warnedKwd = _kwdText;
+      }
         //throw SeqParseError("Unknown keyword!");
     }
     break;

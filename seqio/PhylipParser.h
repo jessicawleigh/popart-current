@@ -37,6 +37,7 @@ private:
 
   bool _seqsloaded;
   bool _headerwritten;
+  bool _lbaftername;
   std::vector<Sequence> _seqvect;
   std::vector<Sequence>::const_iterator _seqiter;
   PhylipVariant _variant;
