@@ -13,6 +13,7 @@
 #include <QModelIndexList>
 #include <QPoint>
 #include <QPushButton>
+#include <QMimeData>
 #include <QRect>
 #include <QStringList>
 #include <QTreeWidgetItem>

@@ -4,7 +4,6 @@
 #include "NetworkItem.h"
 
 #include <QColor>
-#include <QtConcurrentMap>
 #include <QtCore>
 #include <QFont>
 #include <QFontMetricsF>

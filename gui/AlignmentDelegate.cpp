@@ -19,7 +19,7 @@ void AlignmentDelegate::paint (QPainter *painter, const QStyleOptionViewItem &op
   QString data = index.data().toString().toUpper();
   bool maskstate = index.data(Qt::UserRole).toBool();
 
-  char seqchar = data[0].toAscii();
+  char seqchar = data[0].toLatin1();
   if (option.state & QStyle::State_Selected)
   {
     if (!maskstate)  painter->fillRect(option.rect, option.palette.dark());

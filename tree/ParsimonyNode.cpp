@@ -106,7 +106,7 @@ const char & ParsimonyNode::at(size_t pos) const
   // 2 ^alphabetSize is number of redundant codes
   //if (c >= 1 << alphabetSize())  throw TreeError("Sequence character not a valid redundancy code");
   
-  return _nuc2chr[_parsimonySeq->at(pos).uShortValue()];
+  return _nuc2chr[(_parsimonySeq->at(pos).uShortValue())];
 }
 
 ParsimonyNode::NucleotideComparitor & ParsimonyNode::stateAt(size_t pos)
