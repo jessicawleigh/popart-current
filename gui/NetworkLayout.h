@@ -23,7 +23,7 @@ public:
   NetworkLayout(NetworkModel *, double, double);
   virtual ~NetworkLayout();
 
-  static const double GOODENOUGH = 1E-4;
+  static constexpr double GOODENOUGH = 1E-4;
   unsigned maxIter() const { return _maxiter; };
   void setMaxIter(unsigned maxiter) { _maxiter = maxiter; };
   
@@ -147,16 +147,16 @@ private:
 
   // These are different constants because Jiggle uses different values
   static const unsigned MARGIN = 20;
-  static const double VERYSMALL = 1E-8;
-  static const double FAIRLYSMALL = 1E-6;
-  static const double SMALL = 1E-4;
+  static constexpr double VERYSMALL = 1E-8;
+  static constexpr double FAIRLYSMALL = 1E-6;
+  static constexpr double SMALL = 1E-4;
 
   // Some of these shouldn't be constants
   //static const unsigned SCALEFACTOR = 50;
   static const double CAP;// = numeric_limits<double>::max() / 1000;
-  static const double BARNESHUTTHETA = 0.7;
-  static const double RESTARTTHRESHOLD = 0.2;
-  static const double MAXCOS = 0.5;
+  static constexpr double BARNESHUTTHETA = 0.7;
+  static constexpr double RESTARTTHRESHOLD = 0.2;
+  static constexpr double MAXCOS = 0.5;
 
 
 

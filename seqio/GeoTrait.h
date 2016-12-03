@@ -89,8 +89,8 @@ private:
   
   static std::vector<std::pair<float,float> > _centroids;
   static std::vector<unsigned> _clusters;
-  const static unsigned ITERATIONS = 1000;
-  const static double SMALL = 1E-6;
+  static const unsigned ITERATIONS = 1000;
+  static constexpr double SMALL = 1E-6;
   
   static std::vector<std::pair<float,float> > _statCoords;
   static std::vector<std::string> _statSeqNames;

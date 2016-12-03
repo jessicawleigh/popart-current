@@ -18,9 +18,9 @@ public:
   typedef enum {EmptyType, VertexType, EdgeType} ItemType;
   //Q_DECLARE_METATYPE(ItemType);
 
-  static const double VERTWEIGHT = 1;
-  static const double VERTRAD = 15;
-  static const double EDGELENGTH = 50;
+  static constexpr double VERTWEIGHT = 1;
+  static constexpr double VERTRAD = 15;
+  static constexpr double EDGELENGTH = 50;
   
   static const int TypeRole = Qt::UserRole + 1;
   static const int LabelRole = Qt::UserRole + 2;

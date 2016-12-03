@@ -105,9 +105,9 @@ private:
   static double gammaLn(double);
   static double betaI(double, double, double);
   static double betaCF(double, double, double);
-  const static unsigned MAXIT = 100;
-  const static double EPS = 3.0e-7;
-  const static double FPMIN = 1.0e-30;
+  static const unsigned MAXIT = 100;
+  static constexpr double EPS = 3.0e-7;
+  static constexpr double FPMIN = 1.0e-30;
   const static unsigned LARGE = 1E6;
   void updateProgress(int);
 
