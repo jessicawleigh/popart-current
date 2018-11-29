@@ -176,7 +176,7 @@ void ParsimonyTree::SankoffUp()
 
 
 
-void ParsimonyTree::SankoffDown(ParsimonyNode *node, bool allowAmbiguous, const basic_string<ParsimonyNode::NucleotideComparitor> * ancestor)
+void ParsimonyTree::SankoffDown(ParsimonyNode *node, bool allowAmbiguous, const vector<ParsimonyNode::NucleotideComparitor> * ancestor)
 {
   
   _ancestorsAmbiguous = allowAmbiguous;
@@ -187,7 +187,7 @@ void ParsimonyTree::SankoffDown(ParsimonyNode *node, bool allowAmbiguous, const 
   
   
 
-  if (node->parsimonySeq() == 0 || node->parsimonySeq()->length() != nchar())  
+  if (node->parsimonySeq() == 0 || node->parsimonySeq()->size() != nchar())  
     node->resizeSeq(nchar());
   
   
