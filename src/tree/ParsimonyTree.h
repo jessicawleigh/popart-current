@@ -45,7 +45,7 @@ private:
   virtual TreeNode * newNode() const;
   
   void SankoffUp();
-  void SankoffDown(ParsimonyNode *, bool = false, const basic_string<ParsimonyNode::NucleotideComparitor> * = NULL);
+  void SankoffDown(ParsimonyNode *, bool = false, const vector<ParsimonyNode::NucleotideComparitor> * = NULL);
   
   
   unsigned long _score; 

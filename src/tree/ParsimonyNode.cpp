@@ -99,7 +99,7 @@ const char & ParsimonyNode::at(size_t pos) const
 {
   if (isLeaf())  return SeqNode::at(pos);
   
-  if (pos >= _parsimonySeq->length())  throw TreeError("Sequence index out of range.");
+  if (pos >= _parsimonySeq->size())  throw TreeError("Sequence index out of range.");
   
  
   // NucleotideComparitor does this checking
@@ -149,10 +149,10 @@ void ParsimonyNode::resizeSeq(size_t newsize)
   parsimonySeq();
   
   if (_parsimonySeq == 0)
-    _parsimonySeq = new basic_string<NucleotideComparitor>(newsize, (unsigned short)0);
+    _parsimonySeq = new vector<NucleotideComparitor>(newsize, (unsigned short)0);
 
   else
-    _parsimonySeq->resize(newsize, (unsigned short)O);
+    _parsimonySeq->resize(newsize, (unsigned short)0);
 }
 
 unsigned ParsimonyNode::substitutionCost(Nucleotide src, Nucleotide dst)
@@ -194,7 +194,7 @@ void ParsimonyNode::setParsimonySeqFromSeq()
   const Sequence * seq = sequence();
   
   if (seq)
-    _parsimonySeq = new basic_string<NucleotideComparitor>(seq->length(), (unsigned short)0);
+    _parsimonySeq = new vector<NucleotideComparitor>(seq->length(), (unsigned short)0);
     
   for (unsigned i = 0; i < seq->length(); i++)
     _parsimonySeq->at(i) = _chr2nuc[seq->at(i)];
@@ -202,7 +202,7 @@ void ParsimonyNode::setParsimonySeqFromSeq()
   return;
   if (seq)
   {
-    _parsimonySeq = new basic_string<NucleotideComparitor>(seq->length(), (unsigned short)0);
+    _parsimonySeq = new vector<NucleotideComparitor>(seq->length(), (unsigned short)0);
 
 
     for (unsigned i = 0; i < seq->length(); i++)
@@ -284,7 +284,7 @@ void ParsimonyNode::setParsimonySeqFromSeq()
   }
 }
 
-const basic_string<ParsimonyNode::NucleotideComparitor> * ParsimonyNode::parsimonySeq()
+const vector<ParsimonyNode::NucleotideComparitor> * ParsimonyNode::parsimonySeq()
 {
   
   if (isLeaf() && _parsimonySeq == 0)

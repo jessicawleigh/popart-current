@@ -48,7 +48,7 @@ public:
   void setCost(unsigned, Nucleotide, unsigned);
   unsigned cost(unsigned, Nucleotide);
   unsigned minCost(unsigned, Nucleotide);
-  const basic_string<NucleotideComparitor> * parsimonySeq();
+  const std::vector<NucleotideComparitor> *parsimonySeq();
   virtual const char & at(size_t) const;
   static char nuc2char(short unsigned);
   static char nuc2char(const NucleotideComparitor &);
@@ -70,8 +70,8 @@ public:
 private:
   
   void setParsimonySeqFromSeq();
-  vector<unsigned *> *_stateCosts;
-  basic_string<NucleotideComparitor> *_parsimonySeq;  
+  std::vector<unsigned *> *_stateCosts;
+  std::vector<NucleotideComparitor> *_parsimonySeq;  
   static const unsigned _subCosts[] ;
   static const char _nuc2chr[];
   static const short unsigned _chr2nuc[];
