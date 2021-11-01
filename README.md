@@ -16,6 +16,7 @@ PopART can be built on most (if not all) up-to-date Linux systems. Requirements:
 1. Qt5: https://www.qt.io/
 2. Marble: https://marble.kde.org/
 3. lp_solve: http://lpsolve.sourceforge.net/5.5/index.htm
+4. suitesparse: https://people.engr.tamu.edu/davis/suitesparse.html
 
 You'll need development headers for all three. On Ubuntu (tested on 18.04) this means running:
 apt-get install libmarble-dev libqt5-dev liblpsolve55-dev
