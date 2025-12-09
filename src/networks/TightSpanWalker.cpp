@@ -7,7 +7,7 @@
 
 #include "TightSpanWalker.h"
 #include "NetworkError.h"
-#include <QTime>
+#include <QElapsedTimer>
 
 #include <algorithm>
 #include <cmath>
@@ -45,7 +45,7 @@ void TightSpanWalker::computeGraph()
     
     _vertexMap[dTvect] = vertex(i);
   }
-  QTime executionTimer;  
+  QElapsedTimer executionTimer;  
   executionTimer.start();
   for (unsigned i = 0; i < nseqs(); i++)
   {

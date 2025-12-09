@@ -11,7 +11,7 @@ class MapLegendDialog : public QDialog
 {
   Q_OBJECT
 public:
-  MapLegendDialog(QVector<HapLocation*>, QWidget * = 0, Qt::WindowFlags = 0 );
+  MapLegendDialog(QVector<HapLocation*>, QWidget * = nullptr, Qt::WindowFlags = {} );
   void setColours(const QVector<QBrush> &colours) { _legend->setColours(colours); };
   const QBrush & hapBrush(int i) const { return _legend->hapBrush(i); };  
   const QFont & smallFont() const { return _legend->smallFont(); };

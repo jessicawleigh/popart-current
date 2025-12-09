@@ -14,10 +14,10 @@ class ColourDialog : public QDialog
 Q_OBJECT
 
 public:  
-  static ColourTheme::Theme getColour(QWidget *, ColourTheme::Theme, Qt::WindowFlags = 0, bool * = 0, bool * = 0);
-  
+  static ColourTheme::Theme getColour(QWidget *, ColourTheme::Theme, Qt::WindowFlags = {}, bool * = nullptr, bool * = nullptr);
+
 private:
-  ColourDialog(QWidget *, ColourTheme::Theme, Qt::WindowFlags = 0);
+  ColourDialog(QWidget *, ColourTheme::Theme, Qt::WindowFlags = {});
   ColourTheme::Theme theme() { return _theme; };
   bool changeMapTheme() { return _changeMapTheme; };
   bool changeNetTheme() { return _changeNetTheme; };

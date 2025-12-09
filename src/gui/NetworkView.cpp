@@ -12,10 +12,11 @@
 #include <QGraphicsRectItem>
 #include <QGraphicsSimpleTextItem>
 #include <QPainter>
+#include <QPageLayout> 
 #include <QPointF>
 #include <QPrinter>
 #include <QPushButton>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QSvgGenerator>
 #include <QThread>
 #include <QVBoxLayout>
@@ -474,7 +475,7 @@ void NetworkView::drawLegend()
   double maxwidth = 0;
   for (unsigned i = 0; i < model()->columnCount(); i++)
   {
-    double width = metric.width(model()->headerData(i, Qt::Vertical).toString());
+    double width = metric.horizontalAdvance(model()->headerData(i, Qt::Vertical).toString());
     if (width > maxwidth)  maxwidth = width;
   }
   
@@ -501,7 +502,7 @@ void NetworkView::drawLegend()
   _legend->setFlags(QGraphicsItem::ItemIsMovable);
   //_legendPos = _theView.mapFromScene(legendStart);
   
-  //_theScene.setSceneRect(_graphRect.x(), _graphRect.y(), _graphRect.width() + legendWidth, _graphRect.height())
+  //_theScene.setSceneRect(_graphRect.x(), _graphRect.y(), _graphRect.horizontalAdvance() + legendWidth, _graphRect.height())
   
 
   _theScene.setSceneRect(computeSceneRect());
@@ -522,7 +523,7 @@ void NetworkView::drawLegend()
   QGraphicsSimpleTextItem *legendLabel = new QGraphicsSimpleTextItem("10 samples", key);
   legendLabel->setData(0, -1);
   legendLabel->setFont(smallFont());
-  double textX = key->boundingRect().center().x() - smallMetric.width(legendLabel->text())/2;
+  double textX = key->boundingRect().center().x() - smallMetric.horizontalAdvance(legendLabel->text())/2;
   currentY = key->boundingRect().center().y() - smallMetric.height()/2;
   legendLabel->setPos(QPointF(textX, currentY));
   _sizeLabels.first = legendLabel;
@@ -542,7 +543,7 @@ void NetworkView::drawLegend()
   legendLabel->setData(0, -1);
   legendLabel->setFont(smallFont());
   currentY = key->boundingRect().bottom();  
-  textX = key->boundingRect().center().x() - smallMetric.width(legendLabel->text())/2;
+  textX = key->boundingRect().center().x() - smallMetric.horizontalAdvance(legendLabel->text())/2;
   legendLabel->setPos(QPointF(textX, currentY));
   _sizeLabels.second = legendLabel;
   
@@ -713,7 +714,7 @@ void NetworkView::changeLegendFont(const QFont &font)
   double maxwidth = 0;
   for (unsigned i = 0; i < model()->columnCount(); i++)
   {
-    double width = metric.width(model()->headerData(i, Qt::Vertical).toString());
+    double width = metric.horizontalAdvance(model()->headerData(i, Qt::Vertical).toString());
     if (width > maxwidth)  maxwidth = width;
   }
   
@@ -744,7 +745,7 @@ void NetworkView::changeLegendFont(const QFont &font)
 
   label->setFont(smallFont());
   label->update(label->boundingRect());
-  double textX = key->boundingRect().center().x() - smallMetric.width(label->text())/2;
+  double textX = key->boundingRect().center().x() - smallMetric.horizontalAdvance(label->text())/2;
   currentY = key->boundingRect().center().y() - smallMetric.height()/2;
   label->setPos(textX, currentY);
 
@@ -758,7 +759,7 @@ void NetworkView::changeLegendFont(const QFont &font)
   label->setFont(smallFont());
   label->update(label->boundingRect());;
   currentY = key->boundingRect().bottom();  
-  textX = key->boundingRect().center().x() - smallMetric.width(label->text())/2;
+  textX = key->boundingRect().center().x() - smallMetric.horizontalAdvance(label->text())/2;
   label->setPos(textX, currentY);
   
   currentY =  2 * MARGIN + 5 * _vertRadUnit + smallMetric.height();
@@ -903,7 +904,7 @@ void NetworkView::clearScene()
   _vertexItems.clear();
   _edgeItems.clear();
   _labelItems.clear();
-  _theView.matrix().reset();
+  _theView.resetTransform();
   _theScene.setSceneRect(0, 0, _theView.width(), _theView.height());
   _sceneClear = true;
   _legend = 0;
@@ -1126,7 +1127,7 @@ void NetworkView::updateColours()
     }
   }
 
-  //_theScene.update(0, 0, _theScene.width(), _theScene.height());
+  //_theScene.update(0, 0, _theScene.horizontalAdvance(), _theScene.height());
 
 }
 
@@ -1340,9 +1341,9 @@ void NetworkView::savePDFFile(const QString &filename)
   printer.setOutputFileName(filename);
   
   if (width > height)
-    printer.setOrientation(QPrinter::Landscape);
+    printer.setPageOrientation(QPageLayout::Landscape);
   else
-    printer.setOrientation(QPrinter::Portrait);
+    printer.setPageOrientation(QPageLayout::Portrait);
   //printer.setWidth(width);
   //printer.setHeight(height);
   QPainter painter(&printer);
@@ -1407,7 +1408,7 @@ QPointF NetworkView::computeLegendPos()
   QPointF pos;
   
   double hght = _legend->boundingRect().height();
-  //double wdth = _legend->boundingRect().width();
+  //double wdth = _legend->boundingRect().horizontalAdvance();
   
   double graphHeight = _graphRect.height();
   double graphWidth = _graphRect.width();
@@ -1480,15 +1481,15 @@ QRectF NetworkView::computeSceneRect()
 
 void NetworkView::selectNodes(const QString &label)
 {
-  QRegExp regex(label);
-  regex.setPatternSyntax(QRegExp::Wildcard);
-  
-  for (unsigned i = 0; i < _labelItems.size(); i++)
-  {
-    
-    if (regex.exactMatch(_labelItems.at(i)->text()))
-      _labelItems.at(i)->parentItem()->setSelected(true);
-  }
+    QString pattern = QRegularExpression::escape(label);
+    pattern.replace("\\*", ".*").replace("\\?", ".");
+    QRegularExpression regex("^" + pattern + "$");
+
+    for (int i = 0; i < _labelItems.size(); i++)
+    {
+        if (regex.match(_labelItems.at(i)->text()).hasMatch())
+            _labelItems.at(i)->parentItem()->setSelected(true);
+    }
 }
 
 void NetworkView::toggleShowBarcharts(bool show)

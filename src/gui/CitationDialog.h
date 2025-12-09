@@ -14,7 +14,7 @@ class CitationDialog : public QDialog
 {
   Q_OBJECT
 public:
-  CitationDialog(QWidget * = 0, Qt::WindowFlags = 0);
+  CitationDialog(QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
   
 private:
   class CitationRecord

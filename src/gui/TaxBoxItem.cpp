@@ -27,7 +27,7 @@ void TaxBoxItem::setLabels(const QVector<QString> & labels)
   double width = MARGIN;
   
   for (unsigned i = 0; i < _labels.size(); i++)
-    width = qMax(width, _metric.width(_labels.at(i)));
+    width = qMax(width, _metric.horizontalAdvance(_labels.at(i)));
   
   width += 2 * MARGIN;
 

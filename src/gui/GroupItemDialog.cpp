@@ -2,6 +2,7 @@
 #include "XPM.h"
 
 #include <QAction>
+#include <QActionGroup>
 #include <QMessageBox>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -20,10 +21,11 @@
 #include <QVBoxLayout>
 
 #include <QDebug>
+#include <memory>
 
 using namespace std;
 //const QIcon GroupedTreeWidgetItem::_lockedIcon = QIcon(QPixmap(xpm::lock));
-auto_ptr<QIcon> GroupedTreeWidgetItem::_lockedIcon(new QIcon);
+std::unique_ptr<QIcon> GroupedTreeWidgetItem::_lockedIcon(new QIcon);
 
 GroupItemDialog::GroupItemDialog(const QVector<QString> &items, QMap<QString,QList<QString> > &groupedItems, const QString & listText, const QString & treeText, QWidget *parent, Qt::WindowFlags flags)
  : QDialog(parent, flags), _items(items), _groupedItems(groupedItems)

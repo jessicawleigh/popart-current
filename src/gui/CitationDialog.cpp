@@ -344,7 +344,7 @@ QString CitationDialog::CitationRecord::formatAuthor(const QString & author, Cit
 
 	int remainder = author.length() - idx; // just use section, since we can't use refs anyway.
 
-	QStringList otherNames = author.right(remainder - 1).split(' ', QString::SkipEmptyParts);
+	QStringList otherNames = author.right(remainder - 1).split(' ', Qt::SkipEmptyParts);
 
   switch (format)
   {

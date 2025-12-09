@@ -53,7 +53,7 @@ QSize AlignmentDelegate::sizeHint(const QStyleOptionViewItem &option, const QMod
 {
   QString data = index.data().toString();
 
-  return QSize(option.fontMetrics.width(data), option.fontMetrics.height());
+  return QSize(option.fontMetrics.horizontalAdvance(data), option.fontMetrics.height());
 }
 
 chcolourmap AlignmentDelegate::defaultColourMap(Sequence::CharType chartype) const

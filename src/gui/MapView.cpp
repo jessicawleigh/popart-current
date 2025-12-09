@@ -19,6 +19,7 @@
 #include <QLayout>
 #include <QMessageBox>
 #include <QPainter>
+#include <QPageLayout>
 #include <QPrinter>
 #include <QPushButton>
 #include <QRadioButton>
@@ -248,9 +249,9 @@ void MapView::savePDFFile(const QString &filename) const
   printer.setOutputFileName(filename);
   
   if (width > height)
-    printer.setOrientation(QPrinter::Landscape);
+    printer.setPageOrientation(QPageLayout::Landscape);
   else
-    printer.setOrientation(QPrinter::Portrait);
+    printer.setPageOrientation(QPageLayout::Portrait);
   
   QPainter painter(&printer);
   painter.setRenderHint(QPainter::Antialiasing);

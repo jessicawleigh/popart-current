@@ -64,8 +64,8 @@ void NetworkLayout::shuffleVertices()
 
   for (int i = 0; i < _model->rowCount(); i++)
   {
-    double x = qrand() % (int)_width;
-    double y = qrand() % (int)_height;
+    double x = (double(rand()) / RAND_MAX) * _width;
+    double y = (double(rand()) / RAND_MAX) * _height;
     
 
     //_vertexPositions.push_back(QPointF(15 * (i + 10 + pow(-1., i)), 15 * (i + 10 + pow(-1., i + 1))));

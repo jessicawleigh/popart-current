@@ -2,6 +2,7 @@
 #include <QAbstractItemView>
 #include <QAbstractItemModel>
 #include <QApplication>
+#include <QActionGroup>
 #include <QButtonGroup>
 #include <QChar>
 #include <QCheckBox>
@@ -103,8 +104,8 @@ HapnetWindow::HapnetWindow(QWidget *parent, Qt::WindowFlags flags)
   cancelButton->setEnabled(false);
   _progress->setCancelButton(cancelButton);
 
-  int seed = QDateTime::currentDateTime().toTime_t();
-  qsrand(seed);
+  int seed = QDateTime::currentDateTime().toSecsSinceEpoch();
+  srand(seed);
   QStatusBar *sbar = statusBar();
   
   resize(800, 600);
@@ -3318,7 +3319,7 @@ void HapnetWindow::changeColourTheme()
   bool changeMap, changeNet;
 
   // TODO maybe change this? Store colour theme elsewhere, but which one (map or net)?
-  ColourTheme::Theme theme = ColourDialog::getColour(this, _netView->colourTheme(), 0, &changeNet, &changeMap);
+  ColourTheme::Theme theme = ColourDialog::getColour(this, _netView->colourTheme(), Qt::WindowFlags{}, &changeNet, &changeMap);
   
 
   if (changeNet)
@@ -3861,7 +3862,7 @@ void HapnetWindow::showIdenticalSeqs()
   {
     if (! identicalIt->second.empty())
     {
-      out << QString::fromStdString(identicalIt->first.name()) << "\t" << QString::fromStdString(identicalIt->first.name()) << endl;
+      out << QString::fromStdString(identicalIt->first.name()) << "\t" << QString::fromStdString(identicalIt->first.name()) << Qt::endl;
       list<Sequence>::const_iterator othersIt = identicalIt->second.begin();
       
       while (othersIt != identicalIt->second.end())
@@ -4293,13 +4294,13 @@ void HapnetWindow::showAllStats()
     return;
   QTextStream out(&file);
   
-  out << "Nucleotide diversity:\tpi = " << diversity << endl;
-  out << "Number of segregating sites:\t" << segsites << endl;
-  out << "Number of parsimony-informative sites:\t" << psites << endl;
-  out << "Tajima's D statistic:\tD = " << tajimaStat.value << endl;
-  out << "\tp (D >= " << tajimaStat.value << ") = " << tajimaStat.prob << endl;
-  /*out << "Analysis of molecular variance:\tF = " << amovaStat.F << endl;
-  out << "\tp (F >= " << amovaStat.F << ") = " << amovaStat.prob << endl;
+  out << "Nucleotide diversity:\tpi = " << diversity << Qt::endl;
+  out << "Number of segregating sites:\t" << segsites << Qt::endl;
+  out << "Number of parsimony-informative sites:\t" << psites << Qt::endl;
+  out << "Tajima's D statistic:\tD = " << tajimaStat.value << Qt::endl;
+  out << "\tp (D >= " << tajimaStat.value << ") = " << tajimaStat.prob << Qt::endl;
+  /*out << "Analysis of molecular variance:\tF = " << amovaStat.F << Qt::endl;
+  out << "\tp (F >= " << amovaStat.F << ") = " << amovaStat.prob << Qt::endl;
   
   out << QString("%1  Sum Sq Mean Sq F value    Pr(>F)\n").arg(QString("df"), 14);
   out << QString("Population%1").arg(amovaStat.dfFac, 4);

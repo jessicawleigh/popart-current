@@ -15,7 +15,7 @@ class MonospaceMessageBox : public QDialog
 {
   Q_OBJECT
 public:
-  MonospaceMessageBox(QWidget * = 0, Qt::WindowFlags = 0);
+  MonospaceMessageBox(QWidget * = nullptr, Qt::WindowFlags = {});
   //MonospaceMessageBox(Icon icon, const QString & title, const QString & text, StandardButtons buttons = NoButton, QWidget * parent = 0, Qt::WindowFlags f = Qt::Dialog | Qt::MSWindowsFixedSizeDialogHint);
   
   void setText(const QString &);

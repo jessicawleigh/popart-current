@@ -35,7 +35,7 @@ public:
   //static ColourTheme::Theme getColour(QWidget *, ColourTheme::Theme, Qt::WindowFlags = 0, bool * = 0, bool * = 0);
   // and make the constructor private
   
-  GroupItemDialog(const QVector<QString> &, QMap<QString, QList<QString> > &, const QString & = "Unsorted Items", const QString & = "Grouped Items", QWidget * = 0, Qt::WindowFlags = 0);
+  GroupItemDialog(const QVector<QString> &, QMap<QString, QList<QString> > &, const QString & = "Unsorted Items", const QString & = "Grouped Items", QWidget * = nullptr, Qt::WindowFlags = {});
   
   QMap<QString, QList<QString> > groups() const;
   
@@ -154,7 +154,8 @@ public:
 private:
   //void constructItem();
   bool _locked;
-  static std::auto_ptr<QIcon> _lockedIcon;// = 0; 
+  //static std::auto_ptr<QIcon> _lockedIcon;// = 0; 
+  static std::unique_ptr<QIcon> _lockedIcon;
   //QString _oldText;
 };
 

@@ -54,7 +54,7 @@ MapLegendWidget::MapLegendWidget(QVector<HapLocation*> locations, QWidget *paren
   
    while (seqNameIt != seqIDs.constEnd())
   {
-    double width = painterMetric.width(seqNameIt.key());
+    double width = painterMetric.horizontalAdvance(seqNameIt.key());
     if (width > maxwidth)  maxwidth = width;
 
     ++seqNameIt;
@@ -90,7 +90,7 @@ MapLegendWidget::MapLegendWidget(QVector<HapLocation*> locations, QWidget *paren
   painter.drawEllipse(keyX, currentY, diam5seq, diam5seq);
   QString key("10 samples");
 
-  double textX = legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
+  double textX = legendStart.x() + legendWidth/2 - painterMetric.horizontalAdvance(key)/2;//smallMetric.horizontalAdvance(key)/2;
   painter.drawText(textX, currentY + diam5seq/2, key);
 
   currentY += (diam5seq - vertRadUnit);
@@ -99,7 +99,7 @@ MapLegendWidget::MapLegendWidget(QVector<HapLocation*> locations, QWidget *paren
 
   currentY += vertRadUnit + margin; //smallMetric.ascent();
   key = QString("1 sample");
-  textX = legendStart.x() + legendWidth/2 - painterMetric.width(key)/2;//smallMetric.width(key)/2;
+  textX = legendStart.x() + legendWidth/2 - painterMetric.horizontalAdvance(key)/2;//smallMetric.horizontalAdvance(key)/2;
   painter.drawText(textX, currentY , key);
 
   currentY += margin;

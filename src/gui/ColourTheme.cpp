@@ -5,12 +5,7 @@ using namespace std;
 
 QVector<QColor> initTheme(QColor *array, int ncols)
 {
-  vector<QColor> tmp;
-  tmp.assign(array, array + ncols);
-
-  QVector<QColor> vect = QVector<QColor>::fromStdVector(tmp);
-
-  return vect;
+  return QVector<QColor>(array, array + ncols);
 }
 
 #define NCOLS 10

@@ -36,7 +36,7 @@ unix:!macx{
   }
 
   # This works on Ubuntu 18.04, which links liblpsolve55.a rather than the .so, which is in a subdirectory /usr/lib/lp_solve
-  LIBS += -llpsolve55 -lmarblewidget-qt5 -ldl -lcolamd
+  LIBS += -llpsolve55 -lmarblewidget-qt6 -ldl -lcolamd
   #LIBS += -llpsolve55 -lmarblewidget
   #QMAKE_POST_LINK = build_help.sh
 }
@@ -44,7 +44,7 @@ unix:!macx{
 macx{
   ICON = popart.icns
   INCLUDEPATH += /usr/local/include /usr/local/include/marble
-  LIBS += -L/usr/local/lib -llpsolve55 -lmarblewidget-qt5
+  LIBS += -L/usr/local/lib -llpsolve55 -lmarblewidget-qt6
 
   RC_FILE = popart.rc
   QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.9

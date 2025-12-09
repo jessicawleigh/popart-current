@@ -45,7 +45,7 @@ class HapnetWindow : public QMainWindow
 {
   Q_OBJECT
 public:
-  HapnetWindow(QWidget * = 0, Qt::WindowFlags = 0);
+  HapnetWindow(QWidget * = nullptr, Qt::WindowFlags = {});
   virtual ~HapnetWindow();
 
 protected:
